@@ -1,0 +1,72 @@
+mutation CreateDemoData @transaction @auth(level: USER, insecureReason: "This operation is safe to expose to all logged in users.") {
+  user_insertMany(data: [
+    {
+      id: "550e8400-e29b-41d4-a716-446655440000",
+      username: "demouser1",
+      email: "demouser1@example.com",
+      createdAt: "2024-01-01T00:00:00Z"
+    },
+    {
+      id: "550e8400-e29b-41d4-a716-446655440001",
+      username: "demouser2",
+      email: "demouser2@example.com",
+      createdAt: "2024-01-01T00:00:00Z"
+    }
+  ])
+  movie_insertMany(data: [
+    {
+      id: "550e8400-e29b-41d4-a716-446655440002",
+      title: "Inception",
+      releaseYear: 2010,
+      createdAt: "2024-01-01T00:00:00Z"
+    },
+    {
+      id: "550e8400-e29b-41d4-a716-446655440003",
+      title: "The Matrix",
+      releaseYear: 1999,
+      createdAt: "2024-01-01T00:00:00Z"
+    }
+  ])
+  movieList_insertMany(data: [
+    {
+      id: "550e8400-e29b-41d4-a716-446655440004",
+      name: "My Favorite Movies",
+      userId: "550e8400-e29b-41d4-a716-446655440000",
+      isPublic: true,
+      createdAt: "2024-01-01T00:00:00Z",
+      updatedAt: "2024-01-01T00:00:00Z"
+    }
+  ])
+  movieListEntry_insertMany(data: [
+    {
+      movieListId: "550e8400-e29b-41d4-a716-446655440004",
+      movieId: "550e8400-e29b-41d4-a716-446655440002",
+      positionInList: 1
+    },
+    {
+      movieListId: "550e8400-e29b-41d4-a716-446655440004",
+      movieId: "550e8400-e29b-41d4-a716-446655440003",
+      positionInList: 2
+    }
+  ])
+  review_insertMany(data: [
+    {
+      id: "550e8400-e29b-41d4-a716-446655440005",
+      movieId: "550e8400-e29b-41d4-a716-446655440002",
+      userId: "550e8400-e29b-41d4-a716-446655440000",
+      rating: 5,
+      isPublic: true,
+      createdAt: "2024-01-01T00:00:00Z",
+      updatedAt: "2024-01-01T00:00:00Z"
+    }
+  ])
+  watchEntry_insertMany(data: [
+    {
+      id: "550e8400-e29b-41d4-a716-446655440006",
+      movieId: "550e8400-e29b-41d4-a716-446655440002",
+      userId: "550e8400-e29b-41d4-a716-446655440000",
+      watchDate: "2024-01-01",
+      createdAt: "2024-01-01T00:00:00Z"
+    }
+  ])
+}

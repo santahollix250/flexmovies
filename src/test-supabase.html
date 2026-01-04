@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+
+<body>
+    <h1>Supabase Connection Test</h1>
+    <div id="status">Testing...</div>
+
+    <script type="module">
+        // Import supabase from your file
+        import { supabase } from '/src/lib/supabase.js';
+
+        async function test() {
+            const status = document.getElementById('status');
+
+            try {
+                status.innerHTML = 'Step 1: Testing credentials...<br>';
+
+                // Test 1: Check if client initialized
+                if (!supabase || !supabase.supabaseUrl) {
+                    status.innerHTML += '❌ Supabase client not initialized<br>';
+                    return;
+                }
+
+                status.innerHTML += `✅ URL: ${supabase.supabaseUrl.substring(0, 30)}...<br>`;
+
+                // Test 2: Try to query
+                status.innerHTML += 'Step 2: Testing query...<br>';
+
+                const { data, error } = await supabase
+                    .from('movies')
+                    .select('count')
+                    .single();
+
+                if (error) {
+                    status.innerHTML += `❌ Query error: ${error.message}<br>`;
+                    status.innerHTML += `<small>Code: ${error.code}, Details: ${error.details}</small><br>`;
+
+                    if (error.code === 'PGRST301') {
+                        status.innerHTML += '⚠️ This means: No API access. Check:<br>';
+                        status.innerHTML += '1. Table name is "movies" (lowercase)<br>';
+                        status.innerHTML += '2. RLS policies allow access<br>';
+                        status.innerHTML += '3. Anon key is correct<br>';
+                    }
+
+                    if (error.code === '42501') {
+                        status.innerHTML += '⚠️ This means: Permission denied. Run:<br>';
+                        status.innerHTML += '<code>ALTER TABLE movies DISABLE ROW LEVEL SECURITY;</code><br>';
+                    }
+
+                    return;
+                }
+
+                status.innerHTML += `✅ Connected! Movies count: ${data.count || 0}<br>`;
+
+                // Test 3: Try to insert
+                status.innerHTML += 'Step 3: Testing insert...<br>';
+
+                const testMovie = {
+                    title: 'Connection Test ' + new Date().toISOString(),
+                    description: 'Test movie from connection test',
+                    poster: 'https://images.unsplash.com/photo-1489599809516-9827b6d1cf13?w=400',
+                    rating: '7.5',
+                    category: 'Test',
+                    type: 'movie'
+                };
+
+                const { error: insertError } = await supabase
+                    .from('movies')
+                    .insert([testMovie]);
+
+                if (insertError) {
+                    status.innerHTML += `❌ Insert error: ${insertError.message}<br>`;
+                } else {
+                    status.innerHTML += '✅ Can insert movies!<br>';
+                }
+
+            } catch (err) {
+                status.innerHTML += `❌ Exception: ${err.message}<br>`;
+                console.error(err);
+            }
+        }
+
+        test();
+    </script>
+</body>
+
+</html>
