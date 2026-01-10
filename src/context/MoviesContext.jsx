@@ -69,6 +69,8 @@ export function MoviesProvider({ children }) {
     setError(null);
 
     try {
+      console.log("🔄 Fetching movies from Supabase...");
+
       // Fetch movies
       const { data: moviesData, error: moviesError } = await supabase
         .from('movies')
@@ -79,6 +81,17 @@ export function MoviesProvider({ children }) {
         console.error('Movies fetch error:', moviesError);
         setError(moviesError.message);
       } else {
+        console.log(`✅ Fetched ${moviesData?.length || 0} movies from Supabase`);
+
+        // Debug: Check first movie data
+        if (moviesData && moviesData.length > 0) {
+          console.log("🔍 First movie from Supabase:", {
+            title: moviesData[0].title,
+            download_link: moviesData[0].download_link,
+            allFields: Object.keys(moviesData[0])
+          });
+        }
+
         const transformedMovies = (moviesData || []).map(movie => ({
           id: movie.id,
           title: movie.title || "Untitled",
@@ -89,6 +102,7 @@ export function MoviesProvider({ children }) {
           category: movie.category || 'General',
           type: movie.type || 'movie',
           streamLink: movie.stream_link || '',
+          download_link: movie.download_link || '', // ADDED THIS LINE
           nation: movie.nation || '',
           translator: movie.translator || '',
           year: movie.year || new Date().getFullYear(),
@@ -121,6 +135,7 @@ export function MoviesProvider({ children }) {
             episodeNumber: episode.episode_number || 1,
             duration: episode.duration || '45m',
             streamLink: episode.stream_link || '',
+            download_link: episode.download_link || '', // ADDED THIS LINE
             thumbnail: episode.thumbnail || '',
             airDate: episode.air_date,
             created_at: episode.created_at || new Date().toISOString(),
@@ -145,6 +160,12 @@ export function MoviesProvider({ children }) {
   // Add movie
   const addMovie = useCallback(async (movie) => {
     try {
+      console.log("📤 Adding movie to Supabase:", {
+        title: movie.title,
+        download_link: movie.download_link, // Debug log
+        allMovieData: movie
+      });
+
       const movieData = {
         title: movie.title || "Untitled",
         description: movie.description || "",
@@ -154,6 +175,7 @@ export function MoviesProvider({ children }) {
         category: movie.category || "General",
         type: movie.type || "movie",
         stream_link: movie.streamLink || "",
+        download_link: movie.download_link || "", // ADDED THIS LINE
         nation: movie.nation || "",
         translator: movie.translator || "",
         year: movie.year || new Date().getFullYear(),
@@ -180,6 +202,7 @@ export function MoviesProvider({ children }) {
         category: data.category,
         type: data.type,
         streamLink: data.stream_link,
+        download_link: data.download_link || "", // ADDED THIS LINE
         nation: data.nation,
         translator: data.translator,
         year: data.year,
@@ -192,6 +215,7 @@ export function MoviesProvider({ children }) {
       setMovies(updatedMovies);
       localStorage.setItem('simba-movies', JSON.stringify(updatedMovies));
 
+      console.log("✅ Movie added successfully:", newMovie);
       return newMovie;
 
     } catch (err) {
@@ -208,6 +232,7 @@ export function MoviesProvider({ children }) {
         category: movie.category || "General",
         type: movie.type || "movie",
         streamLink: movie.streamLink || "",
+        download_link: movie.download_link || "", // ADDED THIS LINE
         nation: movie.nation || "",
         translator: movie.translator || "",
         year: movie.year || new Date().getFullYear(),
@@ -227,6 +252,13 @@ export function MoviesProvider({ children }) {
   // Update movie
   const updateMovie = useCallback(async (id, updates) => {
     try {
+      console.log("📤 Updating movie in Supabase:", {
+        id: id,
+        title: updates.title,
+        download_link: updates.download_link, // Debug log
+        allUpdates: updates
+      });
+
       const supabaseUpdates = {
         title: updates.title,
         description: updates.description,
@@ -236,6 +268,7 @@ export function MoviesProvider({ children }) {
         category: updates.category,
         type: updates.type,
         stream_link: updates.streamLink,
+        download_link: updates.download_link || "", // ADDED THIS LINE
         nation: updates.nation,
         translator: updates.translator,
         year: updates.year,
@@ -257,6 +290,8 @@ export function MoviesProvider({ children }) {
 
       setMovies(updatedMovies);
       localStorage.setItem('simba-movies', JSON.stringify(updatedMovies));
+
+      console.log("✅ Movie updated successfully");
 
     } catch (err) {
       console.error("Error updating movie:", err);
@@ -315,6 +350,7 @@ export function MoviesProvider({ children }) {
         episode_number: parseInt(episodeData.episodeNumber) || 1,
         duration: episodeData.duration || "45m",
         stream_link: episodeData.streamLink || "",
+        download_link: episodeData.download_link || "", // ADDED THIS LINE
         thumbnail: episodeData.thumbnail || "",
         air_date: episodeData.airDate || null,
         created_at: new Date().toISOString()
@@ -338,6 +374,7 @@ export function MoviesProvider({ children }) {
         episodeNumber: data.episode_number || 1,
         duration: data.duration,
         streamLink: data.stream_link || '',
+        download_link: data.download_link || '', // ADDED THIS LINE
         thumbnail: data.thumbnail,
         airDate: data.air_date,
         created_at: data.created_at
@@ -376,6 +413,7 @@ export function MoviesProvider({ children }) {
         episode_number: updates.episodeNumber,
         duration: updates.duration,
         stream_link: updates.streamLink,
+        download_link: updates.download_link || "", // ADDED THIS LINE
         thumbnail: updates.thumbnail,
         air_date: updates.airDate,
         updated_at: new Date().toISOString()

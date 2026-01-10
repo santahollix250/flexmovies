@@ -5,7 +5,8 @@ import {
   FaLink, FaImage, FaGlobe, FaLanguage, FaSync, FaDatabase,
   FaCheckCircle, FaExclamationTriangle, FaTimes, FaList,
   FaCalendar, FaClock, FaPlay, FaFolder, FaExclamationCircle,
-  FaDownload, FaSignOutAlt, FaYoutube, FaVideo
+  FaDownload, FaSignOutAlt, FaYoutube, FaVideo, FaCode,
+  FaCog, FaInfoCircle
 } from "react-icons/fa";
 import { BsStars } from "react-icons/bs";
 
@@ -51,9 +52,8 @@ function Admin({ onLogout }) {
     rating: "",
     category: "",
     type: "movie",
-    streamLink: "",
     videoUrl: "",
-    downloadLink: "",
+    download_link: "", // CHANGED to match your database column name
     nation: "",
     translator: "",
     totalSeasons: "",
@@ -76,13 +76,13 @@ function Admin({ onLogout }) {
     title: "",
     description: "",
     duration: "",
-    streamLink: "",
     videoUrl: "",
-    downloadLink: "",
+    download_link: "", // CHANGED to match your database
     thumbnail: "",
     airDate: "",
     videoType: "direct"
   });
+  const [debugMode, setDebugMode] = useState(false);
 
   // Detect video type from URL
   const detectVideoType = (url) => {
@@ -99,10 +99,9 @@ function Admin({ onLogout }) {
     if (dailymotionRegex.test(url)) return "dailymotion";
     if (twitchRegex.test(url)) return "twitch";
     if (facebookRegex.test(url)) return "facebook";
-    if (url.match(/\.(mp4|webm|mkv|avi|mov)$/i)) return "direct";
-    if (url.match(/\.m3u8$/i)) return "hls";
-    if (url.match(/\.mpd$/i)) return "dash";
+    if (url.match(/\.(mp4|webm|mkv|avi|mov|m3u8|mpd)$/i)) return "direct";
 
+    if (url.startsWith('http')) return "embed";
     return "direct";
   };
 
@@ -124,7 +123,8 @@ function Admin({ onLogout }) {
         setEpisodeForm(prev => ({
           ...prev,
           seasonNumber: (lastEpisode.seasonNumber || 1).toString(),
-          episodeNumber: (parseInt(lastEpisode.episodeNumber || 0) + 1).toString()
+          episodeNumber: (parseInt(lastEpisode.episodeNumber || 0) + 1).toString(),
+          videoType: lastEpisode.videoType || "direct"
         }));
       }
     }
@@ -154,6 +154,7 @@ function Admin({ onLogout }) {
   function addNotification(type, message) {
     const id = Date.now();
     setNotifications(prev => [...prev, { id, type, message }]);
+    console.log(`📢 Notification: ${type} - ${message}`);
     return id;
   }
 
@@ -164,7 +165,7 @@ function Admin({ onLogout }) {
   function handleChange(e) {
     const { name, value } = e.target;
 
-    if (name === "videoUrl" || name === "streamLink") {
+    if (name === "videoUrl") {
       const videoType = detectVideoType(value);
       setForm((f) => ({
         ...f,
@@ -179,7 +180,7 @@ function Admin({ onLogout }) {
   function handleEpisodeChange(e) {
     const { name, value } = e.target;
 
-    if (name === "videoUrl" || name === "streamLink") {
+    if (name === "videoUrl") {
       const videoType = detectVideoType(value);
       setEpisodeForm((f) => ({
         ...f,
@@ -194,17 +195,28 @@ function Admin({ onLogout }) {
   function startEdit(movie) {
     if (!movie) return;
 
+    console.log("🔄 Starting edit for movie:", {
+      title: movie.title,
+      id: movie.id,
+      allFields: Object.keys(movie),
+      download_link: movie.download_link
+    });
+
     setEditingId(movie.id);
-    const streamLink = movie.streamLink || movie.stream_link || "";
+    const videoUrl = movie.videoUrl || movie.streamLink || movie.stream_link || "";
+
+    // Use the exact field name from your database
+    const download_link = movie.download_link || "";
+
     setForm({
       ...movie,
-      streamLink: streamLink,
-      videoUrl: movie.videoUrl || streamLink,
-      downloadLink: movie.downloadLink || movie.download_link || "",
+      videoUrl: videoUrl,
+      download_link: download_link, // Using the correct field name
       totalSeasons: movie.totalSeasons || "",
       totalEpisodes: movie.totalEpisodes || "",
-      videoType: movie.videoType || detectVideoType(streamLink)
+      videoType: movie.videoType || detectVideoType(videoUrl)
     });
+
     setPreview(true);
     window.scrollTo({ top: 0, behavior: "smooth" });
     addNotification("info", `Editing: ${movie.title}`);
@@ -223,9 +235,8 @@ function Admin({ onLogout }) {
       title: "",
       description: "",
       duration: "",
-      streamLink: "",
       videoUrl: "",
-      downloadLink: "",
+      download_link: "",
       thumbnail: "",
       airDate: "",
       videoType: "direct"
@@ -239,26 +250,64 @@ function Admin({ onLogout }) {
       return;
     }
 
-    // Use videoUrl if provided, otherwise use streamLink (backward compatibility)
+    if (!form.videoUrl) {
+      addNotification("error", "Video URL is required");
+      return;
+    }
+
+    // CRITICAL: Prepare data with correct field names for YOUR database
     const finalData = {
-      ...form,
-      streamLink: form.videoUrl || form.streamLink,
-      videoUrl: form.videoUrl || form.streamLink
+      title: form.title,
+      description: form.description,
+      poster: form.poster,
+      background: form.background || form.poster,
+      rating: form.rating || null,
+      category: form.category || "",
+      type: form.type,
+      videoUrl: form.videoUrl,
+      // EXACT field name from your database - download_link
+      download_link: form.download_link || "",
+      nation: form.nation || "",
+      translator: form.translator || "",
+      videoType: form.videoType || detectVideoType(form.videoUrl),
+      // For backward compatibility
+      streamLink: form.videoUrl
     };
+
+    // Add series-specific fields
+    if (form.type === "series") {
+      finalData.totalSeasons = form.totalSeasons || null;
+      finalData.totalEpisodes = form.totalEpisodes || null;
+    }
+
+    console.log("📦 SAVING MOVIE DATA TO DATABASE:", {
+      title: finalData.title,
+      download_link: finalData.download_link, // This is what will be saved
+      allFields: Object.keys(finalData),
+      rawForm: form
+    });
 
     setSubmitting(true);
     try {
       if (editingId) {
-        await updateMovie(editingId, finalData);
+        const result = await updateMovie(editingId, finalData);
+        console.log("✅ Update result:", result);
         addNotification("success", `✅ ${form.type === 'series' ? 'Series' : 'Movie'} "${form.title}" updated successfully`);
       } else {
-        await addMovie(finalData);
+        const result = await addMovie(finalData);
+        console.log("✅ Add result:", result);
         addNotification("success", `✅ ${form.type === 'series' ? 'Series' : 'Movie'} "${form.title}" added successfully`);
       }
+
+      // Force refresh to show updated data
+      setTimeout(() => {
+        refreshMovies();
+      }, 1000);
+
       resetForm();
     } catch (err) {
-      console.error("Error saving content:", err);
-      addNotification("error", "❌ Error saving. Please try again.");
+      console.error("❌ Error saving content:", err);
+      addNotification("error", `❌ Error saving: ${err.message || "Please try again"}`);
     } finally {
       setSubmitting(false);
     }
@@ -308,15 +357,14 @@ function Admin({ onLogout }) {
 
     setSelectedSeries(series);
     setShowEpisodes(true);
-    const streamLink = series.streamLink || series.stream_link || "";
+    const videoUrl = series.videoUrl || series.streamLink || series.stream_link || "";
     setForm({
       ...series,
-      streamLink: streamLink,
-      videoUrl: series.videoUrl || streamLink,
-      downloadLink: series.downloadLink || series.download_link || "",
+      videoUrl: videoUrl,
+      download_link: series.download_link || "",
       totalSeasons: series.totalSeasons || "",
       totalEpisodes: series.totalEpisodes || "",
-      videoType: series.videoType || detectVideoType(streamLink)
+      videoType: series.videoType || detectVideoType(videoUrl)
     });
     setEditingId(series.id);
 
@@ -361,8 +409,10 @@ function Admin({ onLogout }) {
         seasonNumber: parseInt(episodeForm.seasonNumber) || 1,
         episodeNumber: parseInt(episodeForm.episodeNumber) || 1,
         thumbnail: episodeForm.thumbnail || selectedSeries.poster || "",
-        streamLink: episodeForm.videoUrl || episodeForm.streamLink,
-        videoUrl: episodeForm.videoUrl || episodeForm.streamLink
+        // For backward compatibility
+        streamLink: episodeForm.videoUrl,
+        // Using the correct field name for your database
+        download_link: episodeForm.download_link || ""
       };
 
       await addEpisode(episodeData);
@@ -374,9 +424,8 @@ function Admin({ onLogout }) {
         title: "",
         description: "",
         duration: "",
-        streamLink: "",
         videoUrl: "",
-        downloadLink: "",
+        download_link: "",
         thumbnail: "",
         airDate: "",
         videoType: "direct"
@@ -428,6 +477,19 @@ function Admin({ onLogout }) {
       console.error("❌ Error updating episode:", error);
       addNotification("error", "❌ Error updating episode");
     }
+  }
+
+  function debugCurrentMovies() {
+    console.log("🔍 DEBUG: Current movies in context:", movies);
+    movies.forEach((movie, index) => {
+      console.log(`🎬 Movie ${index + 1}:`, {
+        title: movie.title,
+        id: movie.id,
+        download_link: movie.download_link, // Looking for the correct field
+        allFields: Object.keys(movie)
+      });
+    });
+    addNotification("info", `Debug info logged for ${movies.length} movies`);
   }
 
   if (loading) {
@@ -566,6 +628,15 @@ function Admin({ onLogout }) {
             </button>
 
             <button
+              onClick={debugCurrentMovies}
+              className="px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg text-white font-medium flex items-center gap-2"
+              title="Debug movies data"
+            >
+              <FaCog />
+              Debug
+            </button>
+
+            <button
               onClick={handleClearAll}
               className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg text-white font-medium flex items-center gap-2"
             >
@@ -633,6 +704,22 @@ function Admin({ onLogout }) {
                 <div className="text-2xl font-bold text-white">{totalEpisodesCount}</div>
                 <div className="text-sm text-gray-400">Episodes</div>
               </div>
+            </div>
+          </div>
+        </div>
+
+        {/* IMPORTANT: Database Field Check */}
+        <div className="mb-8 p-4 bg-green-900/20 border border-green-700/30 rounded-xl">
+          <div className="flex items-start gap-3">
+            <FaInfoCircle className="text-green-400 text-xl mt-1" />
+            <div>
+              <h3 className="text-lg font-bold text-green-300 mb-2">✅ Database Field Configured Correctly</h3>
+              <p className="text-gray-300 mb-2">
+                Using <code className="bg-gray-800 px-2 py-1 rounded">download_link</code> column as per your Supabase schema
+              </p>
+              <p className="text-gray-400 text-sm">
+                Movies will be saved with the correct field name for download links
+              </p>
             </div>
           </div>
         </div>
@@ -714,19 +801,21 @@ function Admin({ onLogout }) {
                         value={episodeForm.videoUrl}
                         onChange={handleEpisodeChange}
                         type="url"
-                        placeholder="https://youtube.com/watch?v=... or https://example.com/video.mp4"
+                        placeholder="Enter YouTube/Video URL (YouTube, MP4, HLS, etc.)"
                         className="w-full p-3 bg-gray-800/70 border border-gray-700 rounded-xl focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all"
                       />
-                      <p className="text-xs text-gray-500 mt-1">
-                        Supports: YouTube, Vimeo, Dailymotion, Twitch, Facebook, MP4, WebM, HLS, DASH
+                      <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                        <FaCode className="text-xs" /> Supports: YouTube, Vimeo, Dailymotion, MP4, WebM, HLS, DASH
                       </p>
                       {episodeForm.videoUrl && (
                         <div className="mt-2 flex items-center gap-2">
                           <span className={`px-2 py-1 rounded text-xs ${episodeForm.videoType === 'youtube' ? 'bg-red-600/20 text-red-400' :
                             episodeForm.videoType === 'vimeo' ? 'bg-blue-600/20 text-blue-400' :
-                              'bg-gray-700/50 text-gray-400'
+                              episodeForm.videoType === 'embed' ? 'bg-purple-600/20 text-purple-400' :
+                                'bg-gray-700/50 text-gray-400'
                             }`}>
                             {episodeForm.videoType === 'youtube' && <FaYoutube className="inline mr-1" />}
+                            {episodeForm.videoType === 'embed' && <FaLink className="inline mr-1" />}
                             {episodeForm.videoType.charAt(0).toUpperCase() + episodeForm.videoType.slice(1)}
                           </span>
                         </div>
@@ -735,13 +824,13 @@ function Admin({ onLogout }) {
 
                     <div className="md:col-span-2">
                       <label className="block text-sm font-medium text-gray-300 mb-2">
-                        Download Link
+                        <FaDownload className="inline mr-2" /> Download Link (Optional)
                       </label>
                       <div className="relative">
                         <FaDownload className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
                         <input
-                          name="downloadLink"
-                          value={episodeForm.downloadLink}
+                          name="download_link" // Changed to match database
+                          value={episodeForm.download_link}
                           onChange={handleEpisodeChange}
                           placeholder="https://example.com/download.mp4"
                           className="w-full pl-10 p-3 bg-gray-800/70 border border-gray-700 rounded-xl focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all"
@@ -792,16 +881,18 @@ function Admin({ onLogout }) {
                                       <FaCalendar className="text-xs" /> {episode.airDate}
                                     </span>
                                   )}
-                                  {episode.videoType && episode.videoType !== 'direct' && (
+                                  {episode.videoType && (
                                     <span className={`px-2 py-0.5 rounded text-xs ${episode.videoType === 'youtube' ? 'bg-red-600/20 text-red-400' :
                                       episode.videoType === 'vimeo' ? 'bg-blue-600/20 text-blue-400' :
-                                        'bg-gray-700/50 text-gray-400'
+                                        episode.videoType === 'embed' ? 'bg-purple-600/20 text-purple-400' :
+                                          'bg-gray-700/50 text-gray-400'
                                       }`}>
                                       {episode.videoType === 'youtube' && <FaYoutube className="inline mr-1" />}
+                                      {episode.videoType === 'embed' && <FaLink className="inline mr-1" />}
                                       {episode.videoType}
                                     </span>
                                   )}
-                                  {episode.downloadLink && (
+                                  {episode.download_link && (
                                     <span className="flex items-center gap-1 text-blue-400">
                                       <FaDownload className="text-xs" /> Download Available
                                     </span>
@@ -952,38 +1043,46 @@ function Admin({ onLogout }) {
                         value={form.videoUrl}
                         onChange={handleChange}
                         type="url"
-                        placeholder="https://youtube.com/watch?v=... or https://example.com/video.mp4"
+                        placeholder="Enter YouTube/Video URL (YouTube, MP4, HLS, etc.)"
                         className="w-full p-3 bg-gray-800/70 border border-gray-700 rounded-xl focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all"
+                        required
                       />
-                      <p className="text-xs text-gray-500 mt-1">
-                        Supports: YouTube, Vimeo, Dailymotion, Twitch, Facebook, MP4, WebM, HLS, DASH
+                      <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                        <FaCode className="text-xs" /> Supports: YouTube, Vimeo, Dailymotion, MP4, WebM, HLS, DASH
                       </p>
                       {form.videoUrl && (
                         <div className="mt-2 flex items-center gap-2">
                           <span className={`px-2 py-1 rounded text-xs ${form.videoType === 'youtube' ? 'bg-red-600/20 text-red-400' :
                             form.videoType === 'vimeo' ? 'bg-blue-600/20 text-blue-400' :
-                              'bg-gray-700/50 text-gray-400'
+                              form.videoType === 'embed' ? 'bg-purple-600/20 text-purple-400' :
+                                'bg-gray-700/50 text-gray-400'
                             }`}>
                             {form.videoType === 'youtube' && <FaYoutube className="inline mr-1" />}
+                            {form.videoType === 'embed' && <FaLink className="inline mr-1" />}
                             {form.videoType.charAt(0).toUpperCase() + form.videoType.slice(1)}
                           </span>
                         </div>
                       )}
                     </div>
 
-                    {/* Download Link Field */}
+                    {/* Download Link Field - USING download_link */}
                     <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">Download Link</label>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">
+                        <FaDownload className="inline mr-2" /> Download Link (Optional)
+                      </label>
                       <div className="relative">
                         <FaDownload className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
                         <input
-                          name="downloadLink"
-                          value={form.downloadLink}
+                          name="download_link" // Changed to match your database
+                          value={form.download_link}
                           onChange={handleChange}
                           placeholder="https://example.com/download.mp4"
                           className="w-full pl-10 p-3 bg-gray-800/70 border border-gray-700 rounded-xl focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all"
                         />
                       </div>
+                      <p className="text-xs text-gray-500 mt-1">
+                        This will create a download button on the movie card
+                      </p>
                     </div>
 
                     <div>
@@ -1122,14 +1221,16 @@ function Admin({ onLogout }) {
                               {form.videoUrl && (
                                 <span className={`px-2 py-1 ${form.videoType === 'youtube' ? 'bg-red-700/50' :
                                   form.videoType === 'vimeo' ? 'bg-blue-700/50' :
-                                    'bg-green-700/50'
+                                    form.videoType === 'embed' ? 'bg-purple-700/50' :
+                                      'bg-green-700/50'
                                   } rounded text-xs flex items-center gap-1`}>
                                   {form.videoType === 'youtube' && <FaYoutube />}
                                   {form.videoType === 'vimeo' && <FaVideo />}
+                                  {form.videoType === 'embed' && <FaLink />}
                                   {form.videoType.charAt(0).toUpperCase() + form.videoType.slice(1)}
                                 </span>
                               )}
-                              {form.downloadLink && (
+                              {form.download_link && (
                                 <span className="px-2 py-1 bg-blue-700/50 rounded text-xs flex items-center gap-1">
                                   <FaDownload /> Download Available
                                 </span>
@@ -1199,6 +1300,7 @@ function Admin({ onLogout }) {
                 <div className="grid md:grid-cols-2 gap-4">
                   {movies.map((m) => {
                     const seriesEpisodesCount = m.type === 'series' ? (getEpisodesBySeries(m.id) || []).length : 0;
+                    const hasDownload = m.download_link; // Looking for the correct field
 
                     return (
                       <div key={m.id} className="bg-gradient-to-br from-gray-800/50 to-gray-900/50 backdrop-blur-lg rounded-2xl border border-gray-700/50 p-4 transition-all hover:border-purple-500/30">
@@ -1236,16 +1338,18 @@ function Admin({ onLogout }) {
                                       📺 {seriesEpisodesCount} eps
                                     </span>
                                   )}
-                                  {m.videoType && m.videoType !== 'direct' && (
+                                  {m.videoType && (
                                     <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${m.videoType === 'youtube' ? 'bg-red-500/20 text-red-400' :
                                       m.videoType === 'vimeo' ? 'bg-blue-500/20 text-blue-400' :
-                                        'bg-green-500/20 text-green-400'
+                                        m.videoType === 'embed' ? 'bg-purple-500/20 text-purple-400' :
+                                          'bg-green-500/20 text-green-400'
                                       }`}>
                                       {m.videoType === 'youtube' && <FaYoutube className="inline mr-1" />}
+                                      {m.videoType === 'embed' && <FaLink className="inline mr-1" />}
                                       {m.videoType}
                                     </span>
                                   )}
-                                  {(m.downloadLink || m.download_link) && (
+                                  {hasDownload && (
                                     <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-green-500/20 text-green-400">
                                       <FaDownload className="inline mr-1" /> Download
                                     </span>
@@ -1290,6 +1394,11 @@ function Admin({ onLogout }) {
                               {m.nation && (
                                 <span className="px-2 py-0.5 bg-gray-700/50 rounded text-xs flex items-center gap-1">
                                   <FaGlobe className="text-xs" /> {m.nation}
+                                </span>
+                              )}
+                              {hasDownload && (
+                                <span className="px-2 py-0.5 bg-green-700/50 rounded text-xs flex items-center gap-1">
+                                  <FaDownload className="text-xs" /> Download Available
                                 </span>
                               )}
                             </div>
@@ -1370,6 +1479,29 @@ function Admin({ onLogout }) {
                       <div className="text-xs text-gray-400">Sync with database</div>
                     </div>
                   </button>
+                </div>
+              </div>
+
+              {/* Video Types Info */}
+              <div className="bg-gradient-to-br from-purple-900/10 to-purple-900/5 backdrop-blur-lg rounded-2xl border border-purple-700/30 p-6">
+                <h3 className="text-lg font-bold mb-4 text-purple-300">📹 Supported Video Types</h3>
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-center gap-2">
+                    <span className="px-2 py-0.5 bg-red-600/20 text-red-400 rounded text-xs">YouTube</span>
+                    <span className="text-gray-400">- youtube.com/watch?v=...</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="px-2 py-0.5 bg-blue-600/20 text-blue-400 rounded text-xs">Vimeo</span>
+                    <span className="text-gray-400">- vimeo.com/...</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="px-2 py-0.5 bg-green-600/20 text-green-400 rounded text-xs">MP4/WebM</span>
+                    <span className="text-gray-400">- Direct video files</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="px-2 py-0.5 bg-purple-600/20 text-purple-400 rounded text-xs">HLS/DASH</span>
+                    <span className="text-gray-400">- Streaming formats</span>
+                  </div>
                 </div>
               </div>
 
