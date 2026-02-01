@@ -5,6 +5,7 @@ export const MoviesContext = createContext({
   movies: [],
   episodes: [],
   loading: true,
+  loadingProgress: 0,
   isOnline: true,
   error: null,
   addMovie: () => Promise.reject(new Error("MoviesContext not initialized")),
@@ -26,6 +27,7 @@ export function MoviesProvider({ children }) {
   const [movies, setMovies] = useState([]);
   const [episodes, setEpisodes] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadingProgress, setLoadingProgress] = useState(0);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [error, setError] = useState(null);
 
@@ -43,30 +45,45 @@ export function MoviesProvider({ children }) {
     };
   }, []);
 
+  // Update loading progress
+  const updateProgress = useCallback((progress) => {
+    setLoadingProgress(Math.min(progress, 100));
+  }, []);
+
   // Load from localStorage FIRST (immediate display)
   useEffect(() => {
     try {
+      updateProgress(10);
       const savedMovies = localStorage.getItem('simba-movies');
       const savedEpisodes = localStorage.getItem('simba-episodes');
 
       if (savedMovies) {
         const parsedMovies = JSON.parse(savedMovies);
         setMovies(parsedMovies);
+        updateProgress(30);
       }
 
       if (savedEpisodes) {
         const parsedEpisodes = JSON.parse(savedEpisodes);
         setEpisodes(parsedEpisodes);
+        updateProgress(50);
       }
     } catch (err) {
       console.error('Error loading from localStorage:', err);
     }
-  }, []);
+  }, [updateProgress]);
 
   // Fetch from Supabase
   const fetchAllData = useCallback(async () => {
+    if (!isOnline) {
+      setLoading(false);
+      updateProgress(100);
+      return;
+    }
+
     setLoading(true);
     setError(null);
+    updateProgress(60);
 
     try {
       console.log("🔄 Fetching movies from Supabase...");
@@ -76,6 +93,8 @@ export function MoviesProvider({ children }) {
         .from('movies')
         .select('*')
         .order('created_at', { ascending: false });
+
+      updateProgress(75);
 
       if (moviesError) {
         console.error('Movies fetch error:', moviesError);
@@ -114,6 +133,7 @@ export function MoviesProvider({ children }) {
 
         setMovies(transformedMovies);
         localStorage.setItem('simba-movies', JSON.stringify(transformedMovies));
+        updateProgress(85);
       }
 
       // Fetch episodes
@@ -123,6 +143,8 @@ export function MoviesProvider({ children }) {
           .select('*')
           .order('season_number', { ascending: true })
           .order('episode_number', { ascending: true });
+
+        updateProgress(95);
 
         if (!episodesError && episodesData) {
           const transformedEpisodes = (episodesData || []).map(episode => ({
@@ -149,13 +171,19 @@ export function MoviesProvider({ children }) {
         console.log('Episodes fetch skipped:', episodesErr.message);
       }
 
+      updateProgress(100);
+
     } catch (error) {
       console.error('Main fetch error:', error);
       setError(error.message);
+      updateProgress(100);
     } finally {
-      setLoading(false);
+      // Add a small delay before setting loading to false for smoother transition
+      setTimeout(() => {
+        setLoading(false);
+      }, 500);
     }
-  }, []);
+  }, [isOnline, updateProgress]);
 
   // Add movie
   const addMovie = useCallback(async (movie) => {
@@ -555,13 +583,18 @@ export function MoviesProvider({ children }) {
 
   // Initialize
   useEffect(() => {
-    fetchAllData();
-  }, [fetchAllData]);
+    const init = async () => {
+      updateProgress(5);
+      await fetchAllData();
+    };
+    init();
+  }, [fetchAllData, updateProgress]);
 
   const contextValue = {
     movies,
     episodes,
     loading,
+    loadingProgress,
     isOnline,
     error,
     addMovie,

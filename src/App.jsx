@@ -1,4 +1,4 @@
-// App.jsx - Remove the duplicate VideoPlayerPage function
+// App.jsx - Updated with Player route
 
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
@@ -8,7 +8,7 @@ import Footer from './components/Footer';
 import Movies from './components/PopularMovies';
 import Series from './pages/Series';
 import Admin from './pages/Admin';
-import VideoPlayerPage from './pages/VideoPlayerPage'; // Import from separate file
+import Player from "./components/Player"; // Make sure this import path is correct
 import './index.css';
 
 function App() {
@@ -21,13 +21,13 @@ function App() {
             <Route path="/" element={<Movies />} />
             <Route path="/movies" element={<Movies />} />
             <Route path="/series" element={<Series />} />
+            <Route path="/player" element={<Player />} /> {/* ADD THIS ROUTE */}
             <Route path="/admin" element={
               <ProtectedRoute>
                 <Admin />
               </ProtectedRoute>
             } />
-            <Route path="/watch/:type/:id" element={<VideoPlayerPage />} />
-            <Route path="/player" element={<VideoPlayerPage />} />
+
             {/* Redirect any unknown routes to home */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
