@@ -147,7 +147,7 @@ export default function Footer() {
                 <div>
                   <p className="text-gray-400 text-sm">Call Us</p>
                   <p className="text-white font-medium group-hover:text-purple-400 transition-colors duration-300">
-                    +250 788 123 456
+                    +250 783 948 792
                   </p>
                 </div>
               </div>

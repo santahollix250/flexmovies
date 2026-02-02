@@ -7,6 +7,7 @@ import {
     FaVolumeUp,
     FaVolumeMute,
     FaExpand,
+    FaCompress,
     FaArrowLeft,
     FaDownload,
     FaHome,
@@ -18,14 +19,15 @@ import {
     FaRedoAlt,
     FaForward,
     FaBackward,
-    FaUndo,
-    FaRedo
+    FaCog,
+    FaTimes
 } from 'react-icons/fa';
 
 const Player = () => {
     const location = useLocation();
     const navigate = useNavigate();
     const videoRef = useRef(null);
+    const playerContainerRef = useRef(null);
     const controlsTimerRef = useRef(null);
     const [hasUserInteracted, setHasUserInteracted] = useState(false);
 
@@ -45,6 +47,20 @@ const Player = () => {
     const [videoLoaded, setVideoLoaded] = useState(false);
     const [retryCount, setRetryCount] = useState(0);
     const [playbackRate, setPlaybackRate] = useState(1.0);
+    const [isFullscreen, setIsFullscreen] = useState(false);
+    const [showSettings, setShowSettings] = useState(false);
+    const [selectedQuality, setSelectedQuality] = useState('auto');
+    const [videoQualities, setVideoQualities] = useState([]);
+
+    // Quality options
+    const qualityOptions = [
+        { label: 'Auto', value: 'auto' },
+        { label: '1080p', value: '1080' },
+        { label: '720p', value: '720' },
+        { label: '480p', value: '480' },
+        { label: '360p', value: '360' },
+        { label: '240p', value: '240' }
+    ];
 
     // Check if URL is Mux
     const checkIsMuxUrl = (url) => {
@@ -71,10 +87,26 @@ const Player = () => {
         return `https://stream.mux.com/${playbackId}.m3u8`;
     };
 
+    // Generate Mux quality URLs
+    const getMuxQualityUrls = (playbackId) => {
+        if (!playbackId) return [];
+
+        const qualities = [
+            { label: '1080p', value: '1080', url: `https://stream.mux.com/${playbackId}.m3u8` },
+            { label: '720p', value: '720', url: `https://stream.mux.com/${playbackId}.m3u8` },
+            { label: '480p', value: '480', url: `https://stream.mux.com/${playbackId}.m3u8` },
+            { label: '360p', value: '360', url: `https://stream.mux.com/${playbackId}.m3u8` },
+            { label: '240p', value: '240', url: `https://stream.mux.com/${playbackId}.m3u8` }
+        ];
+
+        return qualities;
+    };
+
     // Handle missing movie data
     useEffect(() => {
         console.log("🎬 Player Component - Movie Data:", movie);
         console.log("🎬 Original Video URL:", movie?.videoUrl);
+        console.log("🎬 Download Link:", movie?.download_link);
 
         if (!movie) {
             console.log("❌ No movie data found");
@@ -96,6 +128,10 @@ const Player = () => {
                 const playbackId = extractPlaybackId(url);
                 console.log("🔑 Mux Playback ID:", playbackId);
 
+                // Set quality options for Mux videos
+                const qualities = getMuxQualityUrls(playbackId);
+                setVideoQualities(qualities);
+
                 // Try multiple Mux formats
                 const muxUrls = [
                     url, // Original URL
@@ -110,6 +146,11 @@ const Player = () => {
                 setVideoUrl(muxUrls[0]);
             } else {
                 setVideoUrl(url);
+                // For non-Mux videos, use default qualities
+                setVideoQualities([
+                    { label: 'Auto', value: 'auto', url: url },
+                    { label: 'Original', value: 'original', url: url }
+                ]);
             }
             setLoading(false);
         } else {
@@ -120,10 +161,33 @@ const Player = () => {
         // Auto-hide controls after 3 seconds
         resetControlsTimer();
 
+        // Listen for fullscreen change
+        const handleFullscreenChange = () => {
+            const isFull = !!(document.fullscreenElement ||
+                document.webkitFullscreenElement ||
+                document.mozFullScreenElement ||
+                document.msFullscreenElement);
+            setIsFullscreen(isFull);
+
+            // Hide controls when entering fullscreen
+            if (isFull && playing) {
+                setTimeout(() => setShowControls(false), 1000);
+            }
+        };
+
+        document.addEventListener('fullscreenchange', handleFullscreenChange);
+        document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+        document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+        document.addEventListener('MSFullscreenChange', handleFullscreenChange);
+
         return () => {
             if (controlsTimerRef.current) {
                 clearTimeout(controlsTimerRef.current);
             }
+            document.removeEventListener('fullscreenchange', handleFullscreenChange);
+            document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+            document.removeEventListener('mozfullscreenchange', handleFullscreenChange);
+            document.removeEventListener('MSFullscreenChange', handleFullscreenChange);
         };
     }, [movie, retryCount]);
 
@@ -134,7 +198,7 @@ const Player = () => {
         }
 
         controlsTimerRef.current = setTimeout(() => {
-            if (playing) {
+            if (playing && isFullscreen) {
                 setShowControls(false);
             }
         }, 3000);
@@ -188,14 +252,6 @@ const Player = () => {
             setCurrentTime(videoRef.current.currentTime);
         }
         showControlsWithTimer();
-    };
-
-    const handleSkipForward = () => {
-        handleForward(30);
-    };
-
-    const handleSkipBackward = () => {
-        handleRewind(15);
     };
 
     const handleJumpToPercentage = (percentage) => {
@@ -283,20 +339,62 @@ const Player = () => {
     };
 
     const handleFullscreen = () => {
-        const element = document.querySelector('.player-container');
-        if (element.requestFullscreen) {
-            element.requestFullscreen();
-        } else if (element.webkitRequestFullscreen) {
-            element.webkitRequestFullscreen();
-        } else if (element.msRequestFullscreen) {
-            element.msRequestFullscreen();
+        const element = playerContainerRef.current;
+        if (!element) return;
+
+        if (!document.fullscreenElement) {
+            if (element.requestFullscreen) {
+                element.requestFullscreen().catch(err => {
+                    console.error(`Error attempting to enable fullscreen: ${err.message}`);
+                });
+            } else if (element.webkitRequestFullscreen) {
+                element.webkitRequestFullscreen();
+            } else if (element.mozRequestFullScreen) {
+                element.mozRequestFullScreen();
+            } else if (element.msRequestFullscreen) {
+                element.msRequestFullscreen();
+            }
+        } else {
+            if (document.exitFullscreen) {
+                document.exitFullscreen();
+            } else if (document.webkitExitFullscreen) {
+                document.webkitExitFullscreen();
+            } else if (document.mozCancelFullScreen) {
+                document.mozCancelFullScreen();
+            } else if (document.msExitFullscreen) {
+                document.msExitFullscreen();
+            }
         }
+        showControlsWithTimer();
     };
 
-    const handleDownload = () => {
-        if (movie?.downloadLink) {
-            window.open(movie.downloadLink, '_blank');
+    // Handle quality change
+    const handleQualityChange = (quality) => {
+        setSelectedQuality(quality);
+        setShowSettings(false);
+
+        if (quality === 'auto') {
+            // For auto quality, use the original URL
+            const url = movie?.videoUrl || movie?.streamLink || '';
+            setVideoUrl(url);
         } else {
+            // For specific quality, use Mux quality URLs if available
+            const qualityObj = videoQualities.find(q => q.value === quality);
+            if (qualityObj && qualityObj.url) {
+                setVideoUrl(qualityObj.url);
+            }
+        }
+
+        showControlsWithTimer();
+    };
+
+    // Fixed: Use download_link from admin form
+    const handleDownload = () => {
+        if (movie?.download_link) {
+            console.log("⬇️ Download link clicked:", movie.download_link);
+            window.open(movie.download_link, '_blank');
+        } else {
+            console.log("⚠️ No download link available");
             alert('Download link not available for this movie.');
         }
     };
@@ -398,6 +496,11 @@ const Player = () => {
                     e.preventDefault();
                     handlePlaybackRate(Math.max(playbackRate - 0.25, 0.25));
                     break;
+                case 'Escape':
+                    // Allow escape to exit fullscreen
+                    break;
+                default:
+                    return;
             }
         };
 
@@ -504,72 +607,76 @@ const Player = () => {
 
     return (
         <div className="min-h-screen bg-black text-white">
-            {/* Top Navigation Bar */}
-            <div className={`absolute top-0 left-0 right-0 p-4 bg-gradient-to-b from-black/90 to-transparent z-10 transition-opacity duration-300 ${showControls ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-                <div className="max-w-7xl mx-auto flex items-center justify-between">
-                    <button
-                        onClick={() => navigate(-1)}
-                        className="flex items-center gap-2 text-white hover:text-red-500 transition-colors"
-                    >
-                        <FaArrowLeft className="text-xl" />
-                        <span className="font-semibold">Back to Movies</span>
-                    </button>
+            {/* Top Navigation Bar - Hide in fullscreen */}
+            {!isFullscreen && (
+                <div className={`absolute top-0 left-0 right-0 p-4 bg-gradient-to-b from-black/90 to-transparent z-10 transition-opacity duration-300 ${showControls ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+                    <div className="max-w-7xl mx-auto flex items-center justify-between">
+                        <button
+                            onClick={() => navigate(-1)}
+                            className="flex items-center gap-2 text-white hover:text-red-500 transition-colors"
+                        >
+                            <FaArrowLeft className="text-xl" />
+                            <span className="font-semibold">Back to Movies</span>
+                        </button>
 
-                    <div className="flex items-center gap-4">
-                        {movie.downloadLink && (
-                            <button
-                                onClick={handleDownload}
-                                className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg transition-colors"
-                                title="Download Movie"
-                            >
-                                <FaDownload /> Download
-                            </button>
-                        )}
+                        <div className="flex items-center gap-4">
+                            {/* Fixed: Download button shows when download_link exists */}
+                            {movie?.download_link && (
+                                <button
+                                    onClick={handleDownload}
+                                    className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg transition-colors"
+                                    title="Download Movie"
+                                >
+                                    <FaDownload /> Download
+                                </button>
+                            )}
 
-                        {isMuxVideo && (
-                            <div className="flex items-center gap-2 px-3 py-1.5 bg-green-600/20 border border-green-600/30 rounded-full text-sm">
-                                <FaCheckCircle className="text-green-400 text-xs" />
-                                <span className="text-green-300">Mux Streaming</span>
-                            </div>
-                        )}
+                            {isMuxVideo && (
+                                <div className="flex items-center gap-2 px-3 py-1.5 bg-green-600/20 border border-green-600/30 rounded-full text-sm">
+                                    <FaCheckCircle className="text-green-400 text-xs" />
+                                    <span className="text-green-300">Mux Streaming</span>
+                                </div>
+                            )}
 
-                        {retryCount > 0 && (
-                            <div className="px-3 py-1.5 bg-yellow-600/20 border border-yellow-600/30 rounded-full text-sm">
-                                <span className="text-yellow-300">Format {retryCount + 1}</span>
-                            </div>
-                        )}
+                            {retryCount > 0 && (
+                                <div className="px-3 py-1.5 bg-yellow-600/20 border border-yellow-600/30 rounded-full text-sm">
+                                    <span className="text-yellow-300">Format {retryCount + 1}</span>
+                                </div>
+                            )}
 
-                        {/* Playback Rate Selector */}
-                        <div className="relative group">
-                            <button className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 rounded-lg text-sm flex items-center gap-1">
-                                {playbackRate}x
-                            </button>
-                            <div className="absolute right-0 top-full mt-1 bg-gray-900 border border-gray-700 rounded-lg p-2 shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-20">
-                                <div className="text-xs text-gray-400 mb-1">Playback Speed</div>
-                                <div className="grid grid-cols-2 gap-1 min-w-[100px]">
-                                    {[0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0].map(rate => (
-                                        <button
-                                            key={rate}
-                                            onClick={() => handlePlaybackRate(rate)}
-                                            className={`px-2 py-1 text-sm rounded ${playbackRate === rate ? 'bg-red-600 text-white' : 'bg-gray-800 hover:bg-gray-700'}`}
-                                        >
-                                            {rate}x
-                                        </button>
-                                    ))}
+                            {/* Playback Rate Selector */}
+                            <div className="relative group">
+                                <button className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 rounded-lg text-sm flex items-center gap-1">
+                                    {playbackRate}x
+                                </button>
+                                <div className="absolute right-0 top-full mt-1 bg-gray-900 border border-gray-700 rounded-lg p-2 shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-20">
+                                    <div className="text-xs text-gray-400 mb-1">Playback Speed</div>
+                                    <div className="grid grid-cols-2 gap-1 min-w-[100px]">
+                                        {[0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0].map(rate => (
+                                            <button
+                                                key={rate}
+                                                onClick={() => handlePlaybackRate(rate)}
+                                                className={`px-2 py-1 text-sm rounded ${playbackRate === rate ? 'bg-red-600 text-white' : 'bg-gray-800 hover:bg-gray-700'}`}
+                                            >
+                                                {rate}x
+                                            </button>
+                                        ))}
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
-            </div>
+            )}
 
             {/* Main Player Container */}
             <div
+                ref={playerContainerRef}
                 className="player-container relative w-full h-screen bg-black"
                 onMouseMove={showControlsWithTimer}
                 onClick={handleUserInteraction}
                 onMouseLeave={() => {
-                    if (playing) {
+                    if (playing && isFullscreen) {
                         setTimeout(() => setShowControls(false), 1000);
                     }
                 }}
@@ -600,6 +707,10 @@ const Player = () => {
                             console.log("▶️ Video playing");
                             setPlaying(true);
                             setError('');
+                            // Auto-hide controls in fullscreen
+                            if (isFullscreen) {
+                                setTimeout(() => setShowControls(false), 3000);
+                            }
                         }}
                         onPause={() => {
                             console.log("⏸️ Video paused");
@@ -658,13 +769,13 @@ const Player = () => {
                     </video>
                 </div>
 
-                {/* Central Play/Pause Button Overlay */}
-                {playing && (
+                {/* Central Play/Pause Button Overlay - Only show in fullscreen when controls are hidden */}
+                {playing && isFullscreen && !showControls && (
                     <div
                         className="absolute inset-0 flex items-center justify-center z-20 cursor-pointer"
                         onClick={handlePlayPause}
                     >
-                        <button className={`opacity-0 hover:opacity-100 transition-opacity duration-300 ${!showControls && 'opacity-0'}`}>
+                        <button className="opacity-0 hover:opacity-100 transition-opacity duration-300">
                             <div className="p-8 bg-black/50 rounded-full backdrop-blur-sm">
                                 {playing ? (
                                     <FaPause className="text-5xl text-white" />
@@ -691,6 +802,16 @@ const Player = () => {
                             <p className="text-gray-300 text-lg mb-6 max-w-2xl">
                                 Click the play button to start watching
                             </p>
+
+                            {/* Show Download Button in Initial Overlay */}
+                            {movie?.download_link && (
+                                <button
+                                    onClick={handleDownload}
+                                    className="mb-4 px-6 py-3 bg-green-600 hover:bg-green-700 rounded-lg text-white font-medium flex items-center gap-2 mx-auto transition-colors"
+                                >
+                                    <FaDownload /> Download Movie
+                                </button>
+                            )}
 
                             {isMuxVideo && !videoLoaded && (
                                 <div className="mb-4 p-3 bg-green-600/10 border border-green-600/30 rounded-lg max-w-md mx-auto">
@@ -723,41 +844,62 @@ const Player = () => {
                     </div>
                 )}
 
-                {/* Skip Buttons Overlay */}
-                {playing && showControls && (
-                    <div className="absolute inset-0 flex items-center justify-between px-8 z-10 pointer-events-none">
-                        <button
-                            onClick={handleSkipBackward}
-                            className="pointer-events-auto p-4 bg-black/50 rounded-full backdrop-blur-sm hover:bg-black/70 transition-all transform hover:scale-110 group"
-                            title="Skip Back 15s (←)"
-                        >
-                            <div className="flex items-center gap-1">
-                                <FaUndo className="text-2xl text-white" />
-                                <span className="text-white font-bold text-lg">15</span>
+                {/* Settings/Quality Menu */}
+                {showSettings && (
+                    <div className="absolute bottom-16 right-4 bg-gray-900/95 backdrop-blur-lg rounded-lg p-4 z-30 shadow-2xl min-w-[180px] border border-gray-700">
+                        <div className="flex items-center justify-between mb-3">
+                            <h3 className="text-white font-semibold">Quality</h3>
+                            <button
+                                onClick={() => setShowSettings(false)}
+                                className="text-gray-400 hover:text-white"
+                            >
+                                <FaTimes />
+                            </button>
+                        </div>
+                        <div className="space-y-1">
+                            {qualityOptions.map((quality) => (
+                                <button
+                                    key={quality.value}
+                                    onClick={() => handleQualityChange(quality.value)}
+                                    className={`w-full text-left px-3 py-2 rounded text-sm transition-colors ${selectedQuality === quality.value
+                                        ? 'bg-red-600 text-white'
+                                        : 'text-gray-300 hover:bg-gray-800'
+                                        }`}
+                                >
+                                    <div className="flex items-center justify-between">
+                                        <span>{quality.label}</span>
+                                        {selectedQuality === quality.value && (
+                                            <FaCheckCircle className="text-xs" />
+                                        )}
+                                    </div>
+                                </button>
+                            ))}
+                        </div>
+                        <div className="mt-3 pt-3 border-t border-gray-700">
+                            <div className="text-xs text-gray-400 mb-2">Playback Speed</div>
+                            <div className="grid grid-cols-3 gap-1">
+                                {[0.75, 1.0, 1.25, 1.5, 1.75, 2.0].map(rate => (
+                                    <button
+                                        key={rate}
+                                        onClick={() => handlePlaybackRate(rate)}
+                                        className={`px-2 py-1 text-xs rounded ${playbackRate === rate
+                                            ? 'bg-red-600 text-white'
+                                            : 'bg-gray-800 hover:bg-gray-700 text-gray-300'
+                                            }`}
+                                    >
+                                        {rate}x
+                                    </button>
+                                ))}
                             </div>
-                            <div className="absolute bottom-full mb-2 left-1/2 transform -translate-x-1/2 bg-black/80 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                                -15 seconds
-                            </div>
-                        </button>
-
-                        <button
-                            onClick={handleSkipForward}
-                            className="pointer-events-auto p-4 bg-black/50 rounded-full backdrop-blur-sm hover:bg-black/70 transition-all transform hover:scale-110 group"
-                            title="Skip Forward 30s (→)"
-                        >
-                            <div className="flex items-center gap-1">
-                                <span className="text-white font-bold text-lg">30</span>
-                                <FaRedo className="text-2xl text-white" />
-                            </div>
-                            <div className="absolute bottom-full mb-2 left-1/2 transform -translate-x-1/2 bg-black/80 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                                +30 seconds
-                            </div>
-                        </button>
+                        </div>
                     </div>
                 )}
 
-                {/* Bottom Controls */}
-                <div className={`absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/90 to-transparent transition-opacity duration-300 z-10 ${showControls ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+                {/* Bottom Controls - Show/hide based on fullscreen */}
+                <div className={`absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/90 to-transparent transition-all duration-300 z-20 ${showControls
+                    ? 'opacity-100 translate-y-0'
+                    : 'opacity-0 translate-y-4 pointer-events-none'
+                    }`}>
                     <div className="max-w-7xl mx-auto">
                         {/* Progress Bar */}
                         <div className="mb-4">
@@ -841,242 +983,286 @@ const Player = () => {
                             </div>
 
                             <div className="flex items-center gap-4">
-                                {/* Playback Rate Display */}
+                                {/* Quality Display */}
                                 <div className="text-sm text-gray-300">
-                                    {playbackRate}x
+                                    {qualityOptions.find(q => q.value === selectedQuality)?.label || 'Auto'}
                                 </div>
+
+                                {/* Settings Button */}
+                                <button
+                                    onClick={() => setShowSettings(!showSettings)}
+                                    className="hover:text-red-500 transition-colors p-2"
+                                    title="Settings"
+                                >
+                                    <FaCog className="text-2xl" />
+                                </button>
 
                                 {/* Fullscreen Button */}
                                 <button
                                     onClick={handleFullscreen}
                                     className="hover:text-red-500 transition-colors p-2"
-                                    title="Fullscreen (F)"
+                                    title={`${isFullscreen ? 'Exit' : 'Enter'} Fullscreen (F)`}
                                 >
-                                    <FaExpand className="text-2xl" />
+                                    {isFullscreen ? (
+                                        <FaCompress className="text-2xl" />
+                                    ) : (
+                                        <FaExpand className="text-2xl" />
+                                    )}
                                 </button>
                             </div>
                         </div>
 
-                        {/* Quick Seek Buttons */}
-                        <div className="flex items-center gap-2 mt-4">
-                            <span className="text-sm text-gray-400">Jump to:</span>
-                            {[10, 25, 50, 75, 90].map(percent => (
-                                <button
-                                    key={percent}
-                                    onClick={() => handleJumpToPercentage(percent)}
-                                    className="px-2 py-1 text-xs bg-gray-800 hover:bg-gray-700 rounded"
-                                    title={`Jump to ${percent}%`}
-                                >
-                                    {percent}%
-                                </button>
-                            ))}
-                        </div>
+                        {/* Quick Seek Buttons - Hide in fullscreen */}
+                        {!isFullscreen && (
+                            <div className="flex items-center gap-2 mt-4">
+                                <span className="text-sm text-gray-400">Jump to:</span>
+                                {[10, 25, 50, 75, 90].map(percent => (
+                                    <button
+                                        key={percent}
+                                        onClick={() => handleJumpToPercentage(percent)}
+                                        className="px-2 py-1 text-xs bg-gray-800 hover:bg-gray-700 rounded"
+                                        title={`Jump to ${percent}%`}
+                                    >
+                                        {percent}%
+                                    </button>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 </div>
 
-                {/* Keyboard Shortcuts Helper */}
-                {showControls && (
-                    <div className="absolute top-1/2 right-4 transform -translate-y-1/2 bg-black/80 backdrop-blur-sm rounded-lg p-4 text-sm z-10">
-                        <div className="text-gray-400 mb-2 text-xs">Keyboard Shortcuts</div>
-                        <div className="space-y-1 text-xs">
-                            <div className="flex items-center gap-2">
-                                <kbd className="px-2 py-1 bg-gray-900 rounded text-xs">Space</kbd>
-                                <span className="text-gray-300">Play/Pause</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <kbd className="px-2 py-1 bg-gray-900 rounded text-xs">← →</kbd>
-                                <span className="text-gray-300">Seek 5s</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <kbd className="px-2 py-1 bg-gray-900 rounded text-xs">J L</kbd>
-                                <span className="text-gray-300">Seek 10s</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <kbd className="px-2 py-1 bg-gray-900 rounded text-xs">F</kbd>
-                                <span className="text-gray-300">Fullscreen</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <kbd className="px-2 py-1 bg-gray-900 rounded text-xs">M</kbd>
-                                <span className="text-gray-300">Mute</span>
-                            </div>
+                {/* Fullscreen overlay message */}
+                {isFullscreen && !showControls && playing && (
+                    <div className="absolute top-4 left-0 right-0 text-center z-10">
+                        <div className="inline-block bg-black/70 backdrop-blur-sm px-4 py-2 rounded-full text-sm text-gray-300">
+                            Move mouse or press any key to show controls
                         </div>
                     </div>
                 )}
             </div>
 
-            {/* Movie Info Section */}
-            <div className="max-w-7xl mx-auto px-4 py-8">
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    <div className="lg:col-span-2">
-                        <h1 className="text-4xl font-bold mb-4">{movie.title}</h1>
+            {/* Movie Info Section - Hide in fullscreen */}
+            {!isFullscreen && (
+                <div className="max-w-7xl mx-auto px-4 py-8">
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        <div className="lg:col-span-2">
+                            <h1 className="text-4xl font-bold mb-4">{movie.title}</h1>
 
-                        <div className="flex flex-wrap gap-3 mb-6">
-                            {movie.year && (
-                                <span className="px-4 py-2 bg-red-600 rounded-full text-sm font-semibold">
-                                    {movie.year}
-                                </span>
-                            )}
-                            {movie.rating && (
-                                <span className="px-4 py-2 bg-yellow-600 rounded-full text-sm font-semibold flex items-center gap-2">
-                                    <FaStar /> {movie.rating}
-                                </span>
-                            )}
-                            {movie.duration && (
-                                <span className="px-4 py-2 bg-gray-800 rounded-full text-sm">
-                                    {movie.duration}
-                                </span>
-                            )}
-                            {movie.category && (
-                                <span className="px-4 py-2 bg-gray-800 rounded-full text-sm">
-                                    {movie.category.split(',')[0]}
-                                </span>
-                            )}
-                        </div>
-
-                        <p className="text-gray-300 text-lg leading-relaxed">
-                            {movie.description || 'No description available.'}
-                        </p>
-
-                        {/* Mux Info Box */}
-                        {isMuxVideo && (
-                            <div className="mt-6 p-5 bg-gradient-to-r from-green-900/20 to-emerald-900/20 border border-green-700/30 rounded-xl">
-                                <div className="flex items-center gap-3 mb-3">
-                                    <div className="p-2 bg-green-600/20 rounded-lg">
-                                        <FaCheckCircle className="text-green-400 text-xl" />
-                                    </div>
-                                    <div>
-                                        <h4 className="text-green-300 font-semibold text-lg">Professional Mux Streaming</h4>
-                                        <p className="text-green-200/80 text-sm">
-                                            {videoLoaded ? 'Stream ready' : 'Loading stream...'} •
-                                            {retryCount > 0 && ` Format ${retryCount + 1}`}
-                                        </p>
-                                    </div>
-                                </div>
-                                {playbackId && (
-                                    <div className="mt-4 p-3 bg-black/30 rounded-lg">
-                                        <div className="text-xs text-gray-400 mb-1">Mux Playback ID:</div>
-                                        <code className="text-sm text-green-300 font-mono">{playbackId}</code>
-                                    </div>
+                            <div className="flex flex-wrap gap-3 mb-6">
+                                {movie.year && (
+                                    <span className="px-4 py-2 bg-red-600 rounded-full text-sm font-semibold">
+                                        {movie.year}
+                                    </span>
+                                )}
+                                {movie.rating && (
+                                    <span className="px-4 py-2 bg-yellow-600 rounded-full text-sm font-semibold flex items-center gap-2">
+                                        <FaStar /> {movie.rating}
+                                    </span>
+                                )}
+                                {movie.duration && (
+                                    <span className="px-4 py-2 bg-gray-800 rounded-full text-sm">
+                                        {movie.duration}
+                                    </span>
+                                )}
+                                {movie.category && (
+                                    <span className="px-4 py-2 bg-gray-800 rounded-full text-sm">
+                                        {movie.category.split(',')[0]}
+                                    </span>
                                 )}
                             </div>
-                        )}
-                    </div>
 
-                    <div className="space-y-6">
-                        {/* Movie Details */}
-                        <div className="bg-gray-900/50 rounded-2xl p-6 border border-gray-800">
-                            <h3 className="text-xl font-bold mb-4 pb-3 border-b border-gray-800">Movie Details</h3>
+                            <p className="text-gray-300 text-lg leading-relaxed">
+                                {movie.description || 'No description available.'}
+                            </p>
 
-                            {movie.nation && (
-                                <div className="mb-3">
-                                    <span className="text-gray-400 text-sm">Country:</span>
-                                    <div className="flex items-center gap-2 mt-1">
-                                        <FaGlobe className="text-blue-500" />
-                                        <span className="text-white">{movie.nation}</span>
-                                    </div>
+                            {/* Download Button in Info Section */}
+                            {movie?.download_link && (
+                                <div className="mt-6">
+                                    <button
+                                        onClick={handleDownload}
+                                        className="flex items-center gap-3 px-6 py-4 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 rounded-xl text-white font-semibold transition-all duration-300 transform hover:scale-105"
+                                    >
+                                        <FaDownload className="text-xl" />
+                                        <div className="text-left">
+                                            <div className="font-bold">Download Movie</div>
+                                            <div className="text-sm font-normal opacity-90">Click to download the video file</div>
+                                        </div>
+                                    </button>
+                                    <p className="text-gray-400 text-sm mt-2">
+                                        Direct download link provided by the content provider
+                                    </p>
                                 </div>
                             )}
 
-                            {movie.translator && (
-                                <div className="mb-3">
-                                    <span className="text-gray-400 text-sm">Translator:</span>
-                                    <div className="flex items-center gap-2 mt-1">
-                                        <FaLanguage className="text-green-500" />
-                                        <span className="text-white">{movie.translator}</span>
-                                    </div>
-                                </div>
-                            )}
-
-                            {movie.type && (
-                                <div className="mb-3">
-                                    <span className="text-gray-400 text-sm">Type:</span>
-                                    <div className="mt-1">
-                                        <span className={`px-3 py-1 rounded-full text-sm ${movie.type === 'series' ? 'bg-purple-600' : 'bg-red-600'}`}>
-                                            {movie.type === 'series' ? 'TV Series' : 'Movie'}
-                                        </span>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Streaming Info */}
-                        <div className="bg-gray-900/50 rounded-2xl p-6 border border-gray-800">
-                            <h3 className="text-xl font-bold mb-4">Streaming Info</h3>
-                            <div className="space-y-3">
-                                <div className="flex items-center gap-3">
-                                    <div className={`w-3 h-3 rounded-full animate-pulse ${playing ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                                    <span className="text-gray-300">
-                                        {playing ? 'Playing' : 'Paused'} • {isMuxVideo ? 'Mux' : 'Direct'}
-                                    </span>
-                                </div>
-
-                                <div className="flex items-center gap-2">
-                                    <span className="text-gray-400">Speed:</span>
-                                    <span className="text-white">{playbackRate}x</span>
-                                </div>
-
-                                {isMuxVideo && (
-                                    <div className="space-y-2">
-                                        <div className="p-3 bg-green-600/10 border border-green-600/20 rounded-lg">
-                                            <p className="text-green-300 text-sm">
-                                                ✓ Professional streaming with adaptive quality
+                            {/* Mux Info Box */}
+                            {isMuxVideo && (
+                                <div className="mt-6 p-5 bg-gradient-to-r from-green-900/20 to-emerald-900/20 border border-green-700/30 rounded-xl">
+                                    <div className="flex items-center gap-3 mb-3">
+                                        <div className="p-2 bg-green-600/20 rounded-lg">
+                                            <FaCheckCircle className="text-green-400 text-xl" />
+                                        </div>
+                                        <div>
+                                            <h4 className="text-green-300 font-semibold text-lg">Professional Mux Streaming</h4>
+                                            <p className="text-green-200/80 text-sm">
+                                                {videoLoaded ? 'Stream ready' : 'Loading stream...'} •
+                                                {retryCount > 0 && ` Format ${retryCount + 1}`}
                                             </p>
                                         </div>
-                                        <button
-                                            onClick={handleRetryWithAlternative}
-                                            disabled={retryCount >= 3}
-                                            className="w-full px-4 py-2 bg-yellow-600 hover:bg-yellow-700 disabled:bg-gray-700 rounded-lg text-white font-medium flex items-center justify-center gap-2"
-                                        >
-                                            <FaRedoAlt />
-                                            {retryCount >= 3 ? 'All formats tried' : 'Try Different Format'}
-                                        </button>
+                                    </div>
+                                    {playbackId && (
+                                        <div className="mt-4 p-3 bg-black/30 rounded-lg">
+                                            <div className="text-xs text-gray-400 mb-1">Mux Playback ID:</div>
+                                            <code className="text-sm text-green-300 font-mono">{playbackId}</code>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="space-y-6">
+                            {/* Movie Details */}
+                            <div className="bg-gray-900/50 rounded-2xl p-6 border border-gray-800">
+                                <h3 className="text-xl font-bold mb-4 pb-3 border-b border-gray-800">Movie Details</h3>
+
+                                {movie.nation && (
+                                    <div className="mb-3">
+                                        <span className="text-gray-400 text-sm">Country:</span>
+                                        <div className="flex items-center gap-2 mt-1">
+                                            <FaGlobe className="text-blue-500" />
+                                            <span className="text-white">{movie.nation}</span>
+                                        </div>
                                     </div>
                                 )}
 
-                                {videoSource.isFallback && (
-                                    <div className="p-3 bg-yellow-600/20 border border-yellow-600/30 rounded-lg">
-                                        <p className="text-yellow-400 text-sm">
-                                            Using sample video. Add your Mux video URL in admin panel.
+                                {movie.translator && (
+                                    <div className="mb-3">
+                                        <span className="text-gray-400 text-sm">Translator:</span>
+                                        <div className="flex items-center gap-2 mt-1">
+                                            <FaLanguage className="text-green-500" />
+                                            <span className="text-white">{movie.translator}</span>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {movie.type && (
+                                    <div className="mb-3">
+                                        <span className="text-gray-400 text-sm">Type:</span>
+                                        <div className="mt-1">
+                                            <span className={`px-3 py-1 rounded-full text-sm ${movie.type === 'series' ? 'bg-purple-600' : 'bg-red-600'}`}>
+                                                {movie.type === 'series' ? 'TV Series' : 'Movie'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Download Link Info */}
+                                {movie?.download_link && (
+                                    <div className="mt-4 pt-4 border-t border-gray-800">
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <FaDownload className="text-green-500" />
+                                            <span className="text-green-300 font-medium">Download Available</span>
+                                        </div>
+                                        <p className="text-sm text-gray-400">
+                                            This movie has a direct download link provided by the admin.
                                         </p>
                                     </div>
                                 )}
                             </div>
-                        </div>
 
-                        {/* Technical Info */}
-                        <div className="bg-gray-900/50 rounded-2xl p-6 border border-gray-800">
-                            <h3 className="text-xl font-bold mb-4">Technical Info</h3>
-                            <div className="space-y-2 text-sm">
-                                <div className="flex justify-between">
-                                    <span className="text-gray-400">Status:</span>
-                                    <span className={`font-medium ${videoLoaded ? 'text-green-400' : 'text-yellow-400'}`}>
-                                        {videoLoaded ? 'Loaded' : 'Loading...'}
-                                    </span>
+                            {/* Streaming Info */}
+                            <div className="bg-gray-900/50 rounded-2xl p-6 border border-gray-800">
+                                <h3 className="text-xl font-bold mb-4">Streaming Info</h3>
+                                <div className="space-y-3">
+                                    <div className="flex items-center gap-3">
+                                        <div className={`w-3 h-3 rounded-full animate-pulse ${playing ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                                        <span className="text-gray-300">
+                                            {playing ? 'Playing' : 'Paused'} • {isMuxVideo ? 'Mux' : 'Direct'}
+                                        </span>
+                                    </div>
+
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-gray-400">Speed:</span>
+                                        <span className="text-white">{playbackRate}x</span>
+                                    </div>
+
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-gray-400">Quality:</span>
+                                        <span className="text-white">
+                                            {qualityOptions.find(q => q.value === selectedQuality)?.label || 'Auto'}
+                                        </span>
+                                    </div>
+
+                                    {isMuxVideo && (
+                                        <div className="space-y-2">
+                                            <div className="p-3 bg-green-600/10 border border-green-600/20 rounded-lg">
+                                                <p className="text-green-300 text-sm">
+                                                    ✓ Professional streaming with adaptive quality
+                                                </p>
+                                            </div>
+                                            <button
+                                                onClick={handleRetryWithAlternative}
+                                                disabled={retryCount >= 3}
+                                                className="w-full px-4 py-2 bg-yellow-600 hover:bg-yellow-700 disabled:bg-gray-700 rounded-lg text-white font-medium flex items-center justify-center gap-2"
+                                            >
+                                                <FaRedoAlt />
+                                                {retryCount >= 3 ? 'All formats tried' : 'Try Different Format'}
+                                            </button>
+                                        </div>
+                                    )}
+
+                                    {videoSource.isFallback && (
+                                        <div className="p-3 bg-yellow-600/20 border border-yellow-600/30 rounded-lg">
+                                            <p className="text-yellow-400 text-sm">
+                                                Using sample video. Add your Mux video URL in admin panel.
+                                            </p>
+                                        </div>
+                                    )}
                                 </div>
-                                <div className="flex justify-between">
-                                    <span className="text-gray-400">Duration:</span>
-                                    <span className="text-white">{formatTime(duration)}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span className="text-gray-400">Current Time:</span>
-                                    <span className="text-white">{formatTime(currentTime)}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span className="text-gray-400">Provider:</span>
-                                    <span className="text-white">
-                                        {isMuxVideo ? 'Mux' : 'Direct'}
-                                        {retryCount > 0 && ` (Format ${retryCount + 1})`}
-                                    </span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span className="text-gray-400">URL Type:</span>
-                                    <span className="text-white">{videoSource.type}</span>
+                            </div>
+
+                            {/* Technical Info */}
+                            <div className="bg-gray-900/50 rounded-2xl p-6 border border-gray-800">
+                                <h3 className="text-xl font-bold mb-4">Technical Info</h3>
+                                <div className="space-y-2 text-sm">
+                                    <div className="flex justify-between">
+                                        <span className="text-gray-400">Status:</span>
+                                        <span className={`font-medium ${videoLoaded ? 'text-green-400' : 'text-yellow-400'}`}>
+                                            {videoLoaded ? 'Loaded' : 'Loading...'}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-gray-400">Duration:</span>
+                                        <span className="text-white">{formatTime(duration)}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-gray-400">Current Time:</span>
+                                        <span className="text-white">{formatTime(currentTime)}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-gray-400">Provider:</span>
+                                        <span className="text-white">
+                                            {isMuxVideo ? 'Mux' : 'Direct'}
+                                            {retryCount > 0 && ` (Format ${retryCount + 1})`}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-gray-400">Quality:</span>
+                                        <span className="text-white">
+                                            {qualityOptions.find(q => q.value === selectedQuality)?.label || 'Auto'}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-gray-400">Download:</span>
+                                        <span className={`font-medium ${movie?.download_link ? 'text-green-400' : 'text-gray-400'}`}>
+                                            {movie?.download_link ? 'Available' : 'Not Available'}
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
-            </div>
+            )}
         </div>
     );
 };
