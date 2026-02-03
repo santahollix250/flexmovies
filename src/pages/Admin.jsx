@@ -59,7 +59,7 @@ function Admin({ onLogout }) {
     streamLink: "", // Mux HLS URL (optional)
     download_link: "", // Download link
     nation: "",
-    translator: "",
+    translator: "", // Translator field - simple text input
     totalSeasons: "",
     totalEpisodes: "",
     videoType: "mux" // Default to Mux
@@ -245,35 +245,7 @@ function Admin({ onLogout }) {
   // Form handlers
   function handleChange(e) {
     const { name, value } = e.target;
-
-    if (name === "videoUrl") {
-      const videoType = detectVideoType(value);
-      const updatedForm = {
-        ...form,
-        [name]: value,
-        videoType: videoType
-      };
-
-      // If it's a Mux URL, auto-generate other URLs
-      if (isMuxUrl(value)) {
-        const playbackId = extractMuxPlaybackId(value);
-        if (playbackId) {
-          if (!updatedForm.poster || !muxPatterns.thumbnail.test(updatedForm.poster)) {
-            updatedForm.poster = generateMuxThumbnail(value);
-          }
-          if (!updatedForm.background) {
-            updatedForm.background = generateMuxThumbnail(value);
-          }
-          if (!updatedForm.streamLink || !muxPatterns.hls.test(updatedForm.streamLink)) {
-            updatedForm.streamLink = generateMuxHls(value);
-          }
-        }
-      }
-
-      setForm(updatedForm);
-    } else {
-      setForm((f) => ({ ...f, [name]: value }));
-    }
+    setForm((f) => ({ ...f, [name]: value }));
   }
 
   function handleEpisodeChange(e) {
@@ -307,6 +279,7 @@ function Admin({ onLogout }) {
       background: background,
       totalSeasons: movie.totalSeasons || "",
       totalEpisodes: movie.totalEpisodes || "",
+      translator: movie.translator || "", // Include translator
       videoType: movie.videoType || detectVideoType(videoUrl)
     });
 
@@ -359,7 +332,7 @@ function Admin({ onLogout }) {
       streamLink: form.streamLink || generateMuxHls(form.videoUrl),
       download_link: form.download_link || "",
       nation: form.nation || "",
-      translator: form.translator || "",
+      translator: form.translator || "", // Include translator
       videoType: form.videoType || detectVideoType(form.videoUrl)
     };
 
@@ -641,7 +614,8 @@ function Admin({ onLogout }) {
   // Filter and sort movies
   const filteredMovies = movies.filter(movie => {
     const matchesSearch = movie.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (movie.description || "").toLowerCase().includes(searchTerm.toLowerCase());
+      (movie.description || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (movie.translator || "").toLowerCase().includes(searchTerm.toLowerCase()); // Search translator too
     const matchesType = filterType === "all" || movie.type === filterType;
     return matchesSearch && matchesType;
   });
@@ -1163,6 +1137,28 @@ function Admin({ onLogout }) {
                   </select>
                 </div>
 
+                {/* Translator Field - SIMPLE TEXT INPUT */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Translator/Release Group
+                    <span className="text-gray-500 text-xs ml-2">(Optional - Type your own)</span>
+                  </label>
+                  <div className="relative">
+                    <FaLanguage className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                    <input
+                      type="text"
+                      name="translator"
+                      value={form.translator}
+                      onChange={handleChange}
+                      placeholder="e.g., Official, YTS, Subscene, Custom Name"
+                      className="w-full pl-10 p-3 bg-gray-800/70 border border-gray-700 rounded-xl focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all"
+                    />
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Enter any translator or release group name
+                  </p>
+                </div>
+
                 {/* Series-specific fields */}
                 {form.type === "series" && (
                   <>
@@ -1312,6 +1308,11 @@ function Admin({ onLogout }) {
                               <FaGlobe /> {form.nation}
                             </span>
                           )}
+                          {form.translator && (
+                            <span className="px-2 py-1 bg-green-500/20 text-green-400 rounded text-xs flex items-center gap-1">
+                              <FaLanguage /> {form.translator}
+                            </span>
+                          )}
                           {form.background && (
                             <span className="px-2 py-1 bg-blue-500/20 text-blue-400 rounded text-xs flex items-center gap-1">
                               <FaMountain /> Has Background
@@ -1330,7 +1331,7 @@ function Admin({ onLogout }) {
               )}
             </div>
 
-            {/* Series List */}
+            {/* Series List - Updated to show translator */}
             <div>
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
                 <h2 className="text-xl font-bold flex items-center gap-2">
@@ -1378,6 +1379,7 @@ function Admin({ onLogout }) {
                     const episodeCount = movie.type === 'series' ? getEpisodesBySeries(movie.id).length : 0;
                     const hasBackground = !!movie.background && movie.background !== movie.poster;
                     const isMux = movie.videoType === "mux" || isMuxUrl(movie.videoUrl);
+                    const hasTranslator = !!movie.translator;
 
                     return (
                       <div key={movie.id} className="bg-gradient-to-br from-gray-800/50 to-gray-900/50 backdrop-blur-lg rounded-2xl border border-gray-700/50 p-4 transition-all hover:border-purple-500/30">
@@ -1443,6 +1445,11 @@ function Admin({ onLogout }) {
                               {movie.type === 'series' && (
                                 <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-blue-500/20 text-blue-400">
                                   📺 {episodeCount} eps
+                                </span>
+                              )}
+                              {hasTranslator && (
+                                <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-green-500/20 text-green-400 flex items-center gap-1">
+                                  <FaLanguage className="text-xs" /> {movie.translator}
                                 </span>
                               )}
                               {hasBackground && (

@@ -8,7 +8,8 @@ import Footer from './components/Footer';
 import Movies from './components/PopularMovies';
 import Series from './pages/Series';
 import Admin from './pages/Admin';
-import Player from "./components/Player"; // Make sure this import path is correct
+import Player from "./components/Player";
+import WhatsAppFloatingButton from './components/WhatsAppFloatingButton'; // Make sure this import path is correct
 import './index.css';
 
 function App() {
@@ -32,6 +33,7 @@ function App() {
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>
+        <WhatsAppFloatingButton />
         <Footer />
       </div>
     </MoviesProvider>

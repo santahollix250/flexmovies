@@ -206,126 +206,126 @@ export default function Movies() {
 
   // Custom scrollbar styles
   const scrollbarStyles = `
-    /* Custom scrollbar for the entire page */
-    ::-webkit-scrollbar {
-      width: 12px;
-      height: 12px;
-    }
-
-    ::-webkit-scrollbar-track {
-      background: rgba(31, 41, 55, 0.5);
-      border-radius: 10px;
-    }
-
-    ::-webkit-scrollbar-thumb {
-      background: linear-gradient(45deg, #dc2626, #7c3aed, #2563eb);
-      border-radius: 10px;
-      border: 2px solid rgba(17, 24, 39, 0.8);
-      transition: all 0.3s ease;
-    }
-
-    ::-webkit-scrollbar-thumb:hover {
-      background: linear-gradient(45deg, #ef4444, #8b5cf6, #3b82f6);
-      transform: scale(1.05);
-    }
-
-    ::-webkit-scrollbar-corner {
-      background: rgba(17, 24, 39, 0.8);
-    }
-
-    /* For Firefox */
-    * {
-      scrollbar-width: thin;
-      scrollbar-color: #dc2626 rgba(31, 41, 55, 0.5);
-    }
-
-    /* For dropdowns and other scrollable containers */
-    .scrollable-container::-webkit-scrollbar {
-      width: 8px;
-    }
-
-    .scrollable-container::-webkit-scrollbar-track {
-      background: rgba(31, 41, 55, 0.3);
-      border-radius: 4px;
-    }
-
-    .scrollable-container::-webkit-scrollbar-thumb {
-      background: linear-gradient(180deg, #dc2626, #7c3aed);
-      border-radius: 4px;
-    }
-
-    /* Smooth scrolling for the whole page */
-    html {
-      scroll-behavior: smooth;
-    }
-
-    /* Scrollbar for code blocks or specific areas */
-    pre::-webkit-scrollbar {
-      height: 8px;
-    }
-
-    pre::-webkit-scrollbar-thumb {
-      background: linear-gradient(90deg, #dc2626, #7c3aed);
-    }
-
-    /* Custom scrollbar animations */
-    @keyframes scrollbarGlow {
-      0%, 100% {
-        box-shadow: 0 0 5px #dc2626;
+      /* Custom scrollbar for the entire page */
+      ::-webkit-scrollbar {
+        width: 12px;
+        height: 12px;
       }
-      50% {
-        box-shadow: 0 0 15px #7c3aed, 0 0 20px #2563eb;
+
+      ::-webkit-scrollbar-track {
+        background: rgba(31, 41, 55, 0.5);
+        border-radius: 10px;
       }
-    }
 
-    ::-webkit-scrollbar-thumb:active {
-      animation: scrollbarGlow 1.5s infinite;
-    }
+      ::-webkit-scrollbar-thumb {
+        background: linear-gradient(45deg, #dc2626, #7c3aed, #2563eb);
+        border-radius: 10px;
+        border: 2px solid rgba(17, 24, 39, 0.8);
+        transition: all 0.3s ease;
+      }
 
-    /* Loading Animation Styles */
-    @keyframes float {
-      0%, 100% { transform: translateY(0px); }
-      50% { transform: translateY(-20px); }
-    }
+      ::-webkit-scrollbar-thumb:hover {
+        background: linear-gradient(45deg, #ef4444, #8b5cf6, #3b82f6);
+        transform: scale(1.05);
+      }
 
-    @keyframes pulse-glow {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.7; }
-    }
+      ::-webkit-scrollbar-corner {
+        background: rgba(17, 24, 39, 0.8);
+      }
 
-    @keyframes shimmer {
-      0% { background-position: -1000px 0; }
-      100% { background-position: 1000px 0; }
-    }
+      /* For Firefox */
+      * {
+        scrollbar-width: thin;
+        scrollbar-color: #dc2626 rgba(31, 41, 55, 0.5);
+      }
 
-    @keyframes rotate3d {
-      0% { transform: rotateY(0deg) rotateX(0deg); }
-      100% { transform: rotateY(360deg) rotateX(360deg); }
-    }
+      /* For dropdowns and other scrollable containers */
+      .scrollable-container::-webkit-scrollbar {
+        width: 8px;
+      }
 
-    @keyframes particle-float {
-      0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.8; }
-      50% { transform: translate(var(--tx, 20px), var(--ty, -20px)) scale(1.2); opacity: 1; }
-    }
+      .scrollable-container::-webkit-scrollbar-track {
+        background: rgba(31, 41, 55, 0.3);
+        border-radius: 4px;
+      }
 
-    .animate-float {
-      animation: float 3s ease-in-out infinite;
-    }
+      .scrollable-container::-webkit-scrollbar-thumb {
+        background: linear-gradient(180deg, #dc2626, #7c3aed);
+        border-radius: 4px;
+      }
 
-    .animate-pulse-glow {
-      animation: pulse-glow 2s ease-in-out infinite;
-    }
+      /* Smooth scrolling for the whole page */
+      html {
+        scroll-behavior: smooth;
+      }
 
-    .animate-shimmer {
-      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
-      background-size: 1000px 100%;
-      animation: shimmer 2s infinite;
-    }
+      /* Scrollbar for code blocks or specific areas */
+      pre::-webkit-scrollbar {
+        height: 8px;
+      }
 
-    .animate-rotate3d {
-      animation: rotate3d 20s linear infinite;
-    }
-  `;
+      pre::-webkit-scrollbar-thumb {
+        background: linear-gradient(90deg, #dc2626, #7c3aed);
+      }
+
+      /* Custom scrollbar animations */
+      @keyframes scrollbarGlow {
+        0%, 100% {
+          box-shadow: 0 0 5px #dc2626;
+        }
+        50% {
+          box-shadow: 0 0 15px #7c3aed, 0 0 20px #2563eb;
+        }
+      }
+
+      ::-webkit-scrollbar-thumb:active {
+        animation: scrollbarGlow 1.5s infinite;
+      }
+
+      /* Loading Animation Styles */
+      @keyframes float {
+        0%, 100% { transform: translateY(0px); }
+        50% { transform: translateY(-20px); }
+      }
+
+      @keyframes pulse-glow {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.7; }
+      }
+
+      @keyframes shimmer {
+        0% { background-position: -1000px 0; }
+        100% { background-position: 1000px 0; }
+      }
+
+      @keyframes rotate3d {
+        0% { transform: rotateY(0deg) rotateX(0deg); }
+        100% { transform: rotateY(360deg) rotateX(360deg); }
+      }
+
+      @keyframes particle-float {
+        0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.8; }
+        50% { transform: translate(var(--tx, 20px), var(--ty, -20px)) scale(1.2); opacity: 1; }
+      }
+
+      .animate-float {
+        animation: float 3s ease-in-out infinite;
+      }
+
+      .animate-pulse-glow {
+        animation: pulse-glow 2s ease-in-out infinite;
+      }
+
+      .animate-shimmer {
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+        background-size: 1000px 100%;
+        animation: shimmer 2s infinite;
+      }
+
+      .animate-rotate3d {
+        animation: rotate3d 20s linear infinite;
+      }
+    `;
 
   if (loading) {
     return (
@@ -478,27 +478,27 @@ export default function Movies() {
 
           {/* Additional Styles for Loading Animation */}
           <style>{`
-            @keyframes slide-up {
-              0%, 25% { transform: translateY(0); }
-              26%, 50% { transform: translateY(-25%); }
-              51%, 75% { transform: translateY(-50%); }
-              76%, 100% { transform: translateY(-75%); }
-            }
+              @keyframes slide-up {
+                0%, 25% { transform: translateY(0); }
+                26%, 50% { transform: translateY(-25%); }
+                51%, 75% { transform: translateY(-50%); }
+                76%, 100% { transform: translateY(-75%); }
+              }
 
-            @keyframes progress {
-              0% { width: 0%; opacity: 0.5; }
-              50% { width: 70%; opacity: 1; }
-              100% { width: 100%; opacity: 0.5; }
-            }
+              @keyframes progress {
+                0% { width: 0%; opacity: 0.5; }
+                50% { width: 70%; opacity: 1; }
+                100% { width: 100%; opacity: 0.5; }
+              }
 
-            .animate-slide-up {
-              animation: slide-up 8s infinite;
-            }
+              .animate-slide-up {
+                animation: slide-up 8s infinite;
+              }
 
-            .animate-progress {
-              animation: progress 2s ease-in-out infinite;
-            }
-          `}</style>
+              .animate-progress {
+                animation: progress 2s ease-in-out infinite;
+              }
+            `}</style>
         </div>
 
         {/* Bottom Wave Animation */}

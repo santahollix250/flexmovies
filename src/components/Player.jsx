@@ -20,8 +20,20 @@ import {
     FaForward,
     FaBackward,
     FaCog,
-    FaTimes
+    FaTimes,
+    FaComment,
+    FaHeart,
+    FaPaperPlane,
+    FaTrash,
+    FaEdit,
+    FaCheck,
+    FaUserCircle,
+    FaMobileAlt,
+    FaDesktop
 } from 'react-icons/fa';
+
+// Import Supabase client
+import { supabase } from '../lib/supabaseClient';
 
 const Player = () => {
     const location = useLocation();
@@ -51,6 +63,18 @@ const Player = () => {
     const [showSettings, setShowSettings] = useState(false);
     const [selectedQuality, setSelectedQuality] = useState('auto');
     const [videoQualities, setVideoQualities] = useState([]);
+    const [isMobile, setIsMobile] = useState(false);
+
+    // Comment section states
+    const [comments, setComments] = useState([]);
+    const [newComment, setNewComment] = useState('');
+    const [userName, setUserName] = useState('');
+    const [userAvatar, setUserAvatar] = useState('');
+    const [showComments, setShowComments] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [editingComment, setEditingComment] = useState(null);
+    const [editText, setEditText] = useState('');
+    const [isTypingComment, setIsTypingComment] = useState(false);
 
     // Quality options
     const qualityOptions = [
@@ -61,6 +85,11 @@ const Player = () => {
         { label: '360p', value: '360' },
         { label: '240p', value: '240' }
     ];
+
+    // Check if device is mobile
+    const checkIsMobile = () => {
+        return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    };
 
     // Check if URL is Mux
     const checkIsMuxUrl = (url) => {
@@ -102,11 +131,303 @@ const Player = () => {
         return qualities;
     };
 
+    // Comment functions
+    const fetchComments = async () => {
+        if (!movie?.id) return;
+
+        try {
+            const { data, error } = await supabase
+                .from('comments')
+                .select('*')
+                .eq('movie_id', movie.id.toString())
+                .order('created_at', { ascending: false });
+
+            if (error) throw error;
+            setComments(data || []);
+        } catch (error) {
+            console.error('Error fetching comments:', error);
+            // Fallback to localStorage
+            const localComments = localStorage.getItem(`comments_${movie.id}`);
+            if (localComments) {
+                setComments(JSON.parse(localComments));
+            }
+        }
+    };
+
+    const handleSubmitComment = async (e) => {
+        e.preventDefault();
+        if (!newComment.trim() || !userName.trim()) return;
+
+        setIsSubmitting(true);
+        const commentData = {
+            movie_id: movie.id.toString(),
+            user_name: userName,
+            user_avatar: userAvatar,
+            message: newComment.trim(),
+            device_info: {
+                userAgent: navigator.userAgent,
+                platform: navigator.platform,
+                screen: `${window.screen.width}x${window.screen.height}`,
+                timestamp: new Date().toISOString()
+            },
+            likes: 0
+        };
+
+        try {
+            const { data, error } = await supabase
+                .from('comments')
+                .insert([commentData])
+                .select();
+
+            if (error) throw error;
+
+            setComments(prev => [data[0], ...prev]);
+            setNewComment('');
+
+            // Update localStorage as backup
+            const existingComments = JSON.parse(localStorage.getItem(`comments_${movie.id}`) || '[]');
+            existingComments.unshift({
+                ...commentData,
+                id: data[0].id,
+                created_at: new Date().toISOString()
+            });
+            localStorage.setItem(`comments_${movie.id}`, JSON.stringify(existingComments));
+
+        } catch (error) {
+            console.error('Error submitting comment:', error);
+
+            // Fallback to localStorage
+            const fallbackComment = {
+                ...commentData,
+                id: Date.now(),
+                created_at: new Date().toISOString()
+            };
+
+            const existingComments = JSON.parse(localStorage.getItem(`comments_${movie.id}`) || '[]');
+            existingComments.unshift(fallbackComment);
+            localStorage.setItem(`comments_${movie.id}`, JSON.stringify(existingComments));
+
+            setComments(existingComments);
+            setNewComment('');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const handleLikeComment = async (commentId) => {
+        try {
+            const comment = comments.find(c => c.id === commentId);
+            if (!comment) return;
+
+            const updatedLikes = (comment.likes || 0) + 1;
+
+            const { error } = await supabase
+                .from('comments')
+                .update({ likes: updatedLikes })
+                .eq('id', commentId);
+
+            if (error) throw error;
+
+            setComments(prev => prev.map(c =>
+                c.id === commentId ? { ...c, likes: updatedLikes } : c
+            ));
+
+            // Update localStorage
+            const existingComments = JSON.parse(localStorage.getItem(`comments_${movie.id}`) || '[]');
+            const updatedComments = existingComments.map(c =>
+                c.id === commentId ? { ...c, likes: updatedLikes } : c
+            );
+            localStorage.setItem(`comments_${movie.id}`, JSON.stringify(updatedComments));
+
+        } catch (error) {
+            console.error('Error liking comment:', error);
+            // Update locally
+            setComments(prev => prev.map(c =>
+                c.id === commentId ? { ...c, likes: (c.likes || 0) + 1 } : c
+            ));
+        }
+    };
+
+    const handleEditComment = (comment) => {
+        setEditingComment(comment.id);
+        setEditText(comment.message);
+    };
+
+    const handleSaveEdit = async (commentId) => {
+        try {
+            const { error } = await supabase
+                .from('comments')
+                .update({ message: editText.trim() })
+                .eq('id', commentId);
+
+            if (error) throw error;
+
+            setComments(prev => prev.map(c =>
+                c.id === commentId ? { ...c, message: editText.trim() } : c
+            ));
+
+            // Update localStorage
+            const existingComments = JSON.parse(localStorage.getItem(`comments_${movie.id}`) || '[]');
+            const updatedComments = existingComments.map(c =>
+                c.id === commentId ? { ...c, message: editText.trim() } : c
+            );
+            localStorage.setItem(`comments_${movie.id}`, JSON.stringify(updatedComments));
+
+            setEditingComment(null);
+            setEditText('');
+        } catch (error) {
+            console.error('Error updating comment:', error);
+        }
+    };
+
+    const handleDeleteComment = async (commentId) => {
+        if (!window.confirm('Are you sure you want to delete this comment?')) return;
+
+        try {
+            const { error } = await supabase
+                .from('comments')
+                .delete()
+                .eq('id', commentId);
+
+            if (error) throw error;
+
+            setComments(prev => prev.filter(c => c.id !== commentId));
+
+            // Update localStorage
+            const existingComments = JSON.parse(localStorage.getItem(`comments_${movie.id}`) || '[]');
+            const updatedComments = existingComments.filter(c => c.id !== commentId);
+            localStorage.setItem(`comments_${movie.id}`, JSON.stringify(updatedComments));
+
+        } catch (error) {
+            console.error('Error deleting comment:', error);
+        }
+    };
+
+    const formatTimeAgo = (timestamp) => {
+        const date = new Date(timestamp);
+        const now = new Date();
+        const diffInSeconds = Math.floor((now - date) / 1000);
+
+        if (diffInSeconds < 60) return 'just now';
+        if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
+        if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
+        if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)}d ago`;
+        return date.toLocaleDateString();
+    };
+
+    const updateUserName = (e) => {
+        const newName = e.target.value;
+        setUserName(newName);
+
+        const userData = JSON.parse(localStorage.getItem('videoCommenter') || '{}');
+        userData.name = newName;
+        localStorage.setItem('videoCommenter', JSON.stringify(userData));
+    };
+
+    // Handle typing state for comment fields
+    const handleCommentFocus = () => {
+        setIsTypingComment(true);
+        setShowControls(true); // Show controls when typing
+    };
+
+    const handleCommentBlur = () => {
+        setIsTypingComment(false);
+    };
+
+    // Mobile-friendly fullscreen function
+    const handleFullscreen = () => {
+        const element = playerContainerRef.current;
+        if (!element) return;
+
+        // For iOS Safari, use video element's webkitEnterFullscreen
+        if (isMobile && videoRef.current && videoRef.current.webkitEnterFullscreen) {
+            try {
+                videoRef.current.webkitEnterFullscreen();
+                setIsFullscreen(true);
+                // On iOS, show controls permanently in fullscreen
+                setShowControls(true);
+                return;
+            } catch (err) {
+                console.error('iOS fullscreen error:', err);
+            }
+        }
+
+        // For Android Chrome and other mobile browsers
+        if (isMobile) {
+            try {
+                // Try standard fullscreen first
+                if (element.requestFullscreen) {
+                    element.requestFullscreen().then(() => {
+                        setIsFullscreen(true);
+                        // Lock orientation on mobile
+                        if (screen.orientation && screen.orientation.lock) {
+                            screen.orientation.lock('landscape').catch(e => {
+                                console.log('Orientation lock not supported:', e);
+                            });
+                        }
+                    }).catch(err => {
+                        console.error('Mobile fullscreen error:', err);
+                        // Fallback: Toggle a mobile fullscreen class
+                        element.classList.toggle('mobile-fullscreen');
+                        setIsFullscreen(element.classList.contains('mobile-fullscreen'));
+                        setShowControls(true);
+                    });
+                } else if (element.webkitRequestFullscreen) {
+                    element.webkitRequestFullscreen();
+                    setIsFullscreen(true);
+                } else if (element.mozRequestFullScreen) {
+                    element.mozRequestFullScreen();
+                    setIsFullscreen(true);
+                } else if (element.msRequestFullscreen) {
+                    element.msRequestFullscreen();
+                    setIsFullscreen(true);
+                }
+            } catch (err) {
+                console.error('Mobile fullscreen fallback error:', err);
+                // Ultimate fallback for mobile
+                document.documentElement.requestFullscreen().catch(e => {
+                    console.log('Document fullscreen failed:', e);
+                });
+            }
+            return;
+        }
+
+        // Desktop fullscreen
+        if (!document.fullscreenElement) {
+            if (element.requestFullscreen) {
+                element.requestFullscreen().catch(err => {
+                    console.error(`Error attempting to enable fullscreen: ${err.message}`);
+                });
+            } else if (element.webkitRequestFullscreen) {
+                element.webkitRequestFullscreen();
+            } else if (element.mozRequestFullScreen) {
+                element.mozRequestFullScreen();
+            } else if (element.msRequestFullscreen) {
+                element.msRequestFullscreen();
+            }
+        } else {
+            if (document.exitFullscreen) {
+                document.exitFullscreen();
+            } else if (document.webkitExitFullscreen) {
+                document.webkitExitFullscreen();
+            } else if (document.mozCancelFullScreen) {
+                document.mozCancelFullScreen();
+            } else if (document.msExitFullscreen) {
+                document.msExitFullscreen();
+            }
+        }
+        showControlsWithTimer();
+    };
+
     // Handle missing movie data
     useEffect(() => {
         console.log("🎬 Player Component - Movie Data:", movie);
         console.log("🎬 Original Video URL:", movie?.videoUrl);
         console.log("🎬 Download Link:", movie?.download_link);
+
+        // Check if device is mobile
+        setIsMobile(checkIsMobile());
+        console.log("📱 Is Mobile Device:", checkIsMobile());
 
         if (!movie) {
             console.log("❌ No movie data found");
@@ -114,6 +435,26 @@ const Player = () => {
             setLoading(false);
             return;
         }
+
+        // Initialize user for comments
+        const savedUser = localStorage.getItem('videoCommenter');
+        if (savedUser) {
+            const userData = JSON.parse(savedUser);
+            setUserName(userData.name);
+            setUserAvatar(userData.avatar);
+        } else {
+            const randomName = `User${Math.floor(Math.random() * 10000)}`;
+            const randomAvatar = `https://api.dicebear.com/7.x/avataaars/svg?seed=${randomName}`;
+            setUserName(randomName);
+            setUserAvatar(randomAvatar);
+            localStorage.setItem('videoCommenter', JSON.stringify({
+                name: randomName,
+                avatar: randomAvatar
+            }));
+        }
+
+        // Load comments
+        fetchComments();
 
         // Check if it's a Mux URL
         const url = movie?.videoUrl || movie?.streamLink || '';
@@ -128,25 +469,20 @@ const Player = () => {
                 const playbackId = extractPlaybackId(url);
                 console.log("🔑 Mux Playback ID:", playbackId);
 
-                // Set quality options for Mux videos
                 const qualities = getMuxQualityUrls(playbackId);
                 setVideoQualities(qualities);
 
-                // Try multiple Mux formats
                 const muxUrls = [
-                    url, // Original URL
-                    getMuxHlsUrl(playbackId), // HLS version
-                    url.replace('.mp4', '.m3u8'), // Convert MP4 to HLS
-                    url.replace('.m3u8', '.mp4'), // Convert HLS to MP4
+                    url,
+                    getMuxHlsUrl(playbackId),
+                    url.replace('.mp4', '.m3u8'),
+                    url.replace('.m3u8', '.mp4'),
                 ].filter(Boolean);
 
                 console.log("🔄 Testing Mux URLs:", muxUrls);
-
-                // Try the first URL first
                 setVideoUrl(muxUrls[0]);
             } else {
                 setVideoUrl(url);
-                // For non-Mux videos, use default qualities
                 setVideoQualities([
                     { label: 'Auto', value: 'auto', url: url },
                     { label: 'Original', value: 'original', url: url }
@@ -169,9 +505,33 @@ const Player = () => {
                 document.msFullscreenElement);
             setIsFullscreen(isFull);
 
-            // Hide controls when entering fullscreen
             if (isFull && playing) {
-                setTimeout(() => setShowControls(false), 1000);
+                // On mobile, keep controls visible longer
+                if (isMobile) {
+                    setTimeout(() => setShowControls(false), 5000);
+                } else {
+                    setTimeout(() => setShowControls(false), 1000);
+                }
+            }
+
+            // Unlock orientation when exiting fullscreen on mobile
+            if (!isFull && isMobile && screen.orientation && screen.orientation.unlock) {
+                screen.orientation.unlock();
+            }
+        };
+
+        // Handle orientation change on mobile
+        const handleOrientationChange = () => {
+            if (isMobile) {
+                // On mobile, entering landscape usually means fullscreen video
+                const isLandscape = Math.abs(window.orientation) === 90;
+                if (isLandscape && !isFullscreen) {
+                    setIsFullscreen(true);
+                    setShowControls(true);
+                } else if (!isLandscape && isFullscreen) {
+                    setIsFullscreen(false);
+                    setShowControls(true);
+                }
             }
         };
 
@@ -179,6 +539,24 @@ const Player = () => {
         document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
         document.addEventListener('mozfullscreenchange', handleFullscreenChange);
         document.addEventListener('MSFullscreenChange', handleFullscreenChange);
+
+        // Add orientation change listener for mobile
+        if (isMobile) {
+            window.addEventListener('orientationchange', handleOrientationChange);
+        }
+
+        // Handle click events for mobile controls
+        const handleMobileClick = () => {
+            if (isMobile && playing) {
+                setShowControls(true);
+                resetControlsTimer();
+            }
+        };
+
+        if (isMobile) {
+            document.addEventListener('click', handleMobileClick);
+            document.addEventListener('touchstart', handleMobileClick);
+        }
 
         return () => {
             if (controlsTimerRef.current) {
@@ -188,6 +566,12 @@ const Player = () => {
             document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
             document.removeEventListener('mozfullscreenchange', handleFullscreenChange);
             document.removeEventListener('MSFullscreenChange', handleFullscreenChange);
+
+            if (isMobile) {
+                window.removeEventListener('orientationchange', handleOrientationChange);
+                document.removeEventListener('click', handleMobileClick);
+                document.removeEventListener('touchstart', handleMobileClick);
+            }
         };
     }, [movie, retryCount]);
 
@@ -199,9 +583,14 @@ const Player = () => {
 
         controlsTimerRef.current = setTimeout(() => {
             if (playing && isFullscreen) {
-                setShowControls(false);
+                // On mobile, hide controls slower
+                if (isMobile) {
+                    setShowControls(false);
+                } else {
+                    setShowControls(false);
+                }
             }
-        }, 3000);
+        }, isMobile ? 4000 : 3000);
     };
 
     // Show controls and reset timer
@@ -221,11 +610,16 @@ const Player = () => {
                 videoRef.current.play().then(() => {
                     setPlaying(true);
                     console.log("▶️ Video started playing");
+
+                    // On mobile, ensure video plays inline
+                    if (isMobile) {
+                        videoRef.current.setAttribute('playsinline', '');
+                        videoRef.current.setAttribute('webkit-playsinline', '');
+                    }
                 }).catch(err => {
                     console.error("❌ Play error:", err);
                     setError(`Failed to play video: ${err.message}. Try using a different browser or check the video URL.`);
 
-                    // Try alternative Mux format
                     if (isMuxVideo && retryCount < 3) {
                         handleRetryWithAlternative();
                     }
@@ -279,7 +673,6 @@ const Player = () => {
 
         setRetryCount(prev => prev + 1);
 
-        // Cycle through different Mux formats
         const formats = [
             `https://stream.mux.com/${playbackId}.mp4`,
             `https://stream.mux.com/${playbackId}.m3u8`
@@ -290,7 +683,6 @@ const Player = () => {
         setVideoUrl(nextUrl);
         setError(`Trying alternative format (${retryCount + 1}/3)...`);
 
-        // Reset video element
         setTimeout(() => {
             if (videoRef.current) {
                 videoRef.current.load();
@@ -338,47 +730,15 @@ const Player = () => {
         showControlsWithTimer();
     };
 
-    const handleFullscreen = () => {
-        const element = playerContainerRef.current;
-        if (!element) return;
-
-        if (!document.fullscreenElement) {
-            if (element.requestFullscreen) {
-                element.requestFullscreen().catch(err => {
-                    console.error(`Error attempting to enable fullscreen: ${err.message}`);
-                });
-            } else if (element.webkitRequestFullscreen) {
-                element.webkitRequestFullscreen();
-            } else if (element.mozRequestFullScreen) {
-                element.mozRequestFullScreen();
-            } else if (element.msRequestFullscreen) {
-                element.msRequestFullscreen();
-            }
-        } else {
-            if (document.exitFullscreen) {
-                document.exitFullscreen();
-            } else if (document.webkitExitFullscreen) {
-                document.webkitExitFullscreen();
-            } else if (document.mozCancelFullScreen) {
-                document.mozCancelFullScreen();
-            } else if (document.msExitFullscreen) {
-                document.msExitFullscreen();
-            }
-        }
-        showControlsWithTimer();
-    };
-
     // Handle quality change
     const handleQualityChange = (quality) => {
         setSelectedQuality(quality);
         setShowSettings(false);
 
         if (quality === 'auto') {
-            // For auto quality, use the original URL
             const url = movie?.videoUrl || movie?.streamLink || '';
             setVideoUrl(url);
         } else {
-            // For specific quality, use Mux quality URLs if available
             const qualityObj = videoQualities.find(q => q.value === quality);
             if (qualityObj && qualityObj.url) {
                 setVideoUrl(qualityObj.url);
@@ -404,6 +764,12 @@ const Player = () => {
         if (!hasUserInteracted) {
             setHasUserInteracted(true);
             if (videoRef.current) {
+                // On mobile, ensure playsinline attributes are set
+                if (isMobile) {
+                    videoRef.current.setAttribute('playsinline', '');
+                    videoRef.current.setAttribute('webkit-playsinline', '');
+                }
+
                 videoRef.current.play().then(() => {
                     setPlaying(true);
                 }).catch(err => {
@@ -429,9 +795,35 @@ const Player = () => {
         return `${mm}:${ss}`;
     };
 
-    // Keyboard shortcuts
+    // Keyboard shortcuts - disabled on mobile
     useEffect(() => {
         const handleKeyDown = (e) => {
+            // Disable shortcuts on mobile
+            if (isMobile) return;
+
+            // Disable shortcuts when typing in comment field
+            if (isTypingComment) {
+                // Allow only basic editing shortcuts and Escape to exit edit mode
+                if (e.key === 'Escape') {
+                    // Escape should work to exit edit mode
+                    if (editingComment) {
+                        setEditingComment(null);
+                        setEditText('');
+                        return;
+                    }
+                    return;
+                }
+                if (
+                    e.key === 'Tab' ||
+                    (e.ctrlKey && (e.key === 'c' || e.key === 'v' || e.key === 'x' || e.key === 'a' || e.key === 'z')) ||
+                    (e.metaKey && (e.key === 'c' || e.key === 'v' || e.key === 'x' || e.key === 'a' || e.key === 'z'))
+                ) {
+                    return; // Allow these keys for editing
+                }
+                // Prevent all other player shortcuts when typing
+                return;
+            }
+
             if (!videoRef.current) return;
 
             switch (e.key) {
@@ -497,7 +889,6 @@ const Player = () => {
                     handlePlaybackRate(Math.max(playbackRate - 0.25, 0.25));
                     break;
                 case 'Escape':
-                    // Allow escape to exit fullscreen
                     break;
                 default:
                     return;
@@ -506,7 +897,7 @@ const Player = () => {
 
         document.addEventListener('keydown', handleKeyDown);
         return () => document.removeEventListener('keydown', handleKeyDown);
-    }, [playing, playbackRate]);
+    }, [playing, playbackRate, isTypingComment, editingComment, isMobile]);
 
     // Get video source with fallbacks
     const getVideoSource = () => {
@@ -518,7 +909,6 @@ const Player = () => {
             };
         }
 
-        // Determine MIME type based on URL extension
         let type = 'video/mp4';
         if (videoUrl.includes('.m3u8')) type = 'application/x-mpegURL';
         if (videoUrl.includes('.webm')) type = 'video/webm';
@@ -543,6 +933,9 @@ const Player = () => {
                     <p className="text-white text-xl">Loading player...</p>
                     {isMuxVideo && (
                         <p className="text-gray-400 text-sm mt-2">Initializing Mux stream...</p>
+                    )}
+                    {isMobile && (
+                        <p className="text-blue-400 text-sm mt-1">Mobile mode activated</p>
                     )}
                 </div>
             </div>
@@ -644,26 +1037,43 @@ const Player = () => {
                                 </div>
                             )}
 
-                            {/* Playback Rate Selector */}
-                            <div className="relative group">
-                                <button className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 rounded-lg text-sm flex items-center gap-1">
-                                    {playbackRate}x
-                                </button>
-                                <div className="absolute right-0 top-full mt-1 bg-gray-900 border border-gray-700 rounded-lg p-2 shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-20">
-                                    <div className="text-xs text-gray-400 mb-1">Playback Speed</div>
-                                    <div className="grid grid-cols-2 gap-1 min-w-[100px]">
-                                        {[0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0].map(rate => (
-                                            <button
-                                                key={rate}
-                                                onClick={() => handlePlaybackRate(rate)}
-                                                className={`px-2 py-1 text-sm rounded ${playbackRate === rate ? 'bg-red-600 text-white' : 'bg-gray-800 hover:bg-gray-700'}`}
-                                            >
-                                                {rate}x
-                                            </button>
-                                        ))}
+                            {/* Device indicator */}
+                            <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-600/20 border border-blue-600/30 rounded-full text-sm">
+                                {isMobile ? (
+                                    <>
+                                        <FaMobileAlt className="text-blue-400 text-xs" />
+                                        <span className="text-blue-300">Mobile</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <FaDesktop className="text-blue-400 text-xs" />
+                                        <span className="text-blue-300">Desktop</span>
+                                    </>
+                                )}
+                            </div>
+
+                            {/* Playback Rate Selector - Hide on mobile */}
+                            {!isMobile && (
+                                <div className="relative group">
+                                    <button className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 rounded-lg text-sm flex items-center gap-1">
+                                        {playbackRate}x
+                                    </button>
+                                    <div className="absolute right-0 top-full mt-1 bg-gray-900 border border-gray-700 rounded-lg p-2 shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-20">
+                                        <div className="text-xs text-gray-400 mb-1">Playback Speed</div>
+                                        <div className="grid grid-cols-2 gap-1 min-w-[100px]">
+                                            {[0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0].map(rate => (
+                                                <button
+                                                    key={rate}
+                                                    onClick={() => handlePlaybackRate(rate)}
+                                                    className={`px-2 py-1 text-sm rounded ${playbackRate === rate ? 'bg-red-600 text-white' : 'bg-gray-800 hover:bg-gray-700'}`}
+                                                >
+                                                    {rate}x
+                                                </button>
+                                            ))}
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -672,14 +1082,23 @@ const Player = () => {
             {/* Main Player Container */}
             <div
                 ref={playerContainerRef}
-                className="player-container relative w-full h-screen bg-black"
+                className={`player-container relative w-full ${isMobile ? 'h-[60vh]' : 'h-screen'} bg-black ${isFullscreen && isMobile ? 'mobile-fullscreen-active' : ''}`}
                 onMouseMove={showControlsWithTimer}
                 onClick={handleUserInteraction}
                 onMouseLeave={() => {
-                    if (playing && isFullscreen) {
+                    if (playing && isFullscreen && !isMobile) {
                         setTimeout(() => setShowControls(false), 1000);
                     }
                 }}
+                style={isFullscreen && isMobile ? {
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    width: '100vw',
+                    height: '100vh',
+                    zIndex: 9999,
+                    backgroundColor: '#000'
+                } : {}}
             >
                 {/* HTML5 Video Player */}
                 <div className="absolute inset-0">
@@ -709,7 +1128,7 @@ const Player = () => {
                             setError('');
                             // Auto-hide controls in fullscreen
                             if (isFullscreen) {
-                                setTimeout(() => setShowControls(false), 3000);
+                                setTimeout(() => setShowControls(false), isMobile ? 4000 : 3000);
                             }
                         }}
                         onPause={() => {
@@ -760,14 +1179,28 @@ const Player = () => {
                             console.log("⚠️ Video stalled");
                         }}
                         playsInline
+                        webkit-playsinline="true"
                         preload="auto"
                         crossOrigin="anonymous"
                         poster={movie?.poster || muxThumbnail}
+                        style={isMobile ? {
+                            objectFit: isFullscreen ? 'contain' : 'cover'
+                        } : {}}
                     >
                         <source src={videoSource.url} type={videoSource.type} />
                         Your browser does not support the video tag.
                     </video>
                 </div>
+
+                {/* Mobile Fullscreen Hint */}
+                {isMobile && !isFullscreen && playing && (
+                    <div className="absolute top-4 right-4 z-10">
+                        <div className="bg-black/70 backdrop-blur-sm px-4 py-2 rounded-full text-sm text-gray-300 flex items-center gap-2">
+                            <FaExpand className="text-xs" />
+                            <span>Tap to enter fullscreen</span>
+                        </div>
+                    </div>
+                )}
 
                 {/* Central Play/Pause Button Overlay - Only show in fullscreen when controls are hidden */}
                 {playing && isFullscreen && !showControls && (
@@ -844,9 +1277,9 @@ const Player = () => {
                     </div>
                 )}
 
-                {/* Settings/Quality Menu */}
+                {/* Settings/Quality Menu - Simplified for mobile */}
                 {showSettings && (
-                    <div className="absolute bottom-16 right-4 bg-gray-900/95 backdrop-blur-lg rounded-lg p-4 z-30 shadow-2xl min-w-[180px] border border-gray-700">
+                    <div className={`absolute ${isMobile ? 'bottom-20 left-4 right-4' : 'bottom-16 right-4'} bg-gray-900/95 backdrop-blur-lg rounded-lg p-4 z-30 shadow-2xl min-w-[180px] border border-gray-700`}>
                         <div className="flex items-center justify-between mb-3">
                             <h3 className="text-white font-semibold">Quality</h3>
                             <button
@@ -875,23 +1308,25 @@ const Player = () => {
                                 </button>
                             ))}
                         </div>
-                        <div className="mt-3 pt-3 border-t border-gray-700">
-                            <div className="text-xs text-gray-400 mb-2">Playback Speed</div>
-                            <div className="grid grid-cols-3 gap-1">
-                                {[0.75, 1.0, 1.25, 1.5, 1.75, 2.0].map(rate => (
-                                    <button
-                                        key={rate}
-                                        onClick={() => handlePlaybackRate(rate)}
-                                        className={`px-2 py-1 text-xs rounded ${playbackRate === rate
-                                            ? 'bg-red-600 text-white'
-                                            : 'bg-gray-800 hover:bg-gray-700 text-gray-300'
-                                            }`}
-                                    >
-                                        {rate}x
-                                    </button>
-                                ))}
+                        {!isMobile && (
+                            <div className="mt-3 pt-3 border-t border-gray-700">
+                                <div className="text-xs text-gray-400 mb-2">Playback Speed</div>
+                                <div className="grid grid-cols-3 gap-1">
+                                    {[0.75, 1.0, 1.25, 1.5, 1.75, 2.0].map(rate => (
+                                        <button
+                                            key={rate}
+                                            onClick={() => handlePlaybackRate(rate)}
+                                            className={`px-2 py-1 text-xs rounded ${playbackRate === rate
+                                                ? 'bg-red-600 text-white'
+                                                : 'bg-gray-800 hover:bg-gray-700 text-gray-300'
+                                                }`}
+                                        >
+                                            {rate}x
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
-                        </div>
+                        )}
                     </div>
                 )}
 
@@ -911,6 +1346,9 @@ const Player = () => {
                                 value={progress}
                                 onChange={handleSeek}
                                 className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-red-600 hover:[&::-webkit-slider-thumb]:scale-125"
+                                style={isMobile ? {
+                                    height: '6px'
+                                } : {}}
                             />
                             <div className="flex justify-between text-sm text-gray-300 mt-2">
                                 <span>{formatTime(currentTime)}</span>
@@ -928,53 +1366,57 @@ const Player = () => {
                                     title={playing ? 'Pause (Space)' : 'Play (Space)'}
                                 >
                                     {playing ? (
-                                        <FaPause className="text-3xl" />
+                                        <FaPause className={`${isMobile ? 'text-2xl' : 'text-3xl'}`} />
                                     ) : (
-                                        <FaPlay className="text-3xl ml-1" />
+                                        <FaPlay className={`${isMobile ? 'text-2xl ml-0.5' : 'text-3xl ml-1'}`} />
                                     )}
                                 </button>
 
-                                {/* Skip Controls */}
-                                <div className="flex items-center gap-2">
-                                    <button
-                                        onClick={() => handleRewind(10)}
-                                        className="hover:text-red-500 transition-colors p-2"
-                                        title="Rewind 10s (←)"
-                                    >
-                                        <FaBackward className="text-2xl" />
-                                    </button>
-                                    <button
-                                        onClick={() => handleForward(10)}
-                                        className="hover:text-red-500 transition-colors p-2"
-                                        title="Forward 10s (→)"
-                                    >
-                                        <FaForward className="text-2xl" />
-                                    </button>
-                                </div>
+                                {/* Skip Controls - Hide on mobile */}
+                                {!isMobile && (
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            onClick={() => handleRewind(10)}
+                                            className="hover:text-red-500 transition-colors p-2"
+                                            title="Rewind 10s (←)"
+                                        >
+                                            <FaBackward className="text-2xl" />
+                                        </button>
+                                        <button
+                                            onClick={() => handleForward(10)}
+                                            className="hover:text-red-500 transition-colors p-2"
+                                            title="Forward 10s (→)"
+                                        >
+                                            <FaForward className="text-2xl" />
+                                        </button>
+                                    </div>
+                                )}
 
-                                {/* Volume Controls */}
-                                <div className="flex items-center gap-3 ml-2">
-                                    <button
-                                        onClick={handleToggleMute}
-                                        className="hover:text-red-500 transition-colors p-2"
-                                        title={muted ? 'Unmute (M)' : 'Mute (M)'}
-                                    >
-                                        {muted || volume === 0 ? (
-                                            <FaVolumeMute className="text-2xl" />
-                                        ) : (
-                                            <FaVolumeUp className="text-2xl" />
-                                        )}
-                                    </button>
-                                    <input
-                                        type="range"
-                                        min="0"
-                                        max="1"
-                                        step="0.1"
-                                        value={volume}
-                                        onChange={handleVolumeChange}
-                                        className="w-32 h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-red-600 hover:[&::-webkit-slider-thumb]:scale-125"
-                                    />
-                                </div>
+                                {/* Volume Controls - Hide on mobile */}
+                                {!isMobile && (
+                                    <div className="flex items-center gap-3 ml-2">
+                                        <button
+                                            onClick={handleToggleMute}
+                                            className="hover:text-red-500 transition-colors p-2"
+                                            title={muted ? 'Unmute (M)' : 'Mute (M)'}
+                                        >
+                                            {muted || volume === 0 ? (
+                                                <FaVolumeMute className="text-2xl" />
+                                            ) : (
+                                                <FaVolumeUp className="text-2xl" />
+                                            )}
+                                        </button>
+                                        <input
+                                            type="range"
+                                            min="0"
+                                            max="1"
+                                            step="0.1"
+                                            value={volume}
+                                            onChange={handleVolumeChange}
+                                            className="w-32 h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-red-600 hover:[&::-webkit-slider-thumb]:scale-125"
+                                        />
+                                    </div>
+                                )}
 
                                 {/* Time Display */}
                                 <div className="text-lg font-medium ml-4">
@@ -988,32 +1430,34 @@ const Player = () => {
                                     {qualityOptions.find(q => q.value === selectedQuality)?.label || 'Auto'}
                                 </div>
 
-                                {/* Settings Button */}
-                                <button
-                                    onClick={() => setShowSettings(!showSettings)}
-                                    className="hover:text-red-500 transition-colors p-2"
-                                    title="Settings"
-                                >
-                                    <FaCog className="text-2xl" />
-                                </button>
+                                {/* Settings Button - Hide on mobile */}
+                                {!isMobile && (
+                                    <button
+                                        onClick={() => setShowSettings(!showSettings)}
+                                        className="hover:text-red-500 transition-colors p-2"
+                                        title="Settings"
+                                    >
+                                        <FaCog className="text-2xl" />
+                                    </button>
+                                )}
 
                                 {/* Fullscreen Button */}
                                 <button
                                     onClick={handleFullscreen}
                                     className="hover:text-red-500 transition-colors p-2"
-                                    title={`${isFullscreen ? 'Exit' : 'Enter'} Fullscreen (F)`}
+                                    title={`${isFullscreen ? 'Exit' : 'Enter'} Fullscreen ${!isMobile ? '(F)' : ''}`}
                                 >
                                     {isFullscreen ? (
-                                        <FaCompress className="text-2xl" />
+                                        <FaCompress className={`${isMobile ? 'text-xl' : 'text-2xl'}`} />
                                     ) : (
-                                        <FaExpand className="text-2xl" />
+                                        <FaExpand className={`${isMobile ? 'text-xl' : 'text-2xl'}`} />
                                     )}
                                 </button>
                             </div>
                         </div>
 
-                        {/* Quick Seek Buttons - Hide in fullscreen */}
-                        {!isFullscreen && (
+                        {/* Quick Seek Buttons - Hide in fullscreen and on mobile */}
+                        {!isFullscreen && !isMobile && (
                             <div className="flex items-center gap-2 mt-4">
                                 <span className="text-sm text-gray-400">Jump to:</span>
                                 {[10, 25, 50, 75, 90].map(percent => (
@@ -1035,7 +1479,7 @@ const Player = () => {
                 {isFullscreen && !showControls && playing && (
                     <div className="absolute top-4 left-0 right-0 text-center z-10">
                         <div className="inline-block bg-black/70 backdrop-blur-sm px-4 py-2 rounded-full text-sm text-gray-300">
-                            Move mouse or press any key to show controls
+                            {isMobile ? 'Tap screen to show controls' : 'Move mouse or press any key to show controls'}
                         </div>
                     </div>
                 )}
@@ -1117,6 +1561,241 @@ const Player = () => {
                                     )}
                                 </div>
                             )}
+
+                            {/* Comment Section */}
+                            <div className="mt-8 bg-gray-900/50 rounded-2xl p-6 border border-gray-800">
+                                <div className="flex items-center justify-between mb-6">
+                                    <h3 className="text-2xl font-bold flex items-center gap-3">
+                                        <FaComment className="text-red-500" />
+                                        Comments ({comments.length})
+                                    </h3>
+                                    <button
+                                        onClick={() => setShowComments(!showComments)}
+                                        className="px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors"
+                                    >
+                                        {showComments ? 'Hide' : 'Show'} Comments
+                                    </button>
+                                </div>
+
+                                {showComments && (
+                                    <>
+                                        {/* Comment Form */}
+                                        <div className="mb-6 p-4 bg-gray-800/50 rounded-xl">
+                                            <div className="flex items-center gap-3 mb-4">
+                                                <img
+                                                    src={userAvatar}
+                                                    alt={userName}
+                                                    className="w-10 h-10 rounded-full border-2 border-red-600"
+                                                    onError={(e) => {
+                                                        e.target.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${userName}`;
+                                                    }}
+                                                />
+                                                <div className="flex-1">
+                                                    <input
+                                                        type="text"
+                                                        value={userName}
+                                                        onChange={updateUserName}
+                                                        onFocus={handleCommentFocus}
+                                                        onBlur={handleCommentBlur}
+                                                        className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white mb-2"
+                                                        placeholder="Your name"
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            <form onSubmit={handleSubmitComment} className="relative">
+                                                <textarea
+                                                    value={newComment}
+                                                    onChange={(e) => setNewComment(e.target.value)}
+                                                    onFocus={handleCommentFocus}
+                                                    onBlur={handleCommentBlur}
+                                                    className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-xl text-white resize-none"
+                                                    placeholder="Share your thoughts about this movie..."
+                                                    rows="3"
+                                                    maxLength="500"
+                                                />
+                                                <div className="flex items-center justify-between mt-3">
+                                                    <span className="text-sm text-gray-400">
+                                                        {newComment.length}/500 characters
+                                                    </span>
+                                                    <button
+                                                        type="submit"
+                                                        disabled={isSubmitting || !newComment.trim()}
+                                                        className="px-6 py-2 bg-red-600 hover:bg-red-700 disabled:bg-gray-700 disabled:cursor-not-allowed rounded-lg text-white font-medium flex items-center gap-2 transition-colors"
+                                                    >
+                                                        {isSubmitting ? (
+                                                            <>
+                                                                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                                                Posting...
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <FaPaperPlane /> Post Comment
+                                                            </>
+                                                        )}
+                                                    </button>
+                                                </div>
+                                            </form>
+                                        </div>
+
+                                        {/* Comments List */}
+                                        <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2">
+                                            {comments.length === 0 ? (
+                                                <div className="text-center py-8 text-gray-500">
+                                                    <FaComment className="text-4xl mx-auto mb-3 opacity-50" />
+                                                    <p>No comments yet. Be the first to share your thoughts!</p>
+                                                </div>
+                                            ) : (
+                                                comments.map((comment) => (
+                                                    <div
+                                                        key={comment.id}
+                                                        className="bg-gray-800/30 rounded-xl p-4 hover:bg-gray-800/50 transition-colors"
+                                                    >
+                                                        <div className="flex items-start gap-3">
+                                                            <img
+                                                                src={comment.user_avatar}
+                                                                alt={comment.user_name}
+                                                                className="w-10 h-10 rounded-full border-2 border-red-600/50"
+                                                                onError={(e) => {
+                                                                    e.target.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${comment.user_name}`;
+                                                                }}
+                                                            />
+
+                                                            <div className="flex-1">
+                                                                <div className="flex items-center justify-between mb-2">
+                                                                    <div>
+                                                                        <span className="font-bold text-white">
+                                                                            {comment.user_name}
+                                                                        </span>
+                                                                        <span className="text-xs text-gray-400 ml-2">
+                                                                            {formatTimeAgo(comment.created_at)}
+                                                                            {comment.device_info?.platform && (
+                                                                                <span className="ml-2">
+                                                                                    • {comment.device_info.platform}
+                                                                                </span>
+                                                                            )}
+                                                                        </span>
+                                                                    </div>
+
+                                                                    {/* Comment actions */}
+                                                                    {comment.user_name === userName && (
+                                                                        <div className="flex items-center gap-2">
+                                                                            {editingComment === comment.id ? (
+                                                                                <>
+                                                                                    <button
+                                                                                        onClick={() => handleSaveEdit(comment.id)}
+                                                                                        className="p-1 text-green-500 hover:text-green-400"
+                                                                                        title="Save"
+                                                                                    >
+                                                                                        <FaCheck />
+                                                                                    </button>
+                                                                                    <button
+                                                                                        onClick={() => setEditingComment(null)}
+                                                                                        className="p-1 text-red-500 hover:text-red-400"
+                                                                                        title="Cancel"
+                                                                                    >
+                                                                                        <FaTimes />
+                                                                                    </button>
+                                                                                </>
+                                                                            ) : (
+                                                                                <>
+                                                                                    <button
+                                                                                        onClick={() => handleEditComment(comment)}
+                                                                                        className="p-1 text-blue-400 hover:text-blue-300"
+                                                                                        title="Edit"
+                                                                                    >
+                                                                                        <FaEdit size={14} />
+                                                                                    </button>
+                                                                                    <button
+                                                                                        onClick={() => handleDeleteComment(comment.id)}
+                                                                                        className="p-1 text-red-500 hover:text-red-400"
+                                                                                        title="Delete"
+                                                                                    >
+                                                                                        <FaTrash size={14} />
+                                                                                    </button>
+                                                                                </>
+                                                                            )}
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+
+                                                                {editingComment === comment.id ? (
+                                                                    <div className="mb-3">
+                                                                        <textarea
+                                                                            value={editText}
+                                                                            onChange={(e) => setEditText(e.target.value)}
+                                                                            onFocus={handleCommentFocus}
+                                                                            onBlur={handleCommentBlur}
+                                                                            className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white"
+                                                                            rows="2"
+                                                                            autoFocus
+                                                                        />
+                                                                    </div>
+                                                                ) : (
+                                                                    <p className="text-gray-200 mb-3 whitespace-pre-wrap">
+                                                                        {comment.message}
+                                                                    </p>
+                                                                )}
+
+                                                                <div className="flex items-center gap-4">
+                                                                    <button
+                                                                        onClick={() => handleLikeComment(comment.id)}
+                                                                        className="flex items-center gap-2 text-gray-400 hover:text-red-500 transition-colors"
+                                                                    >
+                                                                        <FaHeart className={comment.likes > 0 ? 'text-red-500' : ''} />
+                                                                        <span>{comment.likes || 0}</span>
+                                                                    </button>
+
+                                                                    {/* Device info icon */}
+                                                                    {comment.device_info?.platform && (
+                                                                        <div className="text-xs text-gray-500 flex items-center gap-1">
+                                                                            {comment.device_info.platform.includes('Win') && '💻'}
+                                                                            {comment.device_info.platform.includes('Mac') && '🍎'}
+                                                                            {comment.device_info.platform.includes('Linux') && '🐧'}
+                                                                            {comment.device_info.platform.includes('iPhone') && '📱'}
+                                                                            {comment.device_info.platform.includes('Android') && '📱'}
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                ))
+                                            )}
+                                        </div>
+
+                                        {/* Comments Statistics */}
+                                        {comments.length > 0 && (
+                                            <div className="mt-6 pt-4 border-t border-gray-800">
+                                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                                    <div className="text-center p-3 bg-gray-800/30 rounded-lg">
+                                                        <div className="text-2xl font-bold text-red-500">{comments.length}</div>
+                                                        <div className="text-sm text-gray-400">Total Comments</div>
+                                                    </div>
+                                                    <div className="text-center p-3 bg-gray-800/30 rounded-lg">
+                                                        <div className="text-2xl font-bold text-yellow-500">
+                                                            {comments.reduce((sum, c) => sum + (c.likes || 0), 0)}
+                                                        </div>
+                                                        <div className="text-sm text-gray-400">Total Likes</div>
+                                                    </div>
+                                                    <div className="text-center p-3 bg-gray-800/30 rounded-lg">
+                                                        <div className="text-2xl font-bold text-green-500">
+                                                            {new Set(comments.map(c => c.user_name)).size}
+                                                        </div>
+                                                        <div className="text-sm text-gray-400">Unique Users</div>
+                                                    </div>
+                                                    <div className="text-center p-3 bg-gray-800/30 rounded-lg">
+                                                        <div className="text-2xl font-bold text-blue-500">
+                                                            {comments.filter(c => c.device_info?.platform?.includes('Mobile')).length}
+                                                        </div>
+                                                        <div className="text-sm text-gray-400">Mobile Users</div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </>
+                                )}
+                            </div>
                         </div>
 
                         <div className="space-y-6">
@@ -1177,6 +1856,7 @@ const Player = () => {
                                         <div className={`w-3 h-3 rounded-full animate-pulse ${playing ? 'bg-green-500' : 'bg-red-500'}`}></div>
                                         <span className="text-gray-300">
                                             {playing ? 'Playing' : 'Paused'} • {isMuxVideo ? 'Mux' : 'Direct'}
+                                            {isMobile && ' • 📱'}
                                         </span>
                                     </div>
 
@@ -1255,6 +1935,12 @@ const Player = () => {
                                         <span className="text-gray-400">Download:</span>
                                         <span className={`font-medium ${movie?.download_link ? 'text-green-400' : 'text-gray-400'}`}>
                                             {movie?.download_link ? 'Available' : 'Not Available'}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-gray-400">Device:</span>
+                                        <span className="text-blue-300">
+                                            {isMobile ? 'Mobile' : 'Desktop'}
                                         </span>
                                     </div>
                                 </div>
