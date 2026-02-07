@@ -25,74 +25,74 @@ const WhatsAppFloatingButton = () => {
     };
 
     return (
-        <div className="fixed bottom-6 left-6 z-50">
+        <div className="fixed bottom-4 right-4 z-50">
             {/* Expanded Menu */}
             {isExpanded && (
-                <div className="absolute bottom-16 left-0 mb-3 space-y-3">
+                <div className="absolute bottom-14 right-0 mb-2 space-y-2">
                     {/* Group Chat Option */}
                     <button
                         onClick={() => openLink(whatsappLinks.group)}
-                        className="flex items-center gap-3 bg-gradient-to-r from-green-600 to-green-500 hover:from-green-700 hover:to-green-600 text-white px-4 py-3 rounded-full shadow-lg transform transition-all duration-300 hover:scale-105 hover:shadow-xl group animate-slide-up"
+                        className="flex items-center gap-2 bg-gradient-to-r from-green-600 to-green-500 hover:from-green-700 hover:to-green-600 text-white px-3 py-2 rounded-full shadow-lg transform transition-all duration-300 hover:scale-105 hover:shadow-xl group animate-slide-up"
                         style={{ animationDelay: '0.1s' }}
                     >
-                        <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
-                            <FaUsers className="text-white text-lg" />
+                        <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
+                            <FaUsers className="text-white text-sm" />
                         </div>
                         <div className="text-left">
-                            <div className="font-semibold">Join Our Group</div>
-                            <div className="text-xs opacity-90">Connect with community</div>
+                            <div className="font-semibold text-sm">Join Group</div>
+                            <div className="text-xs opacity-90">Community</div>
                         </div>
                     </button>
 
                     {/* Direct Chat Option */}
                     <button
                         onClick={() => openLink(whatsappLinks.direct)}
-                        className="flex items-center gap-3 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white px-4 py-3 rounded-full shadow-lg transform transition-all duration-300 hover:scale-105 hover:shadow-xl group animate-slide-up"
+                        className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white px-3 py-2 rounded-full shadow-lg transform transition-all duration-300 hover:scale-105 hover:shadow-xl group animate-slide-up"
                         style={{ animationDelay: '0.2s' }}
                     >
-                        <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
-                            <FaComment className="text-white text-lg" />
+                        <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
+                            <FaComment className="text-white text-sm" />
                         </div>
                         <div className="text-left">
-                            <div className="font-semibold">Chat Directly</div>
-                            <div className="text-xs opacity-90">Get instant support</div>
+                            <div className="font-semibold text-sm">Direct Chat</div>
+                            <div className="text-xs opacity-90">Get Support</div>
                         </div>
                     </button>
                 </div>
             )}
 
-            {/* Main WhatsApp Button */}
+            {/* Main WhatsApp Button - Smaller Size */}
             <button
                 onClick={() => setIsExpanded(!isExpanded)}
-                className="relative w-16 h-16 bg-gradient-to-r from-green-600 to-green-500 hover:from-green-700 hover:to-green-600 rounded-full shadow-2xl flex items-center justify-center transform transition-all duration-300 hover:scale-110 group"
+                className="relative w-14 h-14 bg-gradient-to-r from-green-600 to-green-500 hover:from-green-700 hover:to-green-600 rounded-full shadow-2xl flex items-center justify-center transform transition-all duration-300 hover:scale-110 group"
             >
-                {/* Notification Badge */}
-                <div className="absolute -top-1 -right-1 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center animate-pulse">
+                {/* Notification Badge - Smaller */}
+                <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center animate-pulse">
                     <span className="text-white text-xs font-bold">!</span>
                 </div>
 
-                {/* WhatsApp Icon */}
+                {/* WhatsApp Icon - Smaller */}
                 {isExpanded ? (
-                    <FaTimes className="text-white text-2xl transition-transform duration-300 rotate-180" />
+                    <FaTimes className="text-white text-xl transition-transform duration-300 rotate-180" />
                 ) : (
                     <>
-                        <FaWhatsapp className="text-white text-3xl transition-transform duration-300 group-hover:scale-110" />
-                        {/* Pulsing Effect */}
+                        <FaWhatsapp className="text-white text-2xl transition-transform duration-300 group-hover:scale-110" />
+                        {/* Pulsing Effect - Smaller */}
                         <div className="absolute inset-0 rounded-full bg-green-500 animate-ping opacity-20"></div>
                     </>
                 )}
 
-                {/* Tooltip */}
-                <div className="absolute right-full mr-3 top-1/2 transform -translate-y-1/2 bg-black text-white text-sm px-3 py-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap">
-                    Chat with us on WhatsApp
+                {/* Tooltip - Right side tooltip since button is on right */}
+                <div className="absolute right-full mr-3 top-1/2 transform -translate-y-1/2 bg-black text-white text-xs px-2 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap">
+                    Chat with us
                     <div className="absolute left-full top-1/2 transform -translate-y-1/2 border-8 border-transparent border-l-black"></div>
                 </div>
             </button>
 
-            {/* Connection Status */}
-            <div className="absolute -bottom-8 left-0 right-0 text-center">
-                <div className={`text-xs font-medium ${whatsappLinks.group !== "https://chat.whatsapp.com/YOUR_INVITE_CODE" ? 'text-green-400' : 'text-amber-400'}`}>
-                    {whatsappLinks.group !== "https://chat.whatsapp.com/YOUR_INVITE_CODE" ? '✓ WhatsApp Connected' : '⚠️ Configure WhatsApp'}
+            {/* Connection Status - Smaller and repositioned */}
+            <div className="absolute -bottom-6 right-0 left-0 text-center">
+                <div className={`text-xs ${whatsappLinks.group !== "https://chat.whatsapp.com/YOUR_INVITE_CODE" ? 'text-green-400' : 'text-amber-400'}`}>
+                    {whatsappLinks.group !== "https://chat.whatsapp.com/YOUR_INVITE_CODE" ? '✓ Connected' : '⚠️ Configure'}
                 </div>
             </div>
 
@@ -116,4 +116,5 @@ const WhatsAppFloatingButton = () => {
     );
 };
 
+// Fixed export statement - was misspelled "defult"
 export default WhatsAppFloatingButton;

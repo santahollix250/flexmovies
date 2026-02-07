@@ -1,6 +1,143 @@
 import { createContext, useEffect, useState, useCallback } from "react";
 import { supabase } from '../lib/supabase';
 
+// Supported video platforms
+const VIDEO_PLATFORMS = {
+  VIMEO: 'vimeo',
+  YOUTUBE: 'youtube',
+  MUX: 'mux',
+  DIRECT: 'direct',
+  EMBED: 'embed'
+};
+
+// Helper functions for all platforms
+const extractVideoId = (url, platform) => {
+  if (!url || typeof url !== 'string') return '';
+
+  // If it's just an ID (no URL)
+  if (platform === VIDEO_PLATFORMS.VIMEO && /^\d{5,}$/.test(url.trim())) {
+    return url.trim();
+  }
+  if (platform === VIDEO_PLATFORMS.YOUTUBE && /^[a-zA-Z0-9_-]{11}$/.test(url.trim())) {
+    return url.trim();
+  }
+  if (platform === VIDEO_PLATFORMS.MUX && /^[a-zA-Z0-9]+$/.test(url.trim())) {
+    return url.trim();
+  }
+
+  // Extract from URL patterns
+  let match;
+
+  switch (platform) {
+    case VIDEO_PLATFORMS.VIMEO:
+      // https://vimeo.com/123456789
+      match = url.match(/vimeo\.com\/(\d+)/);
+      if (match) return match[1];
+      // https://player.vimeo.com/video/123456789
+      match = url.match(/player\.vimeo\.com\/video\/(\d+)/);
+      if (match) return match[1];
+      // https://vimeo.com/channels/xxx/123456789
+      match = url.match(/vimeo\.com\/channels\/[^\/]+\/(\d+)/);
+      if (match) return match[1];
+      break;
+
+    case VIDEO_PLATFORMS.YOUTUBE:
+      // https://youtube.com/watch?v=VIDEO_ID
+      // https://youtu.be/VIDEO_ID
+      // https://youtube.com/embed/VIDEO_ID
+      match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/);
+      if (match) return match[1];
+      break;
+
+    case VIDEO_PLATFORMS.MUX:
+      // https://stream.mux.com/VIDEO_ID.m3u8
+      // https://mux.com/VIDEO_ID
+      match = url.match(/(?:stream\.)?mux\.com\/([a-zA-Z0-9]+)/);
+      if (match) return match[1];
+      break;
+  }
+
+  return '';
+};
+
+const generateEmbedUrl = (videoId, platform, quality = '1080') => {
+  if (!videoId) return '';
+
+  switch (platform) {
+    case VIDEO_PLATFORMS.VIMEO:
+      const params = new URLSearchParams({
+        title: 0,
+        byline: 0,
+        portrait: 0,
+        badge: 0,
+        autopause: 0,
+        quality: quality === 'auto' ? '1080p' : `${quality}p`
+      });
+      return `https://player.vimeo.com/video/${videoId}?${params.toString()}`;
+
+    case VIDEO_PLATFORMS.YOUTUBE:
+      return `https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1&showinfo=0`;
+
+    case VIDEO_PLATFORMS.MUX:
+      return `https://stream.mux.com/${videoId}.m3u8`;
+
+    case VIDEO_PLATFORMS.DIRECT:
+      return videoId; // Direct URLs are already embeddable
+
+    case VIDEO_PLATFORMS.EMBED:
+      return videoId; // Embed code is already complete
+
+    default:
+      return '';
+  }
+};
+
+const detectPlatform = (url) => {
+  if (!url || typeof url !== 'string') return VIDEO_PLATFORMS.VIMEO;
+
+  // Check for Vimeo
+  if (/vimeo\.com/.test(url) || /^\d{5,}$/.test(url.trim())) {
+    return VIDEO_PLATFORMS.VIMEO;
+  }
+
+  // Check for YouTube
+  if (/youtube\.com/.test(url) || /youtu\.be/.test(url)) {
+    return VIDEO_PLATFORMS.YOUTUBE;
+  }
+
+  // Check for Mux
+  if (/mux\.com/.test(url) || /^[a-zA-Z0-9]+$/.test(url.trim())) {
+    return VIDEO_PLATFORMS.MUX;
+  }
+
+  // Check for direct video files
+  if (/\.(mp4|webm|mkv|avi|mov|m3u8|mpd|m4v|wmv|flv|ogg|ogv)$/i.test(url)) {
+    return VIDEO_PLATFORMS.DIRECT;
+  }
+
+  // Check for embed code
+  if (url.includes('<iframe') || url.includes('embed')) {
+    return VIDEO_PLATFORMS.EMBED;
+  }
+
+  // Default to Vimeo
+  return VIDEO_PLATFORMS.VIMEO;
+};
+
+const processVideoUrl = (videoUrl, videoType) => {
+  if (!videoUrl) return { id: '', embedUrl: '', type: videoType || VIDEO_PLATFORMS.VIMEO };
+
+  const detectedType = videoType || detectPlatform(videoUrl);
+  const videoId = extractVideoId(videoUrl, detectedType);
+  const embedUrl = generateEmbedUrl(videoId, detectedType);
+
+  return {
+    id: videoId,
+    embedUrl: embedUrl,
+    type: detectedType
+  };
+};
+
 export const MoviesContext = createContext({
   movies: [],
   episodes: [],
@@ -102,34 +239,41 @@ export function MoviesProvider({ children }) {
       } else {
         console.log(`✅ Fetched ${moviesData?.length || 0} movies from Supabase`);
 
-        // Debug: Check first movie data
-        if (moviesData && moviesData.length > 0) {
-          console.log("🔍 First movie from Supabase:", {
-            title: moviesData[0].title,
-            download_link: moviesData[0].download_link,
-            allFields: Object.keys(moviesData[0])
-          });
-        }
+        // Transform movies data with multi-platform support
+        const transformedMovies = (moviesData || []).map(movie => {
+          const videoInfo = processVideoUrl(movie.video_url, movie.video_type);
 
-        const transformedMovies = (moviesData || []).map(movie => ({
-          id: movie.id,
-          title: movie.title || "Untitled",
-          description: movie.description || '',
-          poster: movie.poster || 'https://images.unsplash.com/photo-1489599809516-9827b6d1cf13?w=400',
-          background: movie.background || movie.poster || '',
-          rating: movie.rating || '7.0',
-          category: movie.category || 'General',
-          type: movie.type || 'movie',
-          streamLink: movie.stream_link || '',
-          download_link: movie.download_link || '', // ADDED THIS LINE
-          nation: movie.nation || '',
-          translator: movie.translator || '',
-          year: movie.year || new Date().getFullYear(),
-          totalSeasons: movie.total_seasons || 1,
-          totalEpisodes: movie.total_episodes || 0,
-          created_at: movie.created_at || new Date().toISOString(),
-          updated_at: movie.updated_at
-        }));
+          return {
+            id: movie.id,
+            title: movie.title || "Untitled",
+            description: movie.description || '',
+            poster: movie.poster || 'https://images.unsplash.com/photo-1489599809516-9827b6d1cf13?w=400',
+            background: movie.background || movie.poster || '',
+            rating: movie.rating || '7.0',
+            category: movie.category || 'General',
+            type: movie.type || 'movie',
+            videoUrl: movie.video_url || movie.stream_link || '',
+            streamLink: videoInfo.embedUrl || movie.stream_link || '',
+            download_link: movie.download_link || '',
+            download: movie.download || '', // Added download field
+            nation: movie.nation || '',
+            translator: movie.translator || '',
+            year: movie.year || new Date().getFullYear(),
+            totalSeasons: movie.total_seasons || 1,
+            totalEpisodes: movie.total_episodes || 0,
+            videoType: videoInfo.type,
+            videoId: videoInfo.id,
+            duration: movie.duration || '',
+            quality: movie.quality || 'HD',
+            director: movie.director || '',
+            imdbRating: movie.imdb_rating || null,
+            status: movie.status || 'completed',
+            views: movie.views || 0,
+            embedCode: movie.embed_code || '',
+            created_at: movie.created_at || new Date().toISOString(),
+            updated_at: movie.updated_at
+          };
+        });
 
         setMovies(transformedMovies);
         localStorage.setItem('simba-movies', JSON.stringify(transformedMovies));
@@ -147,22 +291,30 @@ export function MoviesProvider({ children }) {
         updateProgress(95);
 
         if (!episodesError && episodesData) {
-          const transformedEpisodes = (episodesData || []).map(episode => ({
-            id: episode.id,
-            seriesId: episode.series_id,
-            seriesTitle: episode.series_title || "Unknown Series",
-            title: episode.title || "Untitled Episode",
-            description: episode.description || '',
-            seasonNumber: episode.season_number || 1,
-            episodeNumber: episode.episode_number || 1,
-            duration: episode.duration || '45m',
-            streamLink: episode.stream_link || '',
-            download_link: episode.download_link || '', // ADDED THIS LINE
-            thumbnail: episode.thumbnail || '',
-            airDate: episode.air_date,
-            created_at: episode.created_at || new Date().toISOString(),
-            updated_at: episode.updated_at
-          }));
+          const transformedEpisodes = (episodesData || []).map(episode => {
+            const videoInfo = processVideoUrl(episode.video_url, episode.video_type);
+
+            return {
+              id: episode.id,
+              seriesId: episode.series_id,
+              seriesTitle: episode.series_title || "Unknown Series",
+              title: episode.title || "Untitled Episode",
+              description: episode.description || '',
+              seasonNumber: episode.season_number || 1,
+              episodeNumber: episode.episode_number || 1,
+              duration: episode.duration || '45m',
+              videoUrl: episode.video_url || episode.stream_link || '',
+              streamLink: videoInfo.embedUrl || episode.stream_link || '',
+              download_link: episode.download_link || '',
+              thumbnail: episode.thumbnail || '',
+              airDate: episode.air_date,
+              videoType: videoInfo.type,
+              videoId: videoInfo.id,
+              embedCode: episode.embed_code || '',
+              created_at: episode.created_at || new Date().toISOString(),
+              updated_at: episode.updated_at
+            };
+          });
 
           setEpisodes(transformedEpisodes);
           localStorage.setItem('simba-episodes', JSON.stringify(transformedEpisodes));
@@ -178,37 +330,50 @@ export function MoviesProvider({ children }) {
       setError(error.message);
       updateProgress(100);
     } finally {
-      // Add a small delay before setting loading to false for smoother transition
       setTimeout(() => {
         setLoading(false);
       }, 500);
     }
   }, [isOnline, updateProgress]);
 
-  // Add movie
+  // Add movie with multi-platform support
   const addMovie = useCallback(async (movie) => {
     try {
       console.log("📤 Adding movie to Supabase:", {
         title: movie.title,
-        download_link: movie.download_link, // Debug log
+        videoUrl: movie.videoUrl,
+        videoType: movie.videoType,
         allMovieData: movie
       });
+
+      const videoInfo = processVideoUrl(movie.videoUrl, movie.videoType);
 
       const movieData = {
         title: movie.title || "Untitled",
         description: movie.description || "",
         poster: movie.poster || "https://images.unsplash.com/photo-1489599809516-9827b6d1cf13?w=400",
         background: movie.background || movie.poster || "",
-        rating: movie.rating || "7.0",
         category: movie.category || "General",
         type: movie.type || "movie",
-        stream_link: movie.streamLink || "",
-        download_link: movie.download_link || "", // ADDED THIS LINE
+        video_url: movie.videoUrl || "",
+        stream_link: videoInfo.embedUrl || movie.streamLink || "",
+        download_link: movie.download_link || "",
+        download: movie.download || "", // Added download field
         nation: movie.nation || "",
         translator: movie.translator || "",
         year: movie.year || new Date().getFullYear(),
         total_seasons: movie.totalSeasons || 1,
         total_episodes: movie.totalEpisodes || 0,
+        video_type: videoInfo.type,
+        video_id: videoInfo.id || null,
+        embed_url: videoInfo.embedUrl || null,
+        embed_code: movie.embedCode || null,
+        duration: movie.duration || null,
+        quality: movie.quality || 'HD',
+        director: movie.director || null,
+        imdb_rating: movie.imdbRating || null,
+        status: movie.status || 'completed',
+        views: movie.views || 0,
         created_at: new Date().toISOString()
       };
 
@@ -226,16 +391,26 @@ export function MoviesProvider({ children }) {
         description: data.description,
         poster: data.poster,
         background: data.background,
-        rating: data.rating,
         category: data.category,
         type: data.type,
-        streamLink: data.stream_link,
-        download_link: data.download_link || "", // ADDED THIS LINE
+        videoUrl: data.video_url || '',
+        streamLink: data.embed_url || data.stream_link || '',
+        download_link: data.download_link || "",
+        download: data.download || "", // Added download field
         nation: data.nation,
         translator: data.translator,
         year: data.year,
         totalSeasons: data.total_seasons || 1,
         totalEpisodes: data.total_episodes || 0,
+        videoType: data.video_type || 'direct',
+        videoId: data.video_id || '',
+        duration: data.duration || '',
+        quality: data.quality || 'HD',
+        director: data.director || '',
+        imdbRating: data.imdb_rating || null,
+        status: data.status || 'completed',
+        views: data.views || 0,
+        embedCode: data.embed_code || '',
         created_at: data.created_at
       };
 
@@ -249,6 +424,8 @@ export function MoviesProvider({ children }) {
     } catch (err) {
       console.error("Error adding movie:", err);
 
+      const videoInfo = processVideoUrl(movie.videoUrl, movie.videoType);
+
       // Create local movie
       const localMovie = {
         id: `local-${Date.now()}`,
@@ -256,16 +433,26 @@ export function MoviesProvider({ children }) {
         description: movie.description || "",
         poster: movie.poster || "https://images.unsplash.com/photo-1489599809516-9827b6d1cf13?w=400",
         background: movie.background || movie.poster || "",
-        rating: movie.rating || "7.0",
         category: movie.category || "General",
         type: movie.type || "movie",
-        streamLink: movie.streamLink || "",
-        download_link: movie.download_link || "", // ADDED THIS LINE
+        videoUrl: movie.videoUrl || "",
+        streamLink: videoInfo.embedUrl || movie.streamLink || "",
+        download_link: movie.download_link || "",
+        download: movie.download || "", // Added download field
         nation: movie.nation || "",
         translator: movie.translator || "",
         year: movie.year || new Date().getFullYear(),
         totalSeasons: movie.totalSeasons || 1,
         totalEpisodes: movie.totalEpisodes || 0,
+        videoType: videoInfo.type,
+        videoId: videoInfo.id,
+        duration: movie.duration || '',
+        quality: movie.quality || 'HD',
+        director: movie.director || '',
+        imdbRating: movie.imdbRating || null,
+        status: movie.status || 'completed',
+        views: movie.views || 0,
+        embedCode: movie.embedCode || '',
         created_at: new Date().toISOString()
       };
 
@@ -277,31 +464,45 @@ export function MoviesProvider({ children }) {
     }
   }, [movies]);
 
-  // Update movie
+  // Update movie with multi-platform support
   const updateMovie = useCallback(async (id, updates) => {
     try {
       console.log("📤 Updating movie in Supabase:", {
         id: id,
         title: updates.title,
-        download_link: updates.download_link, // Debug log
+        videoUrl: updates.videoUrl,
+        videoType: updates.videoType,
         allUpdates: updates
       });
+
+      const videoInfo = processVideoUrl(updates.videoUrl, updates.videoType);
 
       const supabaseUpdates = {
         title: updates.title,
         description: updates.description,
         poster: updates.poster,
         background: updates.background,
-        rating: updates.rating,
         category: updates.category,
         type: updates.type,
-        stream_link: updates.streamLink,
-        download_link: updates.download_link || "", // ADDED THIS LINE
+        video_url: updates.videoUrl || '',
+        stream_link: videoInfo.embedUrl || updates.streamLink || '',
+        download_link: updates.download_link || "",
+        download: updates.download || "", // Added download field
         nation: updates.nation,
         translator: updates.translator,
         year: updates.year,
         total_seasons: updates.totalSeasons,
         total_episodes: updates.totalEpisodes,
+        video_type: videoInfo.type,
+        video_id: videoInfo.id || null,
+        embed_url: videoInfo.embedUrl || null,
+        embed_code: updates.embedCode || null,
+        duration: updates.duration || null,
+        quality: updates.quality || 'HD',
+        director: updates.director || null,
+        imdb_rating: updates.imdbRating || null,
+        status: updates.status || 'completed',
+        views: updates.views || 0,
         updated_at: new Date().toISOString()
       };
 
@@ -312,8 +513,15 @@ export function MoviesProvider({ children }) {
 
       if (error) throw error;
 
+      const updatedMovieData = {
+        ...updates,
+        videoType: videoInfo.type,
+        videoId: videoInfo.id,
+        streamLink: videoInfo.embedUrl || updates.streamLink || ''
+      };
+
       const updatedMovies = movies.map(movie =>
-        movie.id === id ? { ...movie, ...updates } : movie
+        movie.id === id ? { ...movie, ...updatedMovieData } : movie
       );
 
       setMovies(updatedMovies);
@@ -324,8 +532,17 @@ export function MoviesProvider({ children }) {
     } catch (err) {
       console.error("Error updating movie:", err);
 
+      const videoInfo = processVideoUrl(updates.videoUrl, updates.videoType);
+
+      const updatedMovieData = {
+        ...updates,
+        videoType: videoInfo.type,
+        videoId: videoInfo.id,
+        streamLink: videoInfo.embedUrl || updates.streamLink || ''
+      };
+
       const updatedMovies = movies.map(movie =>
-        movie.id === id ? { ...movie, ...updates } : movie
+        movie.id === id ? { ...movie, ...updatedMovieData } : movie
       );
 
       setMovies(updatedMovies);
@@ -366,9 +583,11 @@ export function MoviesProvider({ children }) {
     return episodes.filter(ep => ep.seriesId === seriesId);
   }, [episodes]);
 
-  // Add episode
+  // Add episode with multi-platform support
   const addEpisode = useCallback(async (episodeData) => {
     try {
+      const videoInfo = processVideoUrl(episodeData.videoUrl, episodeData.videoType);
+
       const episodeForSupabase = {
         series_id: episodeData.seriesId,
         series_title: episodeData.seriesTitle || "Unknown Series",
@@ -377,10 +596,14 @@ export function MoviesProvider({ children }) {
         season_number: parseInt(episodeData.seasonNumber) || 1,
         episode_number: parseInt(episodeData.episodeNumber) || 1,
         duration: episodeData.duration || "45m",
-        stream_link: episodeData.streamLink || "",
-        download_link: episodeData.download_link || "", // ADDED THIS LINE
+        video_url: episodeData.videoUrl || "",
+        stream_link: videoInfo.embedUrl || episodeData.streamLink || "",
+        download_link: episodeData.download_link || "",
         thumbnail: episodeData.thumbnail || "",
         air_date: episodeData.airDate || null,
+        video_type: videoInfo.type,
+        video_id: videoInfo.id || null,
+        embed_code: episodeData.embedCode || null,
         created_at: new Date().toISOString()
       };
 
@@ -401,10 +624,14 @@ export function MoviesProvider({ children }) {
         seasonNumber: data.season_number || 1,
         episodeNumber: data.episode_number || 1,
         duration: data.duration,
+        videoUrl: data.video_url || '',
         streamLink: data.stream_link || '',
-        download_link: data.download_link || '', // ADDED THIS LINE
+        download_link: data.download_link || '',
         thumbnail: data.thumbnail,
         airDate: data.air_date,
+        videoType: data.video_type || 'direct',
+        videoId: data.video_id || '',
+        embedCode: data.embed_code || '',
         created_at: data.created_at
       };
 
@@ -417,9 +644,14 @@ export function MoviesProvider({ children }) {
     } catch (error) {
       console.error('Failed to add episode:', error);
 
+      const videoInfo = processVideoUrl(episodeData.videoUrl, episodeData.videoType);
+
       const localEpisode = {
         id: `local-${Date.now()}`,
         ...episodeData,
+        videoType: videoInfo.type,
+        videoId: videoInfo.id,
+        streamLink: videoInfo.embedUrl || episodeData.streamLink || '',
         created_at: new Date().toISOString()
       };
 
@@ -431,19 +663,25 @@ export function MoviesProvider({ children }) {
     }
   }, [episodes]);
 
-  // Update episode
+  // Update episode with multi-platform support
   const updateEpisode = useCallback(async (episodeId, updates) => {
     try {
+      const videoInfo = processVideoUrl(updates.videoUrl, updates.videoType);
+
       const supabaseUpdates = {
         title: updates.title,
         description: updates.description,
         season_number: updates.seasonNumber,
         episode_number: updates.episodeNumber,
         duration: updates.duration,
-        stream_link: updates.streamLink,
-        download_link: updates.download_link || "", // ADDED THIS LINE
+        video_url: updates.videoUrl || '',
+        stream_link: videoInfo.embedUrl || updates.streamLink || '',
+        download_link: updates.download_link || "",
         thumbnail: updates.thumbnail,
         air_date: updates.airDate,
+        video_type: videoInfo.type,
+        video_id: videoInfo.id || null,
+        embed_code: updates.embedCode || null,
         updated_at: new Date().toISOString()
       };
 
@@ -456,8 +694,15 @@ export function MoviesProvider({ children }) {
 
       if (error) throw error;
 
+      const updatedEpisodeData = {
+        ...updates,
+        videoType: videoInfo.type,
+        videoId: videoInfo.id,
+        streamLink: videoInfo.embedUrl || updates.streamLink || ''
+      };
+
       const updatedEpisodes = episodes.map(ep =>
-        ep.id === episodeId ? { ...ep, ...updates } : ep
+        ep.id === episodeId ? { ...ep, ...updatedEpisodeData } : ep
       );
 
       setEpisodes(updatedEpisodes);
@@ -468,8 +713,17 @@ export function MoviesProvider({ children }) {
     } catch (error) {
       console.error('Error updating episode:', error);
 
+      const videoInfo = processVideoUrl(updates.videoUrl, updates.videoType);
+
+      const updatedEpisodeData = {
+        ...updates,
+        videoType: videoInfo.type,
+        videoId: videoInfo.id,
+        streamLink: videoInfo.embedUrl || updates.streamLink || ''
+      };
+
       const updatedEpisodes = episodes.map(ep =>
-        ep.id === episodeId ? { ...ep, ...updates } : ep
+        ep.id === episodeId ? { ...ep, ...updatedEpisodeData } : ep
       );
 
       setEpisodes(updatedEpisodes);

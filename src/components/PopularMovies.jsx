@@ -619,46 +619,6 @@ export default function Movies() {
             </div>
 
             {/* Hero Content Type Selector */}
-            <div className="absolute top-28 left-1/2 transform -translate-x-1/2 z-10">
-              <div className="flex gap-2 bg-black/60 backdrop-blur-lg rounded-full p-1 border border-gray-800">
-                <button
-                  onClick={() => {
-                    setHeroContentType("all");
-                    setCurrentHeroSlide(0);
-                  }}
-                  className={`px-4 py-2 rounded-full text-sm font-medium transition-all flex items-center gap-2 ${heroContentType === "all"
-                    ? "bg-gradient-to-r from-red-600 to-purple-600 text-white"
-                    : "text-gray-300 hover:text-white"
-                    }`}
-                >
-                  <span className="text-xs">🎬</span> All Latest
-                </button>
-                <button
-                  onClick={() => {
-                    setHeroContentType("movies");
-                    setCurrentHeroSlide(0);
-                  }}
-                  className={`px-4 py-2 rounded-full text-sm font-medium transition-all flex items-center gap-2 ${heroContentType === "movies"
-                    ? "bg-red-600 text-white"
-                    : "text-gray-300 hover:text-white"
-                    }`}
-                >
-                  <FaFilm /> Movies
-                </button>
-                <button
-                  onClick={() => {
-                    setHeroContentType("series");
-                    setCurrentHeroSlide(0);
-                  }}
-                  className={`px-4 py-2 rounded-full text-sm font-medium transition-all flex items-center gap-2 ${heroContentType === "series"
-                    ? "bg-purple-600 text-white"
-                    : "text-gray-300 hover:text-white"
-                    }`}
-                >
-                  <FaTv /> Series
-                </button>
-              </div>
-            </div>
 
             {/* Hero Navigation */}
             <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-2">
