@@ -70,6 +70,30 @@ export default function Movies() {
 
   const currentHeroItem = filteredHeroContent[currentHeroSlide] || {};
 
+  // FIXED: Handle hero play button click
+  const handleHeroPlayClick = () => {
+    if (!currentHeroItem || !currentHeroItem.id) {
+      console.error("No hero item selected");
+      return;
+    }
+
+    // Navigate to player page with movie data
+    navigate(`/player/${currentHeroItem.id}`, {
+      state: {
+        movie: currentHeroItem
+      }
+    });
+  };
+
+  // FIXED: Handle hero info button click
+  const handleHeroInfoClick = () => {
+    if (!currentHeroItem) return;
+
+    // You can implement a modal or navigate to movie details page
+    // For now, let's just show an alert with more info
+    alert(`More information about: ${currentHeroItem.title}\n\n${currentHeroItem.description || 'No description available.'}`);
+  };
+
   // Update search query when URL changes and sync with URL
   useEffect(() => {
     setSearchQuery(urlSearchQuery);
@@ -608,17 +632,23 @@ export default function Movies() {
                   {currentHeroItem.description || `Watch this amazing ${currentHeroItem.type === "series" ? 'series' : 'movie'} now!`}
                 </p>
                 <div className="flex gap-4">
-                  <button className="px-8 py-3 bg-red-600 hover:bg-red-700 rounded-lg text-white font-semibold flex items-center gap-2 transition-colors">
+                  {/* FIXED: Added onClick handler to Play button */}
+                  <button
+                    onClick={handleHeroPlayClick}
+                    className="px-8 py-3 bg-red-600 hover:bg-red-700 rounded-lg text-white font-semibold flex items-center gap-2 transition-colors"
+                  >
                     <FaPlay /> {currentHeroItem.type === "series" ? "Watch Episode 1" : "Watch Now"}
                   </button>
-                  <button className="px-8 py-3 bg-gray-800/70 hover:bg-gray-800 rounded-lg text-white font-semibold backdrop-blur-sm flex items-center gap-2">
+                  {/* FIXED: Added onClick handler to Info button */}
+                  <button
+                    onClick={handleHeroInfoClick}
+                    className="px-8 py-3 bg-gray-800/70 hover:bg-gray-800 rounded-lg text-white font-semibold backdrop-blur-sm flex items-center gap-2 transition-colors"
+                  >
                     <FaInfoCircle /> More Info
                   </button>
                 </div>
               </div>
             </div>
-
-            {/* Hero Content Type Selector */}
 
             {/* Hero Navigation */}
             <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-2">

@@ -6,7 +6,7 @@ import {
   FaCheckCircle, FaExclamationTriangle, FaTimes, FaList,
   FaDownload, FaSignOutAlt, FaVideo, FaCode,
   FaSearch, FaUpload,
-  FaMountain, FaYoutube,
+  FaMountain, FaYoutube, FaPlayCircle, // Added FaPlayCircle for DailyMotion
   FaServer, FaCopy, FaFileVideo, FaCalendar, FaStar,
   FaClosedCaptioning, FaMicrophone, FaUser, FaTag
 } from "react-icons/fa";
@@ -45,16 +45,17 @@ function Admin({ onLogout }) {
     isOnline
   } = context;
 
-  // Supported video platforms
+  // Supported video platforms - ADDED DAILYMOTION
   const VIDEO_PLATFORMS = {
     VIMEO: 'vimeo',
     YOUTUBE: 'youtube',
     MUX: 'mux',
     DIRECT: 'direct',
-    EMBED: 'embed'
+    EMBED: 'embed',
+    DAILYMOTION: 'dailymotion' // ADDED DAILYMOTION
   };
 
-  // Platform configurations
+  // Platform configurations - ADDED DAILYMOTION CONFIG
   const platformConfig = {
     [VIDEO_PLATFORMS.VIMEO]: {
       name: 'Vimeo',
@@ -95,6 +96,14 @@ function Admin({ onLogout }) {
       description: 'Custom embed iframe',
       placeholder: 'Paste embed iframe code',
       embedPattern: null
+    },
+    [VIDEO_PLATFORMS.DAILYMOTION]: { // ADDED DAILYMOTION CONFIG
+      name: 'DailyMotion',
+      color: '#0066DC',
+      icon: FaPlayCircle,
+      description: 'Video sharing platform',
+      placeholder: 'https://dailymotion.com/video/x8j1z1a or https://dai.ly/x8j1z1a',
+      embedPattern: 'https://www.dailymotion.com/embed/video/{id}'
     }
   };
 
@@ -168,7 +177,7 @@ function Admin({ onLogout }) {
     setSyncStatus(isOnline ? "Online" : "Offline");
   }, [isOnline]);
 
-  // Extract video ID based on platform
+  // Extract video ID based on platform - UPDATED FOR DAILYMOTION
   const extractVideoId = (url, platform) => {
     if (!url || typeof url !== 'string') return '';
 
@@ -180,6 +189,9 @@ function Admin({ onLogout }) {
       return url.trim();
     }
     if (platform === VIDEO_PLATFORMS.MUX && /^[a-zA-Z0-9]+$/.test(url.trim())) {
+      return url.trim();
+    }
+    if (platform === VIDEO_PLATFORMS.DAILYMOTION && /^[a-zA-Z0-9]+$/.test(url.trim())) { // ADDED DAILYMOTION ID CHECK
       return url.trim();
     }
 
@@ -203,12 +215,29 @@ function Admin({ onLogout }) {
         match = url.match(/(?:stream\.)?mux\.com\/([a-zA-Z0-9]+)/);
         if (match) return match[1];
         break;
+
+      case VIDEO_PLATFORMS.DAILYMOTION: // ADDED DAILYMOTION PATTERNS
+        // Remove query parameters and fragments
+        const cleanUrl = url.split('?')[0].split('#')[0];
+        const patterns = [
+          /dailymotion\.com\/video\/([a-zA-Z0-9]+)/,
+          /dailymotion\.com\/embed\/video\/([a-zA-Z0-9]+)/,
+          /dai\.ly\/([a-zA-Z0-9]+)/,
+          /dailymotion\.com\/(?:swf|embed)\/video\/([a-zA-Z0-9]+)/,
+          /\/\/www\.dailymotion\.com\/video\/([a-zA-Z0-9]+)_/
+        ];
+
+        for (const pattern of patterns) {
+          const match = cleanUrl.match(pattern);
+          if (match) return match[1];
+        }
+        break;
     }
 
     return '';
   };
 
-  // Generate embed URL
+  // Generate embed URL - UPDATED FOR DAILYMOTION
   const generateEmbedUrl = (videoId, platform) => {
     if (!videoId) return '';
 
@@ -219,12 +248,14 @@ function Admin({ onLogout }) {
         return `https://www.youtube.com/embed/${videoId}`;
       case VIDEO_PLATFORMS.MUX:
         return `https://stream.mux.com/${videoId}.m3u8`;
+      case VIDEO_PLATFORMS.DAILYMOTION: // ADDED DAILYMOTION
+        return `https://www.dailymotion.com/embed/video/${videoId}`;
       default:
         return '';
     }
   };
 
-  // Detect platform from URL
+  // Detect platform from URL - UPDATED FOR DAILYMOTION
   const detectPlatform = (url) => {
     if (!url || typeof url !== 'string') return VIDEO_PLATFORMS.VIMEO;
 
@@ -240,6 +271,10 @@ function Admin({ onLogout }) {
       return VIDEO_PLATFORMS.MUX;
     }
 
+    if (/dailymotion\.com/.test(url) || /dai\.ly/.test(url) || /^[a-zA-Z0-9]+$/.test(url.trim())) { // ADDED DAILYMOTION DETECTION
+      return VIDEO_PLATFORMS.DAILYMOTION;
+    }
+
     if (/\.(mp4|webm|mkv|avi|mov|m3u8|mpd|m4v|wmv|flv|ogg|ogv)$/i.test(url)) {
       return VIDEO_PLATFORMS.DIRECT;
     }
@@ -251,7 +286,7 @@ function Admin({ onLogout }) {
     return VIDEO_PLATFORMS.VIMEO;
   };
 
-  // Validate video URL
+  // Validate video URL - UPDATED FOR DAILYMOTION
   const validateVideoUrl = (url, platform) => {
     if (!url) return { valid: false, message: 'URL is required' };
 
@@ -270,6 +305,11 @@ function Admin({ onLogout }) {
         const muxId = extractVideoId(url, platform);
         if (!muxId) return { valid: false, message: 'Invalid Mux URL' };
         return { valid: true, id: muxId };
+
+      case VIDEO_PLATFORMS.DAILYMOTION: // ADDED DAILYMOTION VALIDATION
+        const dailymotionId = extractVideoId(url, platform);
+        if (!dailymotionId) return { valid: false, message: 'Invalid DailyMotion URL' };
+        return { valid: true, id: dailymotionId };
 
       case VIDEO_PLATFORMS.DIRECT:
         if (!/\.(mp4|webm|mkv|avi|mov|m3u8|mpd|m4v|wmv|flv|ogg|ogv)$/i.test(url)) {
@@ -748,8 +788,8 @@ function Admin({ onLogout }) {
           </div>
         </div>
 
-        {/* Platform Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
+        {/* Platform Stats - UPDATED TO INCLUDE DAILYMOTION */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
           {Object.entries(platformConfig).map(([key, config]) => {
             const Icon = config.icon;
             return (
@@ -786,7 +826,7 @@ function Admin({ onLogout }) {
           </button>
         </div>
 
-        {/* Video Guide */}
+        {/* Video Guide - UPDATED TO INCLUDE DAILYMOTION */}
         {showVideoGuide && (
           <div className="bg-gradient-to-br from-blue-900/20 to-teal-900/10 backdrop-blur-lg rounded-2xl border border-blue-700/30 p-6 mb-8">
             <div className="flex items-center justify-between mb-6">
@@ -828,6 +868,14 @@ function Admin({ onLogout }) {
                           {config.placeholder}
                         </code>
                       </div>
+                      {config.embedPattern && (
+                        <div>
+                          <label className="text-xs text-gray-300">Embed Pattern:</label>
+                          <code className="block text-xs bg-black/50 p-2 rounded mt-1 text-gray-300">
+                            {config.embedPattern}
+                          </code>
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
@@ -904,10 +952,10 @@ function Admin({ onLogout }) {
                 </button>
               </div>
 
-              {/* Platform Selection */}
+              {/* Platform Selection - UPDATED FOR DAILYMOTION */}
               <div className="mb-6">
                 <label className="block text-sm font-medium text-gray-300 mb-3">Video Platform:</label>
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
                   {Object.entries(platformConfig).map(([key, config]) => {
                     const Icon = config.icon;
                     const isActive = form.videoType === key;
@@ -1027,6 +1075,19 @@ function Admin({ onLogout }) {
                       placeholder={platformConfig[form.videoType]?.placeholder}
                       className="w-full p-3 bg-gray-800/70 border border-gray-700 rounded-xl font-mono text-sm"
                     />
+                    <div className="mt-2 text-xs text-gray-400">
+                      {form.videoType === VIDEO_PLATFORMS.DAILYMOTION && (
+                        <>
+                          <p>Examples:</p>
+                          <ul className="list-disc list-inside ml-2">
+                            <li>https://www.dailymotion.com/video/x8j1z1a</li>
+                            <li>https://dai.ly/x8j1z1a</li>
+                            <li>x8j1z1a (video ID only)</li>
+                            <li>https://www.dailymotion.com/embed/video/x8j1z1a</li>
+                          </ul>
+                        </>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>

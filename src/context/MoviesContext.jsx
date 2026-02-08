@@ -1,16 +1,17 @@
 import { createContext, useEffect, useState, useCallback } from "react";
 import { supabase } from '../lib/supabase';
 
-// Supported video platforms
+// Supported video platforms - ADDED DAILYMOTION
 const VIDEO_PLATFORMS = {
   VIMEO: 'vimeo',
   YOUTUBE: 'youtube',
   MUX: 'mux',
   DIRECT: 'direct',
-  EMBED: 'embed'
+  EMBED: 'embed',
+  DAILYMOTION: 'dailymotion' // ADDED
 };
 
-// Helper functions for all platforms
+// Helper functions for all platforms - UPDATED FOR DAILYMOTION
 const extractVideoId = (url, platform) => {
   if (!url || typeof url !== 'string') return '';
 
@@ -22,6 +23,9 @@ const extractVideoId = (url, platform) => {
     return url.trim();
   }
   if (platform === VIDEO_PLATFORMS.MUX && /^[a-zA-Z0-9]+$/.test(url.trim())) {
+    return url.trim();
+  }
+  if (platform === VIDEO_PLATFORMS.DAILYMOTION && /^[a-zA-Z0-9]+$/.test(url.trim())) { // ADDED
     return url.trim();
   }
 
@@ -55,6 +59,23 @@ const extractVideoId = (url, platform) => {
       match = url.match(/(?:stream\.)?mux\.com\/([a-zA-Z0-9]+)/);
       if (match) return match[1];
       break;
+
+    case VIDEO_PLATFORMS.DAILYMOTION: // ADDED
+      // Remove query parameters and fragments
+      const cleanUrl = url.split('?')[0].split('#')[0];
+      const patterns = [
+        /dailymotion\.com\/video\/([a-zA-Z0-9]+)/,
+        /dailymotion\.com\/embed\/video\/([a-zA-Z0-9]+)/,
+        /dai\.ly\/([a-zA-Z0-9]+)/,
+        /dailymotion\.com\/(?:swf|embed)\/video\/([a-zA-Z0-9]+)/,
+        /\/\/www\.dailymotion\.com\/video\/([a-zA-Z0-9]+)_/
+      ];
+
+      for (const pattern of patterns) {
+        const match = cleanUrl.match(pattern);
+        if (match) return match[1];
+      }
+      break;
   }
 
   return '';
@@ -80,6 +101,9 @@ const generateEmbedUrl = (videoId, platform, quality = '1080') => {
 
     case VIDEO_PLATFORMS.MUX:
       return `https://stream.mux.com/${videoId}.m3u8`;
+
+    case VIDEO_PLATFORMS.DAILYMOTION: // ADDED
+      return `https://www.dailymotion.com/embed/video/${videoId}?autoplay=1&queue-autoplay-next=0&queue-enable=0&sharing-enable=0&ui-logo=0&ui-start-screen-info=0`;
 
     case VIDEO_PLATFORMS.DIRECT:
       return videoId; // Direct URLs are already embeddable
@@ -108,6 +132,11 @@ const detectPlatform = (url) => {
   // Check for Mux
   if (/mux\.com/.test(url) || /^[a-zA-Z0-9]+$/.test(url.trim())) {
     return VIDEO_PLATFORMS.MUX;
+  }
+
+  // Check for DailyMotion - ADDED
+  if (/dailymotion\.com/.test(url) || /dai\.ly/.test(url) || /^[a-zA-Z0-9]+$/.test(url.trim())) {
+    return VIDEO_PLATFORMS.DAILYMOTION;
   }
 
   // Check for direct video files
@@ -863,7 +892,8 @@ export function MoviesProvider({ children }) {
     refreshMovies: fetchAllData,
     refreshEpisodes: fetchAllData,
     clearAllMovies,
-    clearAllEpisodes
+    clearAllEpisodes,
+    VIDEO_PLATFORMS // Export the platforms for use in other components
   };
 
   return (
