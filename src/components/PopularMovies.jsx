@@ -570,12 +570,21 @@ export default function Movies() {
                   alt={item.title}
                   className="w-full h-full object-cover"
                 />
+                {/* ADDED: Black shadows on the sides */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black via-black/70 to-transparent" />
+                {/* Left side shadow */}
+                <div className="absolute left-0 top-0 bottom-0 w-1/3 bg-gradient-to-r from-black via-black/70 to-transparent" />
+                {/* Right side shadow */}
+                <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-gradient-to-l from-black via-black/70 to-transparent" />
+                {/* Enhanced corner gradients for better focus */}
+                <div className="absolute top-0 left-0 w-1/4 h-1/4 bg-gradient-to-br from-black via-transparent to-transparent" />
+                <div className="absolute top-0 right-0 w-1/4 h-1/4 bg-gradient-to-bl from-black via-transparent to-transparent" />
               </div>
             ))}
 
             {/* Hero Content */}
             <div className="relative h-full container mx-auto px-4 md:px-6 flex items-end pb-20">
+              {/* Left side - Main Content */}
               <div className="max-w-3xl">
                 {/* Content Type Badge */}
                 <div className="flex items-center gap-3 mb-4">
