@@ -14,7 +14,27 @@ import {
   FaInfoCircle,
   FaChevronDown,
   FaFilm,
-  FaTv
+  FaTv,
+  FaSortAmountDown,
+  FaSortAmountUp,
+  FaCalendarAlt,
+  FaRegClock,
+  FaRegHeart,
+  FaHeart,
+  FaTh,
+  FaList,
+  FaRocket,
+  FaCrown,
+  FaMedal,
+  FaVideo,
+  FaCamera,
+  FaTheaterMasks,
+  FaBolt,
+  FaGem,
+  FaMagic,
+  FaBars,
+  FaEye,
+  FaClock
 } from "react-icons/fa";
 
 export default function Movies() {
@@ -29,78 +49,69 @@ export default function Movies() {
   // Hero Slider State
   const [currentHeroSlide, setCurrentHeroSlide] = useState(0);
   const [isAutoPlaying, setIsAutoPlaying] = useState(true);
-  const [heroContentType, setHeroContentType] = useState("all"); // "all", "movies", "series"
+  const [heroContentType, setHeroContentType] = useState("all");
+  const [isHoveringHero, setIsHoveringHero] = useState(false);
+  const [showMobileHeroMenu, setShowMobileHeroMenu] = useState(false);
 
   // Filter State
   const [searchQuery, setSearchQuery] = useState(urlSearchQuery);
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [sortBy, setSortBy] = useState("popular");
+  const [sortOrder, setSortOrder] = useState("desc");
   const [showFilters, setShowFilters] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [hoveredMovie, setHoveredMovie] = useState(null);
+  const [likedMovies, setLikedMovies] = useState([]);
+  const [showQuickView, setShowQuickView] = useState(false);
+  const [quickViewMovie, setQuickViewMovie] = useState(null);
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
   const itemsPerPage = 24;
 
-  // Get latest movies AND series for hero slider (mixed content)
+  // Get hero content
   const heroContent = useMemo(() => {
-    const allContent = [...movies]; // Get all movies and series
-
-    // Filter content with backgrounds
+    const allContent = [...movies];
     const contentWithBackgrounds = allContent
-      .filter(item => item.background && (item.type === "movie" || item.type === "series"))
+      .filter(item => item?.background && (item?.type === "movie" || item?.type === "series"))
       .sort((a, b) => {
-        // Sort by latest upload (assuming there's an uploadedDate or id field)
-        const dateA = a.uploadedDate || a.id || 0;
-        const dateB = b.uploadedDate || b.id || 0;
+        const dateA = a?.uploadedDate || a?.id || 0;
+        const dateB = b?.uploadedDate || b?.id || 0;
         return dateB - dateA;
       });
-
-    // Take latest 8 items for hero slider
     return contentWithBackgrounds.slice(0, 8);
   }, [movies]);
 
-  // Filter hero content based on selected type
+  // Filter hero content
   const filteredHeroContent = useMemo(() => {
-    if (heroContentType === "all") {
-      return heroContent;
-    } else if (heroContentType === "movies") {
-      return heroContent.filter(item => item.type === "movie");
-    } else {
-      return heroContent.filter(item => item.type === "series");
-    }
+    if (heroContentType === "all") return heroContent;
+    if (heroContentType === "movies") return heroContent.filter(item => item?.type === "movie");
+    return heroContent.filter(item => item?.type === "series");
   }, [heroContent, heroContentType]);
 
   const currentHeroItem = filteredHeroContent[currentHeroSlide] || {};
 
-  // FIXED: Handle hero play button click
+  // Handle hero play
   const handleHeroPlayClick = () => {
-    if (!currentHeroItem || !currentHeroItem.id) {
-      console.error("No hero item selected");
-      return;
-    }
-
-    // Navigate to player page with movie data
+    if (!currentHeroItem || !currentHeroItem.id) return;
     navigate(`/player/${currentHeroItem.id}`, {
-      state: {
-        movie: currentHeroItem
-      }
+      state: { movie: currentHeroItem }
     });
   };
 
-  // FIXED: Handle hero info button click
+  // Handle hero info
   const handleHeroInfoClick = () => {
     if (!currentHeroItem) return;
-
-    // You can implement a modal or navigate to movie details page
-    // For now, let's just show an alert with more info
-    alert(`More information about: ${currentHeroItem.title}\n\n${currentHeroItem.description || 'No description available.'}`);
+    setQuickViewMovie(currentHeroItem);
+    setShowQuickView(true);
+    setIsAutoPlaying(false);
   };
 
-  // Update search query when URL changes and sync with URL
+  // Update search query from URL
   useEffect(() => {
     setSearchQuery(urlSearchQuery);
     setCurrentPage(1);
   }, [urlSearchQuery]);
 
-  // Update URL when search query changes
+  // Update URL when search changes
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       if (searchQuery) {
@@ -109,20 +120,17 @@ export default function Movies() {
         navigate('', { replace: true });
       }
     }, 500);
-
     return () => clearTimeout(timeoutId);
   }, [searchQuery, navigate, location.search]);
 
-  // Auto slide for hero
+  // Auto slide
   useEffect(() => {
-    if (!isAutoPlaying || filteredHeroContent.length === 0) return;
-
+    if (!isAutoPlaying || filteredHeroContent.length === 0 || isHoveringHero) return;
     const interval = setInterval(() => {
       setCurrentHeroSlide((prev) => (prev + 1) % filteredHeroContent.length);
-    }, 5000);
-
+    }, 6000);
     return () => clearInterval(interval);
-  }, [isAutoPlaying, filteredHeroContent.length]);
+  }, [isAutoPlaying, filteredHeroContent.length, isHoveringHero]);
 
   const nextHeroSlide = () => {
     setCurrentHeroSlide((prev) => (prev + 1) % filteredHeroContent.length);
@@ -136,891 +144,632 @@ export default function Movies() {
     setTimeout(() => setIsAutoPlaying(true), 10000);
   };
 
-  // Get unique categories from movies
+  // Get categories
   const allCategories = useMemo(() => {
     const categories = new Set(['all', 'featured']);
     movies.forEach(movie => {
-      if (movie.category) {
-        const cats = movie.category.split(',').map(cat => cat.trim());
-        cats.forEach(cat => categories.add(cat));
+      if (movie?.category) {
+        movie.category.split(',').map(cat => cat.trim()).forEach(cat => categories.add(cat));
       }
     });
     return Array.from(categories);
   }, [movies]);
 
-  // Filter and sort movies (for main grid)
-  const filteredMovies = useMemo(() => {
-    let filtered = movies.filter(movie => movie.type === "movie");
+  // Category icons
+  const getCategoryIcon = (category) => {
+    const categoryLower = category?.toLowerCase() || '';
+    const icons = {
+      action: <FaBolt className="text-orange-400" />,
+      drama: <FaTheaterMasks className="text-purple-400" />,
+      comedy: <FaFilm className="text-green-400" />,
+      scifi: <FaRocket className="text-blue-400" />,
+      fantasy: <FaMagic className="text-pink-400" />,
+      romance: <FaHeart className="text-red-400" />,
+      thriller: <FaBolt className="text-yellow-400" />,
+      horror: <FaFilm className="text-gray-400" />,
+      documentary: <FaCamera className="text-cyan-400" />,
+      featured: <FaCrown className="text-yellow-500" />,
+      popular: <FaFire className="text-orange-500" />,
+      topRated: <FaMedal className="text-yellow-500" />
+    };
+    return icons[categoryLower] || <FaVideo className="text-blue-400" />;
+  };
 
-    // Search
+  // Filter and sort movies
+  const filteredMovies = useMemo(() => {
+    let filtered = movies.filter(movie => movie?.type === "movie");
+
     if (searchQuery) {
       filtered = filtered.filter(movie =>
-        movie.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (movie.description && movie.description.toLowerCase().includes(searchQuery.toLowerCase())) ||
-        (movie.category && movie.category.toLowerCase().includes(searchQuery.toLowerCase()))
+        movie?.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        movie?.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        movie?.category?.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
 
-    // Category filter
     if (selectedCategory && selectedCategory !== "all" && selectedCategory !== "featured") {
       filtered = filtered.filter(movie =>
-        movie.category && movie.category.toLowerCase().includes(selectedCategory.toLowerCase())
+        movie?.category?.toLowerCase().includes(selectedCategory.toLowerCase())
       );
     }
 
-    // Featured filter
     if (selectedCategory === "featured") {
-      filtered = filtered.filter(movie => movie.background);
+      filtered = filtered.filter(movie => movie?.background || (movie?.rating && parseFloat(movie.rating) >= 8));
     }
 
-    // Sort
     filtered.sort((a, b) => {
+      const order = sortOrder === "desc" ? -1 : 1;
       switch (sortBy) {
         case "rating":
-          return (parseFloat(b.rating) || 0) - (parseFloat(a.rating) || 0);
-        case "newest":
-          return (b.id || 0) - (a.id || 0);
-        case "az":
-          return a.title.localeCompare(b.title);
-        case "za":
-          return b.title.localeCompare(a.title);
-        case "popular":
+          return ((parseFloat(b?.rating) || 0) - (parseFloat(a?.rating) || 0)) * order;
+        case "year":
+          return ((parseInt(b?.year) || 0) - (parseInt(a?.year) || 0)) * order;
+        case "title":
+          return (a?.title || '').localeCompare(b?.title || '') * (sortOrder === "desc" ? 1 : -1);
         default:
-          const ratingDiff = (parseFloat(b.rating) || 0) - (parseFloat(a.rating) || 0);
-          if (ratingDiff !== 0) return ratingDiff;
-          return (b.id || 0) - (a.id || 0);
+          const ratingDiff = ((parseFloat(b?.rating) || 0) - (parseFloat(a?.rating) || 0)) * order;
+          return ratingDiff !== 0 ? ratingDiff : ((b?.id || 0) - (a?.id || 0)) * order;
       }
     });
 
     return filtered;
-  }, [movies, searchQuery, selectedCategory, sortBy]);
+  }, [movies, searchQuery, selectedCategory, sortBy, sortOrder]);
 
   // Pagination
   const totalPages = Math.ceil(filteredMovies.length / itemsPerPage);
   const paginatedMovies = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage;
     return filteredMovies.slice(startIndex, startIndex + itemsPerPage);
-  }, [filteredMovies, currentPage, itemsPerPage]);
+  }, [filteredMovies, currentPage]);
 
-  // Featured movies (for featured section)
+  // Featured movies
   const featuredMovies = useMemo(() => {
     return movies
-      .filter(movie => movie.type === "movie" && movie.background)
-      .slice(0, 10);
+      .filter(movie => movie?.type === "movie" && (movie?.background || (movie?.rating && parseFloat(movie.rating) >= 8.5)))
+      .sort((a, b) => (parseFloat(b?.rating) || 0) - (parseFloat(a?.rating) || 0))
+      .slice(0, 12);
   }, [movies]);
 
-  // Latest series (for a separate section)
+  // Latest series - UPDATED to show 10 series for 5 columns
   const latestSeries = useMemo(() => {
     return movies
-      .filter(item => item.type === "series")
-      .sort((a, b) => (b.id || 0) - (a.id || 0))
-      .slice(0, 12);
+      .filter(item => item?.type === "series")
+      .sort((a, b) => (b?.id || 0) - (a?.id || 0))
+      .slice(0, 10); // Showing 10 series for 2 rows of 5 columns
   }, [movies]);
 
   // Reset page on filter change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, selectedCategory, sortBy]);
+  }, [searchQuery, selectedCategory, sortBy, sortOrder]);
 
-  // Clear search function
+  // Clear search
   const handleClearSearch = () => {
     setSearchQuery("");
     navigate('', { replace: true });
   };
 
-  // Custom scrollbar styles
-  const scrollbarStyles = `
-      /* Custom scrollbar for the entire page */
-      ::-webkit-scrollbar {
-        width: 12px;
-        height: 12px;
-      }
+  // Toggle like
+  const toggleLike = (movieId, e) => {
+    e?.stopPropagation();
+    setLikedMovies(prev =>
+      prev.includes(movieId) ? prev.filter(id => id !== movieId) : [...prev, movieId]
+    );
+  };
 
-      ::-webkit-scrollbar-track {
-        background: rgba(31, 41, 55, 0.5);
-        border-radius: 10px;
-      }
+  // Handle quick view
+  const handleQuickView = (movie, e) => {
+    e?.stopPropagation();
+    setQuickViewMovie(movie);
+    setShowQuickView(true);
+  };
 
-      ::-webkit-scrollbar-thumb {
-        background: linear-gradient(45deg, #dc2626, #7c3aed, #2563eb);
-        border-radius: 10px;
-        border: 2px solid rgba(17, 24, 39, 0.8);
-        transition: all 0.3s ease;
-      }
+  // Handle movie click
+  const handleMovieClick = (movie) => {
+    navigate(`/player/${movie?.id}`, { state: { movie } });
+  };
 
-      ::-webkit-scrollbar-thumb:hover {
-        background: linear-gradient(45deg, #ef4444, #8b5cf6, #3b82f6);
-        transform: scale(1.05);
-      }
-
-      ::-webkit-scrollbar-corner {
-        background: rgba(17, 24, 39, 0.8);
-      }
-
-      /* For Firefox */
-      * {
-        scrollbar-width: thin;
-        scrollbar-color: #dc2626 rgba(31, 41, 55, 0.5);
-      }
-
-      /* For dropdowns and other scrollable containers */
-      .scrollable-container::-webkit-scrollbar {
-        width: 8px;
-      }
-
-      .scrollable-container::-webkit-scrollbar-track {
-        background: rgba(31, 41, 55, 0.3);
-        border-radius: 4px;
-      }
-
-      .scrollable-container::-webkit-scrollbar-thumb {
-        background: linear-gradient(180deg, #dc2626, #7c3aed);
-        border-radius: 4px;
-      }
-
-      /* Smooth scrolling for the whole page */
-      html {
-        scroll-behavior: smooth;
-      }
-
-      /* Scrollbar for code blocks or specific areas */
-      pre::-webkit-scrollbar {
-        height: 8px;
-      }
-
-      pre::-webkit-scrollbar-thumb {
-        background: linear-gradient(90deg, #dc2626, #7c3aed);
-      }
-
-      /* Custom scrollbar animations */
-      @keyframes scrollbarGlow {
-        0%, 100% {
-          box-shadow: 0 0 5px #dc2626;
-        }
-        50% {
-          box-shadow: 0 0 15px #7c3aed, 0 0 20px #2563eb;
-        }
-      }
-
-      ::-webkit-scrollbar-thumb:active {
-        animation: scrollbarGlow 1.5s infinite;
-      }
-
-      /* Loading Animation Styles */
-      @keyframes float {
-        0%, 100% { transform: translateY(0px); }
-        50% { transform: translateY(-20px); }
-      }
-
-      @keyframes pulse-glow {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0.7; }
-      }
-
-      @keyframes shimmer {
-        0% { background-position: -1000px 0; }
-        100% { background-position: 1000px 0; }
-      }
-
-      @keyframes rotate3d {
-        0% { transform: rotateY(0deg) rotateX(0deg); }
-        100% { transform: rotateY(360deg) rotateX(360deg); }
-      }
-
-      @keyframes particle-float {
-        0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.8; }
-        50% { transform: translate(var(--tx, 20px), var(--ty, -20px)) scale(1.2); opacity: 1; }
-      }
-
-      .animate-float {
-        animation: float 3s ease-in-out infinite;
-      }
-
-      .animate-pulse-glow {
-        animation: pulse-glow 2s ease-in-out infinite;
-      }
-
-      .animate-shimmer {
-        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
-        background-size: 1000px 100%;
-        animation: shimmer 2s infinite;
-      }
-
-      .animate-rotate3d {
-        animation: rotate3d 20s linear infinite;
-      }
-    `;
-
+  // Loading state
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-black via-gray-900 to-black pt-28 overflow-hidden">
-        <style>{scrollbarStyles}</style>
-
-        {/* Animated Background Elements */}
-        <div className="absolute inset-0 overflow-hidden">
-          {/* Floating Particles */}
-          {[...Array(20)].map((_, i) => (
-            <div
-              key={i}
-              className="absolute w-1 h-1 rounded-full"
-              style={{
-                left: `${Math.random() * 100}%`,
-                top: `${Math.random() * 100}%`,
-                backgroundColor: i % 3 === 0 ? '#ef4444' : i % 3 === 1 ? '#8b5cf6' : '#3b82f6',
-                animation: `particle-float ${3 + Math.random() * 2}s ease-in-out infinite`,
-                animationDelay: `${Math.random() * 2}s`,
-                '--tx': `${(Math.random() - 0.5) * 40}px`,
-                '--ty': `${(Math.random() - 0.5) * 40}px`
-              }}
-            />
-          ))}
-
-          {/* Gradient Orbs */}
-          <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-gradient-to-r from-red-500/10 to-purple-500/10 rounded-full blur-3xl animate-pulse-glow"></div>
-          <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-gradient-to-r from-blue-500/10 to-pink-500/10 rounded-full blur-3xl animate-pulse-glow" style={{ animationDelay: '1s' }}></div>
-        </div>
-
-        <div className="relative z-10 flex flex-col items-center justify-center min-h-[80vh] px-4">
-          {/* Main Logo Container */}
-          <div className="relative mb-12">
-            {/* Outer Glow Ring */}
-            <div className="absolute -inset-8 bg-gradient-to-r from-red-600 via-purple-600 to-blue-600 rounded-full blur-2xl opacity-30 animate-pulse"></div>
-
-            {/* Rotating 3D Ring */}
-            <div className="absolute -inset-6 border-4 border-transparent border-t-red-500 border-r-purple-500 border-b-blue-500 border-l-pink-500 rounded-full animate-rotate3d"></div>
-
-            {/* Middle Ring */}
-            <div className="absolute -inset-4 border-2 border-red-400/30 rounded-full animate-spin"></div>
-
-            {/* Logo Image Container */}
-            <div className="relative">
-              {/* Logo Shimmer Effect */}
-              <div className="absolute -inset-4 bg-gradient-to-r from-transparent via-white/5 to-transparent animate-shimmer rounded-3xl"></div>
-
-              {/* Your Logo - Replace with your actual logo */}
-              <div className="relative w-48 h-48 md:w-64 md:h-64 flex items-center justify-center rounded-2xl bg-gradient-to-br from-gray-900/80 to-black/80 backdrop-blur-xl border border-gray-800/50 shadow-2xl animate-float">
-                {/* If you have a logo image, replace this div with an img tag */}
-                {/* <img src="/your-logo.png" alt="Logo" className="w-40 h-40 object-contain" /> */}
-
-                {/* Placeholder Logo Design */}
-                <div className="text-center">
-                  <div className="mb-4">
-                    <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-red-400 via-purple-400 to-blue-400 bg-clip-text text-transparent">
-                      CINEMA
-                    </h1>
-                    <h2 className="text-2xl md:text-3xl font-bold text-white">HUB</h2>
-                  </div>
-                  <div className="flex justify-center space-x-2">
-                    <div className="w-2 h-2 bg-red-500 rounded-full animate-bounce"></div>
-                    <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
-                  </div>
-                </div>
-
-                {/* Corner Accents */}
-                <div className="absolute top-2 left-2 w-4 h-4 border-t-2 border-l-2 border-red-500"></div>
-                <div className="absolute top-2 right-2 w-4 h-4 border-t-2 border-r-2 border-purple-500"></div>
-                <div className="absolute bottom-2 left-2 w-4 h-4 border-b-2 border-l-2 border-blue-500"></div>
-                <div className="absolute bottom-2 right-2 w-4 h-4 border-b-2 border-r-2 border-pink-500"></div>
-              </div>
-
-              {/* Floating Icons Around Logo */}
-              <div className="absolute -top-4 -left-4 w-12 h-12 bg-red-500/20 rounded-full flex items-center justify-center backdrop-blur-sm border border-red-500/30 animate-float">
-                <FaFilm className="text-red-400 text-lg" />
-              </div>
-              <div className="absolute -top-4 -right-4 w-12 h-12 bg-purple-500/20 rounded-full flex items-center justify-center backdrop-blur-sm border border-purple-500/30 animate-float" style={{ animationDelay: '0.5s' }}>
-                <FaTv className="text-purple-400 text-lg" />
-              </div>
-              <div className="absolute -bottom-4 -left-4 w-12 h-12 bg-blue-500/20 rounded-full flex items-center justify-center backdrop-blur-sm border border-blue-500/30 animate-float" style={{ animationDelay: '1s' }}>
-                <FaStar className="text-blue-400 text-lg" />
-              </div>
-              <div className="absolute -bottom-4 -right-4 w-12 h-12 bg-pink-500/20 rounded-full flex items-center justify-center backdrop-blur-sm border border-pink-500/30 animate-float" style={{ animationDelay: '1.5s' }}>
-                <FaPlay className="text-pink-400 text-lg" />
-              </div>
-            </div>
-          </div>
-
-          {/* Loading Content */}
-          <div className="text-center max-w-2xl">
-            {/* Animated Text */}
-            <div className="relative mb-8">
-              <h2 className="text-3xl md:text-4xl font-bold text-white mb-2">
-                <span className="bg-gradient-to-r from-red-400 via-purple-400 to-blue-400 bg-clip-text text-transparent">
-                  Loading Your Cinema Universe
-                </span>
-              </h2>
-
-              {/* Glitch Effect Text */}
-              <div className="h-6 overflow-hidden">
-                <div className="animate-slide-up">
-                  <p className="text-gray-300">Fetching latest movies...</p>
-                  <p className="text-gray-300">Loading TV series...</p>
-                  <p className="text-gray-300">Preparing trailers...</p>
-                  <p className="text-gray-300">Optimizing streams...</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Progress Bar */}
-            <div className="relative mb-8">
-              <div className="w-full h-2 bg-gray-800/50 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-gradient-to-r from-red-500 via-purple-500 to-blue-500 rounded-full animate-progress"
-                  style={{
-                    animation: 'progress 2s ease-in-out infinite'
-                  }}
-                ></div>
-              </div>
-              <div className="flex justify-between text-xs text-gray-400 mt-2">
-                <span>0%</span>
-                <span className="animate-pulse">Loading...</span>
-                <span>100%</span>
-              </div>
-            </div>
-
-            {/* Stats Preview */}
-            <div className="grid grid-cols-3 gap-4 mb-8">
-              <div className="bg-gray-900/30 backdrop-blur-sm rounded-xl p-4 border border-gray-800/50">
-                <div className="text-2xl font-bold text-red-400 animate-pulse">∞</div>
-                <div className="text-sm text-gray-400">Movies</div>
-              </div>
-              <div className="bg-gray-900/30 backdrop-blur-sm rounded-xl p-4 border border-gray-800/50">
-                <div className="text-2xl font-bold text-purple-400 animate-pulse" style={{ animationDelay: '0.2s' }}>∞</div>
-                <div className="text-sm text-gray-400">Series</div>
-              </div>
-              <div className="bg-gray-900/30 backdrop-blur-sm rounded-xl p-4 border border-gray-800/50">
-                <div className="text-2xl font-bold text-blue-400 animate-pulse" style={{ animationDelay: '0.4s' }}>∞</div>
-                <div className="text-sm text-gray-400">Episodes</div>
-              </div>
-            </div>
-
-            {/* Loading Message */}
-            <p className="text-gray-500 text-sm italic">
-              "Good things come to those who wait... especially when it's entertainment!"
-            </p>
-          </div>
-
-          {/* Additional Styles for Loading Animation */}
-          <style>{`
-              @keyframes slide-up {
-                0%, 25% { transform: translateY(0); }
-                26%, 50% { transform: translateY(-25%); }
-                51%, 75% { transform: translateY(-50%); }
-                76%, 100% { transform: translateY(-75%); }
-              }
-
-              @keyframes progress {
-                0% { width: 0%; opacity: 0.5; }
-                50% { width: 70%; opacity: 1; }
-                100% { width: 100%; opacity: 0.5; }
-              }
-
-              .animate-slide-up {
-                animation: slide-up 8s infinite;
-              }
-
-              .animate-progress {
-                animation: progress 2s ease-in-out infinite;
-              }
-            `}</style>
-        </div>
-
-        {/* Bottom Wave Animation */}
-        <div className="absolute bottom-0 left-0 right-0 h-32 overflow-hidden">
-          <svg className="absolute bottom-0 w-full h-full" viewBox="0 0 1200 120" preserveAspectRatio="none">
-            <path
-              d="M0,0V46.29c47.79,22.2,103.59,32.17,158,28,70.36-5.37,136.33-33.31,206.8-37.5C438.64,32.43,512.34,53.67,583,72.05c69.27,18,138.3,24.88,209.4,13.08,36.15-6,69.85-17.84,104.45-29.34C989.49,25,1113-14.29,1200,52.47V0Z"
-              opacity=".25"
-              className="fill-gradient-to-r from-red-500/20 to-blue-500/20 animate-pulse"
-            ></path>
-            <path
-              d="M0,0V15.81C13,36.92,27.64,56.86,47.69,72.05,99.41,111.27,165,111,224.58,91.58c31.15-10.15,60.09-26.07,89.67-39.8,40.92-19,84.73-46,130.83-49.67,36.26-2.85,70.9,9.42,98.6,31.56,31.77,25.39,62.32,62,103.63,73,40.44,10.79,81.35-6.69,119.13-24.28s75.16-39,116.92-43.05c59.73-5.85,113.28,22.88,168.9,38.84,30.2,8.66,59,6.17,87.09-7.5,22.43-10.89,48-26.93,60.65-49.24V0Z"
-              opacity=".5"
-              className="fill-gradient-to-r from-purple-500/20 to-pink-500/20 animate-pulse"
-              style={{ animationDelay: '0.5s' }}
-            ></path>
-            <path
-              d="M0,0V5.63C149.93,59,314.09,71.32,475.83,42.57c43-7.64,84.23-20.12,127.61-26.46,59-8.63,112.48,12.24,165.56,35.4C827.93,77.22,886,95.24,951.2,90c86.53-7,172.46-45.71,248.8-84.81V0Z"
-              className="fill-gradient-to-r from-blue-500/20 to-cyan-500/20 animate-pulse"
-              style={{ animationDelay: '1s' }}
-            ></path>
-          </svg>
+      <div className="min-h-screen bg-gradient-to-b from-black via-gray-900 to-black flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-red-600 mx-auto"></div>
+          <p className="text-white mt-4">Loading movies...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <>
-      <style>{scrollbarStyles}</style>
-
-      <main className="min-h-screen bg-gradient-to-b from-black to-gray-900">
-        {/* HERO SLIDER SECTION - Shows latest movies AND series */}
-        {filteredHeroContent.length > 0 && (
-          <section className="relative h-[70vh] md:h-[80vh] overflow-hidden pt-28">
-            {/* Background Images */}
-            {filteredHeroContent.map((item, index) => (
-              <div
-                key={item.id}
-                className={`absolute inset-0 transition-opacity duration-1000 ${index === currentHeroSlide ? 'opacity-100' : 'opacity-0'
-                  }`}
-              >
-                <img
-                  src={item.background || item.poster}
-                  alt={item.title}
-                  className="w-full h-full object-cover"
-                />
-                {/* ADDED: Black shadows on the sides */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black via-black/70 to-transparent" />
-                {/* Left side shadow */}
-                <div className="absolute left-0 top-0 bottom-0 w-1/3 bg-gradient-to-r from-black via-black/70 to-transparent" />
-                {/* Right side shadow */}
-                <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-gradient-to-l from-black via-black/70 to-transparent" />
-                {/* Enhanced corner gradients for better focus */}
-                <div className="absolute top-0 left-0 w-1/4 h-1/4 bg-gradient-to-br from-black via-transparent to-transparent" />
-                <div className="absolute top-0 right-0 w-1/4 h-1/4 bg-gradient-to-bl from-black via-transparent to-transparent" />
-              </div>
-            ))}
-
-            {/* Hero Content */}
-            <div className="relative h-full container mx-auto px-4 md:px-6 flex items-end pb-20">
-              {/* Left side - Main Content */}
-              <div className="max-w-3xl">
-                {/* Content Type Badge */}
-                <div className="flex items-center gap-3 mb-4">
-                  <span className={`px-3 py-1 rounded-full text-sm font-semibold flex items-center gap-2 ${currentHeroItem.type === "series"
-                    ? "bg-purple-600 text-white"
-                    : "bg-red-600 text-white"
-                    }`}>
-                    {currentHeroItem.type === "series" ? (
-                      <>
-                        <FaTv /> SERIES
-                      </>
-                    ) : (
-                      <>
-                        <FaFilm /> MOVIE
-                      </>
-                    )}
-                  </span>
-                  <span className="text-sm text-yellow-400 px-2 py-1 bg-yellow-900/30 rounded-lg">
-                    🆕 LATEST UPLOAD
-                  </span>
-                </div>
-
-                <h1 className="text-4xl md:text-6xl font-bold text-white mb-4">
-                  {currentHeroItem.title}
-                </h1>
-                <div className="flex items-center gap-4 mb-6">
-                  {currentHeroItem.rating && (
-                    <span className="flex items-center gap-1 text-yellow-400">
-                      <FaStar /> {currentHeroItem.rating}
-                    </span>
-                  )}
-                  {currentHeroItem.year && (
-                    <span className="text-gray-300">
-                      {currentHeroItem.year}
-                    </span>
-                  )}
-                  {currentHeroItem.category && (
-                    <span className="text-gray-300">
-                      {currentHeroItem.category.split(',')[0]}
-                    </span>
-                  )}
-                  {currentHeroItem.nation && (
-                    <span className="text-gray-300">
-                      {currentHeroItem.nation}
-                    </span>
-                  )}
-                  {currentHeroItem.type === "series" && currentHeroItem.seasons && (
-                    <span className="text-blue-400">
-                      {currentHeroItem.seasons} Season{currentHeroItem.seasons !== 1 ? 's' : ''}
-                    </span>
-                  )}
-                </div>
-                <p className="text-gray-300 text-lg mb-8 line-clamp-3">
-                  {currentHeroItem.description || `Watch this amazing ${currentHeroItem.type === "series" ? 'series' : 'movie'} now!`}
-                </p>
-                <div className="flex gap-4">
-                  {/* FIXED: Added onClick handler to Play button */}
-                  <button
-                    onClick={handleHeroPlayClick}
-                    className="px-8 py-3 bg-red-600 hover:bg-red-700 rounded-lg text-white font-semibold flex items-center gap-2 transition-colors"
-                  >
-                    <FaPlay /> {currentHeroItem.type === "series" ? "Watch Episode 1" : "Watch Now"}
-                  </button>
-                  {/* FIXED: Added onClick handler to Info button */}
-                  <button
-                    onClick={handleHeroInfoClick}
-                    className="px-8 py-3 bg-gray-800/70 hover:bg-gray-800 rounded-lg text-white font-semibold backdrop-blur-sm flex items-center gap-2 transition-colors"
-                  >
-                    <FaInfoCircle /> More Info
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Hero Navigation */}
-            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-2">
-              {filteredHeroContent.map((_, index) => (
-                <button
-                  key={index}
-                  onClick={() => {
-                    setCurrentHeroSlide(index);
-                    setIsAutoPlaying(false);
-                    setTimeout(() => setIsAutoPlaying(true), 10000);
-                  }}
-                  className={`w-3 h-3 rounded-full transition-all ${index === currentHeroSlide
-                    ? heroContentType === "movies"
-                      ? 'bg-red-600 w-8'
-                      : heroContentType === "series"
-                        ? 'bg-purple-600 w-8'
-                        : 'bg-gradient-to-r from-red-600 to-purple-600 w-8'
-                    : 'bg-gray-600 hover:bg-gray-500'
-                    }`}
-                />
-              ))}
-            </div>
-
-            {/* Hero Arrows */}
-            <button
-              onClick={prevHeroSlide}
-              className="absolute left-4 top-1/2 transform -translate-y-1/2 p-3 bg-black/50 hover:bg-black/70 rounded-full text-white transition-colors"
+    <main className="min-h-screen bg-gradient-to-b from-black via-gray-900 to-black">
+      {/* HERO SLIDER SECTION */}
+      {filteredHeroContent.length > 0 && (
+        <section
+          className="relative h-[70vh] md:h-[85vh] overflow-hidden"
+          onMouseEnter={() => setIsHoveringHero(true)}
+          onMouseLeave={() => setIsHoveringHero(false)}
+        >
+          {/* Background Images */}
+          {filteredHeroContent.map((item, index) => (
+            <div
+              key={item?.id}
+              className={`absolute inset-0 transition-opacity duration-1000 ${index === currentHeroSlide ? 'opacity-100 z-10' : 'opacity-0 z-0'
+                }`}
             >
-              <FaChevronLeft className="text-xl" />
-            </button>
-            <button
-              onClick={nextHeroSlide}
-              className="absolute right-4 top-1/2 transform -translate-y-1/2 p-3 bg-black/50 hover:bg-black/70 rounded-full text-white transition-colors"
-            >
-              <FaChevronRight className="text-xl" />
-            </button>
-
-            {/* Scroll Indicator */}
-            <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 animate-bounce">
-              <FaChevronDown className="text-white text-2xl" />
+              <img
+                src={item?.background || item?.poster}
+                alt={item?.title}
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black via-black/70 to-transparent" />
             </div>
-          </section>
-        )}
+          ))}
 
-        {/* Latest Series Section (if not in hero) */}
-        {latestSeries.length > 0 && heroContentType !== "series" && !searchQuery && (
-          <section className="container mx-auto px-4 md:px-6 py-8">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-                <FaTv className="text-purple-500" />
-                Latest Series
-                <span className="text-sm text-purple-400 ml-2 bg-purple-900/30 px-2 py-1 rounded">
-                  NEW
+          {/* Hero Content */}
+          <div className="absolute bottom-0 left-0 right-0 p-4 pb-16 z-20 bg-gradient-to-t from-black via-black/50 to-transparent">
+            <div className="max-w-3xl">
+              <div className="flex items-center gap-2 mb-2">
+                <span className={`px-2 py-1 rounded-full text-xs font-semibold ${currentHeroItem?.type === "series"
+                  ? "bg-gradient-to-r from-purple-600 to-pink-600"
+                  : "bg-gradient-to-r from-red-600 to-orange-600"
+                  }`}>
+                  {currentHeroItem?.type === "series" ? <FaTv className="inline mr-1" /> : <FaPlay className="inline mr-1" />}
+                  {currentHeroItem?.type === "series" ? 'SERIES' : 'MOVIE'}
                 </span>
-              </h2>
-              <button
-                onClick={() => setHeroContentType("series")}
-                className="text-sm text-purple-400 hover:text-purple-300 transition-colors flex items-center gap-1"
-              >
-                View all in hero <FaChevronRight className="text-xs" />
-              </button>
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-              {latestSeries.slice(0, 6).map(series => (
-                <div key={series.id} className="group relative">
-                  <MovieCard movie={series} />
-                  <div className="absolute top-2 right-2">
-                    <span className="px-2 py-1 bg-purple-600 text-white text-xs rounded-full">
-                      Series
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
+              </div>
 
-        {/* Search and Filter Bar */}
-        <div className="container mx-auto px-4 md:px-6 py-8">
-          <div className="bg-gradient-to-r from-gray-900/50 to-black/50 backdrop-blur-lg rounded-2xl border border-gray-800 p-4 md:p-6">
-            <div className="flex flex-col md:flex-row gap-4">
-              {/* Search Input */}
-              <div className="flex-1 relative">
-                <FaSearch className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search movies by title, description, or category..."
-                  className="w-full pl-12 pr-4 py-3 rounded-xl bg-gray-800/70 border border-gray-700 text-white placeholder:text-gray-400 focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500/20 transition-all"
-                />
-                {searchQuery && (
-                  <button
-                    onClick={handleClearSearch}
-                    className="absolute right-12 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
-                    title="Clear search"
-                  >
-                    <FaTimes />
-                  </button>
+              <h1 className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-2">
+                {currentHeroItem?.title}
+              </h1>
+
+              <div className="flex items-center gap-2 mb-4 overflow-x-auto pb-1">
+                {currentHeroItem?.rating && (
+                  <span className="flex items-center gap-1 text-xs text-yellow-400 bg-yellow-900/30 px-2 py-1 rounded-lg">
+                    <FaStar /> {currentHeroItem.rating}
+                  </span>
                 )}
-                {searchQuery && (
-                  <div className="absolute right-4 top-1/2 transform -translate-y-1/2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-gray-400 hidden md:inline">
-                        {filteredMovies.length} results
-                      </span>
-                    </div>
-                  </div>
+                {currentHeroItem?.year && (
+                  <span className="flex items-center gap-1 text-xs text-gray-300 bg-gray-800/50 px-2 py-1 rounded-lg">
+                    <FaCalendarAlt /> {currentHeroItem.year}
+                  </span>
                 )}
               </div>
 
-              {/* Filter Button (Mobile) */}
-              <button
-                onClick={() => setShowFilters(!showFilters)}
-                className="md:hidden flex items-center gap-2 px-4 py-3 rounded-xl bg-gray-800 hover:bg-gray-700 text-white transition-colors"
-              >
-                <FaFilter />
-                Filters
-              </button>
+              <p className="text-sm text-gray-300 mb-4 line-clamp-2 max-w-2xl">
+                {currentHeroItem?.description || 'Experience this amazing content.'}
+              </p>
 
-              {/* Sort Select (Desktop) */}
-              <div className="hidden md:block">
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value)}
-                  className="px-4 py-3 rounded-xl bg-gray-800 border border-gray-700 text-white focus:outline-none focus:border-red-500"
-                >
-                  <option value="popular">🔥 Popular</option>
-                  <option value="rating">⭐ Highest Rated</option>
-                  <option value="newest">🆕 Newest First</option>
-                  <option value="az">A → Z</option>
-                  <option value="za">Z → A</option>
-                </select>
-              </div>
-            </div>
-
-            {/* Filter Panel */}
-            {showFilters && (
-              <div className="mt-4 p-4 bg-gray-900/50 rounded-xl border border-gray-800">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">Sort By</label>
-                    <select
-                      value={sortBy}
-                      onChange={(e) => setSortBy(e.target.value)}
-                      className="w-full px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white text-sm"
-                    >
-                      <option value="popular">Popular</option>
-                      <option value="rating">Highest Rated</option>
-                      <option value="newest">Newest First</option>
-                      <option value="az">A → Z</option>
-                      <option value="za">Z → A</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">Category</label>
-                    <select
-                      value={selectedCategory}
-                      onChange={(e) => setSelectedCategory(e.target.value)}
-                      className="w-full px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white text-sm"
-                    >
-                      <option value="all">All Categories</option>
-                      <option value="featured">🔥 Featured</option>
-                      {allCategories
-                        .filter(cat => cat !== 'all' && cat !== 'featured')
-                        .map(category => (
-                          <option key={category} value={category}>
-                            {category}
-                          </option>
-                        ))
-                      }
-                    </select>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Enhanced Search Result Indicator */}
-        {searchQuery && (
-          <div className="container mx-auto px-4 md:px-6 mb-6">
-            <div className="bg-gradient-to-r from-blue-900/20 to-purple-900/20 backdrop-blur-sm rounded-xl border border-blue-800/30 p-4">
-              <div className="flex flex-col md:flex-row md:items-center justify-between">
-                <div>
-                  <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-                    <FaSearch className="text-blue-400" />
-                    Search Results for: "{searchQuery}"
-                  </h3>
-                  <p className="text-gray-400 text-sm mt-1">
-                    Found {filteredMovies.length} movie{filteredMovies.length !== 1 ? 's' : ''}
-                    {selectedCategory !== "all" && ` in ${selectedCategory}`}
-                  </p>
-                </div>
+              <div className="flex gap-2">
                 <button
-                  onClick={handleClearSearch}
-                  className="mt-3 md:mt-0 px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg text-white font-medium flex items-center gap-2 transition-colors"
+                  onClick={handleHeroPlayClick}
+                  className="px-4 py-2 bg-gradient-to-r from-red-600 to-red-700 rounded-lg text-white text-sm font-semibold flex items-center gap-2"
                 >
-                  <FaTimes /> Clear Search
+                  <FaPlay /> Play
+                </button>
+                <button
+                  onClick={handleHeroInfoClick}
+                  className="px-4 py-2 bg-gray-800/70 rounded-lg text-white text-sm font-semibold flex items-center gap-2"
+                >
+                  <FaInfoCircle /> Info
                 </button>
               </div>
             </div>
           </div>
-        )}
 
-        {/* Featured Movies Section */}
-        {selectedCategory === "all" && featuredMovies.length > 0 && !searchQuery && (
-          <section className="container mx-auto px-4 md:px-6 mb-12">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-                <FaFire className="text-red-500" />
-                Featured Movies
-              </h2>
-              <span className="text-sm text-gray-400">
-                {featuredMovies.length} movies
-              </span>
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-              {featuredMovies.map(movie => (
-                <MovieCard key={movie.id} movie={movie} />
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* Main Movies Grid */}
-        <section className="container mx-auto px-4 md:px-6 pb-16">
-          {/* Results Header */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between mb-6">
-            <div>
-              <h2 className="text-2xl font-bold text-white">
-                {searchQuery ? "Search Results" :
-                  selectedCategory === "all" ? "All Movies" :
-                    selectedCategory === "featured" ? "Featured Movies" :
-                      `${selectedCategory} Movies`}
-              </h2>
-              <p className="text-gray-400">
-                {filteredMovies.length} movie{filteredMovies.length !== 1 ? 's' : ''} found
-                {searchQuery && ` for "${searchQuery}"`}
-                {selectedCategory !== "all" && !searchQuery && ` in ${selectedCategory}`}
-              </p>
-            </div>
-
-            {/* Category Filter Chips */}
-            <div className="flex flex-wrap gap-2 mt-2 md:mt-0">
+          {/* Navigation Dots */}
+          <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-1.5 z-20">
+            {filteredHeroContent.map((_, index) => (
               <button
-                onClick={() => setSelectedCategory("all")}
-                className={`px-3 py-1 rounded-full text-sm transition-all ${selectedCategory === "all"
-                  ? "bg-red-600 text-white"
-                  : "bg-gray-800 text-gray-300 hover:bg-gray-700"
+                key={index}
+                onClick={() => {
+                  setCurrentHeroSlide(index);
+                  setIsAutoPlaying(false);
+                  setTimeout(() => setIsAutoPlaying(true), 10000);
+                }}
+                className={`transition-all duration-300 ${index === currentHeroSlide ? 'w-6 h-1.5' : 'w-1.5 h-1.5'
                   }`}
               >
-                All
+                <span className={`block w-full h-full rounded-full ${index === currentHeroSlide ? 'bg-red-600' : 'bg-gray-600'
+                  }`} />
               </button>
-              <button
-                onClick={() => setSelectedCategory("featured")}
-                className={`px-3 py-1 rounded-full text-sm transition-all flex items-center gap-1 ${selectedCategory === "featured"
-                  ? "bg-orange-600 text-white"
-                  : "bg-gray-800 text-gray-300 hover:bg-gray-700"
-                  }`}
-              >
-                <FaFire className="text-xs" /> Featured
-              </button>
-              {allCategories
-                .filter(cat => cat !== 'all' && cat !== 'featured')
-                .slice(0, 6)
-                .map(category => (
-                  <button
-                    key={category}
-                    onClick={() => setSelectedCategory(category)}
-                    className={`px-3 py-1 rounded-full text-sm transition-all capitalize ${selectedCategory === category
-                      ? "bg-blue-600 text-white"
-                      : "bg-gray-800 text-gray-300 hover:bg-gray-700"
-                      }`}
-                  >
-                    {category}
-                  </button>
-                ))}
-            </div>
+            ))}
           </div>
 
-          {/* Movies Grid */}
-          {filteredMovies.length === 0 ? (
-            <div className="text-center py-16 bg-gray-900/30 rounded-2xl border border-gray-800">
-              <div className="text-6xl mb-4">🎬</div>
-              <h3 className="text-xl font-bold text-white mb-2">No movies found</h3>
-              <p className="text-gray-400 max-w-md mx-auto">
-                {searchQuery
-                  ? `No movies match "${searchQuery}". Try a different search term.`
-                  : "No movies available in this category."}
-              </p>
+          {/* Navigation Arrows */}
+          <button
+            onClick={prevHeroSlide}
+            className="hidden sm:block absolute left-4 top-1/2 transform -translate-y-1/2 p-3 bg-black/50 rounded-full text-white z-20"
+          >
+            <FaChevronLeft />
+          </button>
+          <button
+            onClick={nextHeroSlide}
+            className="hidden sm:block absolute right-4 top-1/2 transform -translate-y-1/2 p-3 bg-black/50 rounded-full text-white z-20"
+          >
+            <FaChevronRight />
+          </button>
+        </section>
+      )}
+
+      {/* Latest Series Section - UPDATED TO 5 COLUMNS */}
+      {latestSeries.length > 0 && heroContentType !== "series" && !searchQuery && (
+        <section className="container mx-auto px-4 py-8">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl md:text-2xl font-bold text-white flex items-center gap-2">
+              <FaTv className="text-purple-500" />
+              Latest Series
+              <span className="text-xs text-purple-400 ml-2 bg-purple-900/30 px-2 py-0.5 rounded-full">
+                NEW
+              </span>
+            </h2>
+          </div>
+
+          {/* Desktop Grid - 5 COLUMNS */}
+          <div className="hidden md:grid md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+            {latestSeries.slice(0, 10).map(series => (
+              <div
+                key={series?.id}
+                className="cursor-pointer"
+                onClick={() => handleMovieClick(series)}
+              >
+                <MovieCard movie={series} />
+              </div>
+            ))}
+          </div>
+
+          {/* Mobile Scroll */}
+          <div className="flex md:hidden gap-2 overflow-x-auto pb-2">
+            {latestSeries.slice(0, 8).map(series => (
+              <div
+                key={series?.id}
+                className="flex-none w-[120px]"
+                onClick={() => handleMovieClick(series)}
+              >
+                <MovieCard movie={series} />
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Search and Filter Bar */}
+      <div className="container mx-auto px-4 py-4">
+        <div className="bg-gray-900/80 rounded-xl border border-gray-800 p-4">
+          <div className="flex flex-col md:flex-row gap-3">
+            {/* Search Input */}
+            <div className="flex-1 relative">
+              <FaSearch className={`absolute left-3 top-1/2 transform -translate-y-1/2 text-sm ${isSearchFocused ? 'text-red-400' : 'text-gray-400'
+                }`} />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onFocus={() => setIsSearchFocused(true)}
+                onBlur={() => setIsSearchFocused(false)}
+                placeholder="Search movies..."
+                className="w-full pl-9 pr-8 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white text-sm focus:outline-none focus:border-red-500"
+              />
               {searchQuery && (
                 <button
                   onClick={handleClearSearch}
-                  className="mt-4 px-6 py-2 bg-red-600 hover:bg-red-700 rounded-lg text-white font-medium transition-colors flex items-center gap-2 mx-auto"
+                  className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white"
                 >
-                  <FaTimes /> Clear Search
+                  <FaTimes />
                 </button>
               )}
             </div>
-          ) : (
-            <>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
-                {paginatedMovies.map(movie => (
-                  <MovieCard key={movie.id} movie={movie} />
-                ))}
-              </div>
 
-              {/* Pagination */}
-              {totalPages > 1 && (
-                <div className="mt-12 flex flex-col sm:flex-row items-center justify-between gap-4">
-                  <div className="text-gray-400 text-sm">
-                    Showing {(currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, filteredMovies.length)} of {filteredMovies.length} movies
-                  </div>
-                  <div className="flex items-center gap-2">
+            {/* Filter Button */}
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-white text-sm"
+            >
+              <FaFilter className={showFilters ? 'text-red-400' : ''} />
+              Filters
+            </button>
+
+            {/* Sort Select */}
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white text-sm focus:outline-none focus:border-red-500"
+            >
+              <option value="popular">Popular</option>
+              <option value="rating">Top Rated</option>
+              <option value="year">Year</option>
+              <option value="title">Title</option>
+            </select>
+
+            {/* Sort Order */}
+            <button
+              onClick={() => setSortOrder(sortOrder === "desc" ? "asc" : "desc")}
+              className="p-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-white"
+            >
+              {sortOrder === "desc" ? <FaSortAmountDown /> : <FaSortAmountUp />}
+            </button>
+          </div>
+
+          {/* Filter Panel */}
+          {showFilters && (
+            <div className="mt-4 p-4 bg-gray-800/50 rounded-lg">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-300 mb-2">Categories</label>
+                  <div className="space-y-1 max-h-32 overflow-y-auto">
                     <button
-                      onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                      disabled={currentPage === 1}
-                      className="p-2 rounded-lg bg-gray-800 hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      onClick={() => setSelectedCategory("all")}
+                      className={`w-full text-left px-2 py-1 rounded text-xs ${selectedCategory === "all" ? 'bg-red-600 text-white' : 'bg-gray-800 text-gray-300'
+                        }`}
                     >
-                      <FaChevronLeft className="text-white" />
+                      All
                     </button>
-
-                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                      let pageNum;
-                      if (totalPages <= 5) {
-                        pageNum = i + 1;
-                      } else if (currentPage <= 3) {
-                        pageNum = i + 1;
-                      } else if (currentPage >= totalPages - 2) {
-                        pageNum = totalPages - 4 + i;
-                      } else {
-                        pageNum = currentPage - 2 + i;
-                      }
-
-                      return (
+                    <button
+                      onClick={() => setSelectedCategory("featured")}
+                      className={`w-full text-left px-2 py-1 rounded text-xs flex items-center gap-1 ${selectedCategory === "featured" ? 'bg-orange-600 text-white' : 'bg-gray-800 text-gray-300'
+                        }`}
+                    >
+                      <FaFire /> Featured
+                    </button>
+                    {allCategories
+                      .filter(cat => cat !== 'all' && cat !== 'featured')
+                      .slice(0, 8)
+                      .map(category => (
                         <button
-                          key={pageNum}
-                          onClick={() => setCurrentPage(pageNum)}
-                          className={`w-10 h-10 rounded-lg font-medium ${currentPage === pageNum
-                            ? 'bg-red-600 text-white'
-                            : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                          key={category}
+                          onClick={() => setSelectedCategory(category)}
+                          className={`w-full text-left px-2 py-1 rounded text-xs flex items-center gap-1 ${selectedCategory === category ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-300'
                             }`}
                         >
-                          {pageNum}
+                          {getCategoryIcon(category)}
+                          <span className="capitalize">{category}</span>
                         </button>
-                      );
-                    })}
-
-                    <button
-                      onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                      disabled={currentPage === totalPages}
-                      className="p-2 rounded-lg bg-gray-800 hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                    >
-                      <FaChevronRight className="text-white" />
-                    </button>
+                      ))}
                   </div>
                 </div>
-              )}
-            </>
+              </div>
+            </div>
           )}
+        </div>
+      </div>
+
+      {/* Search Results Indicator */}
+      {searchQuery && (
+        <div className="container mx-auto px-4 mb-4">
+          <div className="bg-blue-900/20 rounded-lg border border-blue-800/30 p-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <FaSearch className="text-blue-400" />
+                <div>
+                  <h3 className="text-sm font-semibold text-white">
+                    Results for: <span className="text-blue-400">"{searchQuery}"</span>
+                  </h3>
+                  <p className="text-xs text-gray-400">
+                    Found {filteredMovies.length} movie{filteredMovies.length !== 1 ? 's' : ''}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={handleClearSearch}
+                className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 rounded-lg text-white text-xs flex items-center gap-1"
+              >
+                <FaTimes /> Clear
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Featured Movies Section - 6 COLUMNS */}
+      {selectedCategory === "all" && featuredMovies.length > 0 && !searchQuery && (
+        <section className="container mx-auto px-4 mb-6">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-xl md:text-2xl font-bold text-white flex items-center gap-2">
+              <FaFire className="text-red-500" />
+              Featured Movies
+              <span className="text-xs text-red-400 ml-2 bg-red-900/30 px-2 py-0.5 rounded-full">
+                TOP PICKS
+              </span>
+            </h2>
+          </div>
+
+          {/* Desktop Grid - 6 COLUMNS */}
+          <div className="hidden md:grid md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+            {featuredMovies.slice(0, 12).map(movie => (
+              <div
+                key={movie?.id}
+                className="cursor-pointer"
+                onClick={() => handleMovieClick(movie)}
+              >
+                <MovieCard movie={movie} />
+              </div>
+            ))}
+          </div>
+
+          {/* Mobile Scroll */}
+          <div className="flex md:hidden gap-2 overflow-x-auto pb-2">
+            {featuredMovies.slice(0, 8).map(movie => (
+              <div
+                key={movie?.id}
+                className="flex-none w-[120px]"
+                onClick={() => handleMovieClick(movie)}
+              >
+                <MovieCard movie={movie} />
+              </div>
+            ))}
+          </div>
         </section>
-      </main>
-    </>
+      )}
+
+      {/* All Movies Section */}
+      <section className="container mx-auto px-4 pb-8">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-xl md:text-2xl font-bold text-white">
+            {searchQuery ? "Search Results" :
+              selectedCategory === "all" ? "All Movies" :
+                selectedCategory === "featured" ? "Featured Movies" :
+                  `${selectedCategory} Movies`}
+          </h2>
+          <span className="text-xs text-gray-400 bg-gray-800 px-2 py-1 rounded-full">
+            {filteredMovies.length}
+          </span>
+        </div>
+
+        {/* Category Chips */}
+        <div className="flex gap-1 mb-4 overflow-x-auto pb-1">
+          <button
+            onClick={() => setSelectedCategory("all")}
+            className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap ${selectedCategory === "all"
+              ? 'bg-red-600 text-white'
+              : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+              }`}
+          >
+            All
+          </button>
+          <button
+            onClick={() => setSelectedCategory("featured")}
+            className={`px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-1 whitespace-nowrap ${selectedCategory === "featured"
+              ? 'bg-orange-600 text-white'
+              : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+              }`}
+          >
+            <FaFire /> Featured
+          </button>
+          {allCategories
+            .filter(cat => cat !== 'all' && cat !== 'featured')
+            .slice(0, 8)
+            .map(category => (
+              <button
+                key={category}
+                onClick={() => setSelectedCategory(category)}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-1 whitespace-nowrap ${selectedCategory === category
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                  }`}
+              >
+                {getCategoryIcon(category)}
+                <span className="capitalize">{category}</span>
+              </button>
+            ))}
+        </div>
+
+        {/* Movies Grid */}
+        {filteredMovies.length === 0 ? (
+          <div className="text-center py-12 bg-gray-900/30 rounded-lg">
+            <div className="text-4xl mb-2">🎬</div>
+            <h3 className="text-base font-bold text-white mb-1">No movies found</h3>
+            <p className="text-xs text-gray-400 mb-3">
+              {searchQuery ? `No matches for "${searchQuery}"` : "No movies available"}
+            </p>
+            {searchQuery && (
+              <button
+                onClick={handleClearSearch}
+                className="px-4 py-2 bg-red-600 rounded-lg text-white text-xs font-medium"
+              >
+                Clear Search
+              </button>
+            )}
+          </div>
+        ) : (
+          <>
+            {/* Movie Grid - USING MovieCard */}
+            <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 md:gap-4">
+              {paginatedMovies.map(movie => (
+                <div
+                  key={movie?.id}
+                  className="cursor-pointer"
+                  onClick={() => handleMovieClick(movie)}
+                >
+                  <MovieCard movie={movie} />
+                </div>
+              ))}
+            </div>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-center gap-2 mt-6">
+                <button
+                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                  className="w-8 h-8 rounded-lg bg-gray-800 disabled:opacity-50 text-white flex items-center justify-center"
+                >
+                  <FaChevronLeft className="text-xs" />
+                </button>
+                <span className="text-xs text-white bg-gray-800 px-3 py-1.5 rounded-lg">
+                  {currentPage} / {totalPages}
+                </span>
+                <button
+                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages}
+                  className="w-8 h-8 rounded-lg bg-gray-800 disabled:opacity-50 text-white flex items-center justify-center"
+                >
+                  <FaChevronRight className="text-xs" />
+                </button>
+              </div>
+            )}
+          </>
+        )}
+      </section>
+
+      {/* Quick View Modal */}
+      {showQuickView && quickViewMovie && (
+        <div
+          className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/80"
+          onClick={() => setShowQuickView(false)}
+        >
+          <div
+            className="w-full md:max-w-2xl bg-gray-900 rounded-t-2xl md:rounded-2xl border border-gray-800"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="relative h-40 md:h-56">
+              <img
+                src={quickViewMovie?.background || quickViewMovie?.poster}
+                alt={quickViewMovie?.title}
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-gray-900 via-transparent to-transparent" />
+              <button
+                onClick={() => setShowQuickView(false)}
+                className="absolute top-2 right-2 w-7 h-7 bg-black/50 rounded-full flex items-center justify-center"
+              >
+                <FaTimes className="text-white text-xs" />
+              </button>
+            </div>
+            <div className="p-4">
+              <h2 className="text-lg font-bold text-white mb-1">{quickViewMovie?.title}</h2>
+              <div className="flex flex-wrap items-center gap-2 text-xs text-gray-400 mb-2">
+                {quickViewMovie?.rating && (
+                  <span className="flex items-center gap-1">
+                    <FaStar className="text-yellow-500" /> {quickViewMovie.rating}
+                  </span>
+                )}
+                {quickViewMovie?.year && <span>{quickViewMovie.year}</span>}
+              </div>
+              <p className="text-xs text-gray-300 mb-3 line-clamp-3">
+                {quickViewMovie?.description}
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    handleMovieClick(quickViewMovie);
+                    setShowQuickView(false);
+                  }}
+                  className="flex-1 bg-red-600 py-2 rounded-lg text-white text-xs font-semibold flex items-center justify-center gap-1"
+                >
+                  <FaPlay /> Watch Now
+                </button>
+                <button
+                  onClick={() => setShowQuickView(false)}
+                  className="flex-1 bg-gray-800 py-2 rounded-lg text-white text-xs font-semibold"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </main>
   );
 }

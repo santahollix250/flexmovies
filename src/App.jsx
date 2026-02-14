@@ -22,7 +22,7 @@ function App() {
             <Route path="/" element={<Movies />} />
             <Route path="/movies" element={<Movies />} />
             <Route path="/series" element={<Series />} />
-            <Route path="/player" element={<Player />} /> {/* ADD THIS ROUTE */}
+            <Route path="/player/:id" element={<Player />} />{/* ADD THIS ROUTE */}
             <Route path="/admin" element={
               <ProtectedRoute>
                 <Admin />

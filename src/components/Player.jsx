@@ -1,21 +1,27 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import React, { useState, useRef, useEffect, useCallback, useContext } from 'react';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import {
     FaPlay, FaPause, FaVolumeUp, FaVolumeMute, FaExpand, FaCompress,
     FaArrowLeft, FaDownload, FaHome, FaStar, FaForward, FaBackward,
-    FaVideo, FaComment, FaHeart, FaPaperPlane, FaTrash, FaEdit, FaCheck, FaTimes
+    FaVideo, FaComment, FaHeart, FaPaperPlane, FaTrash, FaEdit, FaCheck, FaTimes,
+    FaSpinner, FaExclamationTriangle, FaCloudDownloadAlt, FaFileDownload,
+    FaChevronDown, FaChevronUp, FaLink, FaHdd, FaFilm
 } from 'react-icons/fa';
 import { supabase } from '../lib/supabaseClient';
+import { MoviesContext } from '../context/MoviesContext';
 
 const Player = () => {
     const location = useLocation();
     const navigate = useNavigate();
+    const { id } = useParams();
+    const { movies } = useContext(MoviesContext);
+
     const videoRef = useRef(null);
     const playerContainerRef = useRef(null);
     const controlsTimerRef = useRef(null);
 
-    // Get movie data
-    const { movie } = location.state || {};
+    // Get movie data from location state or find from context using ID
+    const [movie, setMovie] = useState(location.state?.movie || null);
     const [videoUrl, setVideoUrl] = useState('');
     const [playing, setPlaying] = useState(false);
     const [volume, setVolume] = useState(0.8);
@@ -24,7 +30,7 @@ const Player = () => {
     const [duration, setDuration] = useState(0);
     const [currentTime, setCurrentTime] = useState(0);
     const [showControls, setShowControls] = useState(true);
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [videoType, setVideoType] = useState('direct');
     const [videoLoaded, setVideoLoaded] = useState(false);
@@ -34,6 +40,10 @@ const Player = () => {
     const [isVimeoVideo, setIsVimeoVideo] = useState(false);
     const [isDailyMotionVideo, setIsDailyMotionVideo] = useState(false);
     const [dailyMotionId, setDailyMotionId] = useState('');
+    const [retryCount, setRetryCount] = useState(0);
+    const [useEmbed, setUseEmbed] = useState(false);
+    const [showDownloadOptions, setShowDownloadOptions] = useState(false);
+    const [downloading, setDownloading] = useState(false);
 
     // Comments state
     const [comments, setComments] = useState([]);
@@ -45,16 +55,29 @@ const Player = () => {
     const [editText, setEditText] = useState('');
     const [userAvatar, setUserAvatar] = useState('');
 
+    // Try to find movie from context if not in state
+    useEffect(() => {
+        if (!movie && id && movies.length > 0) {
+            const foundMovie = movies.find(m => m.id === id || m.id === parseInt(id));
+            if (foundMovie) {
+                setMovie(foundMovie);
+                setError('');
+            } else {
+                setError("Movie not found");
+            }
+        } else if (!movie && !id) {
+            setError("No movie selected");
+        }
+    }, [movie, id, movies]);
+
     // Comments functions
     useEffect(() => {
-        // Initialize user from localStorage
         const savedUser = localStorage.getItem('videoCommenter');
         if (savedUser) {
             const userData = JSON.parse(savedUser);
             setUserName(userData.name);
             setUserAvatar(userData.avatar);
         } else {
-            // Generate random user
             const randomName = `User${Math.floor(Math.random() * 10000)}`;
             const randomAvatar = `https://api.dicebear.com/7.x/avataaars/svg?seed=${randomName}`;
             setUserName(randomName);
@@ -65,13 +88,11 @@ const Player = () => {
             }));
         }
 
-        // Load comments if movie exists
         if (movie?.id) {
             fetchComments();
         }
     }, [movie]);
 
-    // Fetch comments from Supabase
     const fetchComments = async () => {
         try {
             const { data, error } = await supabase
@@ -84,7 +105,6 @@ const Player = () => {
             setComments(data || []);
         } catch (error) {
             console.error('Error fetching comments:', error);
-            // Fallback to localStorage if Supabase fails
             const localComments = localStorage.getItem(`comments_${movie.id}`);
             if (localComments) {
                 setComments(JSON.parse(localComments));
@@ -92,7 +112,6 @@ const Player = () => {
         }
     };
 
-    // Submit new comment
     const handleSubmitComment = async (e) => {
         e.preventDefault();
         if (!newComment.trim() || !userName.trim()) return;
@@ -113,7 +132,6 @@ const Player = () => {
         };
 
         try {
-            // Try Supabase first
             const { data, error } = await supabase
                 .from('comments')
                 .insert([commentData])
@@ -121,11 +139,9 @@ const Player = () => {
 
             if (error) throw error;
 
-            // Update local state
             setComments(prev => [data[0], ...prev]);
             setNewComment('');
 
-            // Also save to localStorage as backup
             const existingComments = JSON.parse(localStorage.getItem(`comments_${movie.id}`) || '[]');
             existingComments.unshift({
                 ...commentData,
@@ -136,18 +152,14 @@ const Player = () => {
 
         } catch (error) {
             console.error('Error submitting comment:', error);
-
-            // Fallback to localStorage
             const fallbackComment = {
                 ...commentData,
                 id: Date.now(),
                 created_at: new Date().toISOString()
             };
-
             const existingComments = JSON.parse(localStorage.getItem(`comments_${movie.id}`) || '[]');
             existingComments.unshift(fallbackComment);
             localStorage.setItem(`comments_${movie.id}`, JSON.stringify(existingComments));
-
             setComments(existingComments);
             setNewComment('');
         } finally {
@@ -155,7 +167,6 @@ const Player = () => {
         }
     };
 
-    // Like a comment
     const handleLikeComment = async (commentId) => {
         try {
             const comment = comments.find(c => c.id === commentId);
@@ -163,7 +174,6 @@ const Player = () => {
 
             const updatedLikes = (comment.likes || 0) + 1;
 
-            // Try Supabase update
             const { error } = await supabase
                 .from('comments')
                 .update({ likes: updatedLikes })
@@ -171,12 +181,10 @@ const Player = () => {
 
             if (error) throw error;
 
-            // Update local state
             setComments(prev => prev.map(c =>
                 c.id === commentId ? { ...c, likes: updatedLikes } : c
             ));
 
-            // Update localStorage
             const existingComments = JSON.parse(localStorage.getItem(`comments_${movie.id}`) || '[]');
             const updatedComments = existingComments.map(c =>
                 c.id === commentId ? { ...c, likes: updatedLikes } : c
@@ -185,20 +193,17 @@ const Player = () => {
 
         } catch (error) {
             console.error('Error liking comment:', error);
-            // Just update locally
             setComments(prev => prev.map(c =>
                 c.id === commentId ? { ...c, likes: (c.likes || 0) + 1 } : c
             ));
         }
     };
 
-    // Edit comment
     const handleEditComment = (comment) => {
         setEditingComment(comment.id);
         setEditText(comment.message);
     };
 
-    // Save edited comment
     const handleSaveEdit = async (commentId) => {
         try {
             const { error } = await supabase
@@ -208,12 +213,10 @@ const Player = () => {
 
             if (error) throw error;
 
-            // Update local state
             setComments(prev => prev.map(c =>
                 c.id === commentId ? { ...c, message: editText.trim() } : c
             ));
 
-            // Update localStorage
             const existingComments = JSON.parse(localStorage.getItem(`comments_${movie.id}`) || '[]');
             const updatedComments = existingComments.map(c =>
                 c.id === commentId ? { ...c, message: editText.trim() } : c
@@ -227,7 +230,6 @@ const Player = () => {
         }
     };
 
-    // Delete comment
     const handleDeleteComment = async (commentId) => {
         if (!window.confirm('Are you sure you want to delete this comment?')) return;
 
@@ -239,10 +241,8 @@ const Player = () => {
 
             if (error) throw error;
 
-            // Update local state
             setComments(prev => prev.filter(c => c.id !== commentId));
 
-            // Update localStorage
             const existingComments = JSON.parse(localStorage.getItem(`comments_${movie.id}`) || '[]');
             const updatedComments = existingComments.filter(c => c.id !== commentId);
             localStorage.setItem(`comments_${movie.id}`, JSON.stringify(updatedComments));
@@ -252,7 +252,6 @@ const Player = () => {
         }
     };
 
-    // Format timestamp
     const formatTimeAgo = (timestamp) => {
         const date = new Date(timestamp);
         const now = new Date();
@@ -265,18 +264,15 @@ const Player = () => {
         return date.toLocaleDateString();
     };
 
-    // Update userName
     const updateUserName = (e) => {
         const newName = e.target.value;
         setUserName(newName);
-
-        // Update localStorage
         const userData = JSON.parse(localStorage.getItem('videoCommenter') || '{}');
         userData.name = newName;
         localStorage.setItem('videoCommenter', JSON.stringify(userData));
     };
 
-    // Detect video type
+    // Improved video type detection
     const detectVideoType = (url) => {
         if (!url || typeof url !== 'string') return 'direct';
 
@@ -290,8 +286,18 @@ const Player = () => {
             return 'vimeo';
         }
 
-        // Check if it's a direct video file
-        if (url.match(/\.(mp4|webm|mkv|avi|mov|m3u8)$/i)) {
+        // Check for YouTube
+        if (url.includes('youtube.com') || url.includes('youtu.be') || url.includes('youtube-nocookie.com')) {
+            return 'youtube';
+        }
+
+        // Check if it's a direct video file - expanded formats
+        if (url.match(/\.(mp4|webm|mkv|avi|mov|m3u8|mpd|ogg|ogv|wmv|flv|m4v|3gp|ts)$/i)) {
+            return 'direct';
+        }
+
+        // Check if it's a streaming URL (like from a CDN)
+        if (url.includes('/stream/') || url.includes('/video/') || url.includes('/watch/')) {
             return 'direct';
         }
 
@@ -300,10 +306,14 @@ const Player = () => {
             return 'mux';
         }
 
+        // Check if it's an embed code or iframe
+        if (url.includes('<iframe') || url.includes('embed')) {
+            return 'embed';
+        }
+
         return 'direct';
     };
 
-    // Extract Vimeo ID
     const extractVimeoId = (url) => {
         if (!url || typeof url !== 'string') return '';
         if (/^\d+$/.test(url.trim())) return url.trim();
@@ -323,14 +333,11 @@ const Player = () => {
         return '';
     };
 
-    // Extract DailyMotion ID
     const extractDailyMotionId = (url) => {
         if (!url || typeof url !== 'string') return '';
 
-        // Remove query parameters and fragments
         const cleanUrl = url.split('?')[0].split('#')[0];
 
-        // Patterns for different DailyMotion URL formats
         const patterns = [
             /dailymotion\.com\/video\/([a-zA-Z0-9]+)/,
             /dailymotion\.com\/embed\/video\/([a-zA-Z0-9]+)/,
@@ -344,7 +351,6 @@ const Player = () => {
             if (match) return match[1];
         }
 
-        // Try to extract from shortcode format
         if (/^[a-zA-Z0-9]+$/.test(url.trim())) {
             return url.trim();
         }
@@ -352,18 +358,28 @@ const Player = () => {
         return '';
     };
 
-    // Play/Pause - Different behavior based on video type
+    const extractYouTubeId = (url) => {
+        if (!url || typeof url !== 'string') return '';
+
+        const patterns = [
+            /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/,
+            /^[a-zA-Z0-9_-]{11}$/
+        ];
+
+        for (const pattern of patterns) {
+            const match = url.match(pattern);
+            if (match) return match[1] || match[0];
+        }
+
+        return '';
+    };
+
     const handlePlayPause = useCallback((e) => {
         e?.stopPropagation();
 
-        if (isVimeoVideo) {
-            // Don't handle play/pause for Vimeo - let Vimeo controls handle it
-            return;
-        } else if (isDailyMotionVideo) {
-            // Don't handle play/pause for DailyMotion - let DailyMotion controls handle it
+        if (isVimeoVideo || isDailyMotionVideo || videoType === 'youtube' || useEmbed) {
             return;
         } else {
-            // Handle HTML5 videos
             if (!videoRef.current) return;
 
             const video = videoRef.current;
@@ -378,7 +394,9 @@ const Player = () => {
                         // Try with muted
                         video.muted = true;
                         setMuted(true);
-                        video.play().then(() => setPlaying(true));
+                        video.play().then(() => setPlaying(true)).catch(e => {
+                            setError("Unable to play video. Please try again or use the external link.");
+                        });
                     });
             } else {
                 video.pause();
@@ -387,11 +405,10 @@ const Player = () => {
         }
 
         showControlsWithTimer();
-    }, [isVimeoVideo, isDailyMotionVideo]);
+    }, [isVimeoVideo, isDailyMotionVideo, videoType, useEmbed]);
 
-    // Other control functions - only for HTML5 videos
     const handleTimeUpdate = () => {
-        if (videoRef.current && !isVimeoVideo && !isDailyMotionVideo) {
+        if (videoRef.current && !isVimeoVideo && !isDailyMotionVideo && videoType !== 'youtube' && !useEmbed) {
             const current = videoRef.current.currentTime;
             const total = videoRef.current.duration || 0;
             setCurrentTime(current);
@@ -402,8 +419,7 @@ const Player = () => {
 
     const handleVolumeChange = (e) => {
         e?.stopPropagation();
-        if (isVimeoVideo || isDailyMotionVideo) {
-            // Don't handle volume for embedded videos
+        if (isVimeoVideo || isDailyMotionVideo || videoType === 'youtube' || useEmbed) {
             return;
         }
         const newVolume = parseFloat(e.target.value);
@@ -417,8 +433,7 @@ const Player = () => {
 
     const handleToggleMute = (e) => {
         e?.stopPropagation();
-        if (isVimeoVideo || isDailyMotionVideo) {
-            // Don't handle mute for embedded videos
+        if (isVimeoVideo || isDailyMotionVideo || videoType === 'youtube' || useEmbed) {
             return;
         }
         if (videoRef.current) {
@@ -430,8 +445,7 @@ const Player = () => {
 
     const handleSeek = (e) => {
         e?.stopPropagation();
-        if (isVimeoVideo || isDailyMotionVideo) {
-            // Don't handle seek for embedded videos
+        if (isVimeoVideo || isDailyMotionVideo || videoType === 'youtube' || useEmbed) {
             return;
         }
         const seekTo = parseFloat(e.target.value);
@@ -447,8 +461,7 @@ const Player = () => {
 
     const handleForward = (e, seconds = 10) => {
         e?.stopPropagation();
-        if (isVimeoVideo || isDailyMotionVideo) {
-            // Don't handle forward for embedded videos
+        if (isVimeoVideo || isDailyMotionVideo || videoType === 'youtube' || useEmbed) {
             return;
         }
         if (videoRef.current) {
@@ -460,8 +473,7 @@ const Player = () => {
 
     const handleRewind = (e, seconds = 10) => {
         e?.stopPropagation();
-        if (isVimeoVideo || isDailyMotionVideo) {
-            // Don't handle rewind for embedded videos
+        if (isVimeoVideo || isDailyMotionVideo || videoType === 'youtube' || useEmbed) {
             return;
         }
         if (videoRef.current) {
@@ -473,8 +485,7 @@ const Player = () => {
 
     const handlePlaybackRate = (rate, e) => {
         e?.stopPropagation();
-        if (isVimeoVideo || isDailyMotionVideo) {
-            // Don't handle playback rate for embedded videos
+        if (isVimeoVideo || isDailyMotionVideo || videoType === 'youtube' || useEmbed) {
             return;
         }
         if (videoRef.current) {
@@ -484,14 +495,58 @@ const Player = () => {
         showControlsWithTimer();
     };
 
-    const handleDownload = (e) => {
+    // UPDATED: Enhanced download handler with quality options and progress simulation
+    const handleDownload = async (e, quality = 'original') => {
         e?.stopPropagation();
-        if (movie?.download_link) {
-            window.open(movie.download_link, '_blank');
+
+        // Check for download link in priority order:
+        // 1. download field (from admin form)
+        // 2. download_link field
+        // 3. videoUrl as fallback
+        // 4. streamLink as last resort
+        const downloadUrl = movie?.download || movie?.download_link || movie?.videoUrl || movie?.streamLink;
+
+        if (downloadUrl) {
+            setDownloading(true);
+            setShowDownloadOptions(false);
+
+            // Simulate download preparation (for better UX)
+            setTimeout(() => {
+                // Create an invisible anchor element to trigger download
+                const link = document.createElement('a');
+                link.href = downloadUrl;
+                link.download = ''; // Let the browser determine filename or use URL
+                link.target = '_blank'; // Open in new tab for cross-origin URLs
+                link.rel = 'noopener noreferrer';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+
+                setDownloading(false);
+
+                // Show success message (optional)
+                const fileName = downloadUrl.split('/').pop() || movie.title;
+                alert(`Download started: ${fileName}`);
+
+                showControlsWithTimer();
+            }, 1000);
         } else {
             alert('Download link not available for this movie.');
         }
-        showControlsWithTimer();
+    };
+
+    // Copy download link to clipboard
+    const handleCopyLink = (e) => {
+        e?.stopPropagation();
+        const downloadUrl = movie?.download || movie?.download_link || movie?.videoUrl || movie?.streamLink;
+
+        if (downloadUrl) {
+            navigator.clipboard.writeText(downloadUrl).then(() => {
+                alert('Download link copied to clipboard!');
+            }).catch(() => {
+                alert('Failed to copy link');
+            });
+        }
     };
 
     const handleFullscreen = (e) => {
@@ -522,7 +577,22 @@ const Player = () => {
         navigate('/');
     };
 
-    // Auto-hide controls timer
+    const handleRetry = () => {
+        setRetryCount(prev => prev + 1);
+        setError('');
+        setLoading(true);
+        setVideoLoaded(false);
+        if (movie) {
+            initializeVideo();
+        }
+    };
+
+    const handleUseEmbed = () => {
+        setUseEmbed(true);
+        setError('');
+        setLoading(false);
+    };
+
     const resetControlsTimer = () => {
         if (controlsTimerRef.current) clearTimeout(controlsTimerRef.current);
         controlsTimerRef.current = setTimeout(() => {
@@ -545,58 +615,88 @@ const Player = () => {
         return `${mm}:${ss}`;
     };
 
-    // Initialize video
-    useEffect(() => {
-        if (!movie) {
-            setError("No movie selected");
+    const initializeVideo = () => {
+        if (!movie) return;
+
+        const url = movie?.videoUrl || movie?.streamLink || '';
+
+        if (!url) {
+            setError("No video URL available for this movie");
+            setLoading(false);
             return;
         }
 
-        const url = movie?.videoUrl || movie?.streamLink || '';
-        setLoading(true);
+        const detectedType = detectVideoType(url);
+        setVideoType(detectedType);
 
-        const initializeVideo = () => {
-            const detectedType = detectVideoType(url);
-            setVideoType(detectedType);
-
-            if (detectedType === 'dailymotion') {
-                setIsDailyMotionVideo(true);
-                setIsVimeoVideo(false);
-                const dailymotionId = extractDailyMotionId(url);
-                if (dailymotionId) {
-                    setDailyMotionId(dailymotionId);
-                    // DailyMotion embed WITH DailyMotion controls
-                    const embedUrl = `https://www.dailymotion.com/embed/video/${dailymotionId}?autoplay=1&queue-autoplay-next=0&queue-enable=0&sharing-enable=0&ui-logo=0&ui-start-screen-info=0&controls=true`;
-                    setVideoUrl(embedUrl);
-                    console.log("🎬 Using DailyMotion embedded player WITH DailyMotion controls");
-                } else {
-                    setError("Invalid DailyMotion URL");
-                }
-            } else if (detectedType === 'vimeo') {
-                setIsVimeoVideo(true);
-                setIsDailyMotionVideo(false);
-                const vimeoId = extractVimeoId(url);
-                if (vimeoId) {
-                    // Vimeo embed WITH Vimeo controls (controls=true)
-                    const embedUrl = `https://player.vimeo.com/video/${vimeoId}?autoplay=1&title=0&byline=0&portrait=0&controls=true`;
-                    setVideoUrl(embedUrl);
-                    console.log("🎬 Using Vimeo embedded player WITH Vimeo controls");
-                } else {
-                    setError("Invalid Vimeo URL");
-                }
+        if (detectedType === 'dailymotion') {
+            setIsDailyMotionVideo(true);
+            setIsVimeoVideo(false);
+            const dailymotionId = extractDailyMotionId(url);
+            if (dailymotionId) {
+                setDailyMotionId(dailymotionId);
+                // Clean DailyMotion embed - no logo, no branding
+                const embedUrl = `https://www.dailymotion.com/embed/video/${dailymotionId}?autoplay=1&queue-autoplay-next=0&queue-enable=0&sharing-enable=0&ui-logo=0&ui-start-screen-info=0&controls=true&ui-theme=dark&ui-advance=0&ui-chapters=0&ui-description=0&ui-mute=0&ui-endscreen=0&logo=0&info=0`;
+                setVideoUrl(embedUrl);
+                console.log("🎬 Using DailyMotion embedded player (clean mode)");
             } else {
-                setIsVimeoVideo(false);
-                setIsDailyMotionVideo(false);
-                // Direct video file - use OUR controls
-                setVideoUrl(url);
-                console.log("🎬 Using custom HTML5 player with our controls");
+                setError("Invalid DailyMotion URL");
             }
-            setLoading(false);
-        };
+        } else if (detectedType === 'vimeo') {
+            setIsVimeoVideo(true);
+            setIsDailyMotionVideo(false);
+            const vimeoId = extractVimeoId(url);
+            if (vimeoId) {
+                // Clean Vimeo embed - no logos, no text
+                const embedUrl = `https://player.vimeo.com/video/${vimeoId}?autoplay=1&title=0&byline=0&portrait=0&controls=true&badge=0&transparent=1&color=ffffff&autopause=0&player_id=0&app_id=0`;
+                setVideoUrl(embedUrl);
+                console.log("🎬 Using Vimeo embedded player (clean mode)");
+            } else {
+                setError("Invalid Vimeo URL");
+            }
+        } else if (detectedType === 'youtube') {
+            setIsVimeoVideo(false);
+            setIsDailyMotionVideo(false);
+            const youtubeId = extractYouTubeId(url);
+            if (youtubeId) {
+                // Clean YouTube embed - minimal branding
+                const embedUrl = `https://www.youtube-nocookie.com/embed/${youtubeId}?autoplay=1&rel=0&modestbranding=1&showinfo=0&controls=1&iv_load_policy=3&fs=1&disablekb=0&playsinline=1&cc_load_policy=0&color=white`;
+                setVideoUrl(embedUrl);
+                console.log("🎬 Using YouTube embedded player (clean mode)");
+            } else {
+                setError("Invalid YouTube URL");
+            }
+        } else if (detectedType === 'embed') {
+            setIsVimeoVideo(false);
+            setIsDailyMotionVideo(false);
+            // Try to extract iframe src
+            const srcMatch = url.match(/src=["']([^"']+)["']/);
+            if (srcMatch) {
+                setVideoUrl(srcMatch[1]);
+            } else {
+                setVideoUrl(url);
+            }
+            console.log("🎬 Using embed player");
+        } else {
+            setIsVimeoVideo(false);
+            setIsDailyMotionVideo(false);
+            setVideoUrl(url);
+            console.log("🎬 Using custom HTML5 player");
+        }
+        setLoading(false);
+    };
 
+    useEffect(() => {
+        if (!movie) {
+            setLoading(false);
+            return;
+        }
+
+        setLoading(true);
+        setError('');
+        setUseEmbed(false);
         initializeVideo();
 
-        // Fullscreen change listener
         const handleFullscreenChange = () => {
             setIsFullscreen(!!document.fullscreenElement);
         };
@@ -606,12 +706,10 @@ const Player = () => {
             if (controlsTimerRef.current) clearTimeout(controlsTimerRef.current);
             document.removeEventListener('fullscreenchange', handleFullscreenChange);
         };
-    }, [movie]);
+    }, [movie, retryCount]);
 
-    // Render video player
     const renderVideoPlayer = () => {
-        if (isDailyMotionVideo && dailyMotionId) {
-            // DailyMotion embed - THEY handle controls
+        if (useEmbed) {
             return (
                 <div className="relative w-full h-full">
                     <iframe
@@ -620,17 +718,44 @@ const Player = () => {
                         frameBorder="0"
                         allow="autoplay; fullscreen; picture-in-picture"
                         allowFullScreen
-                        title={movie.title}
+                        title={movie?.title || 'Video Player'}
                         onLoad={() => {
-                            console.log("✅ DailyMotion iframe loaded WITH controls");
+                            console.log("✅ Embed iframe loaded");
                             setVideoLoaded(true);
                             setPlaying(true);
+                        }}
+                        onError={() => {
+                            setError("Failed to load embedded video");
+                            setVideoLoaded(false);
+                        }}
+                    />
+                </div>
+            );
+        }
+
+        if (isDailyMotionVideo && dailyMotionId) {
+            return (
+                <div className="relative w-full h-full">
+                    <iframe
+                        src={videoUrl}
+                        className="w-full h-full"
+                        frameBorder="0"
+                        allow="autoplay; fullscreen; picture-in-picture"
+                        allowFullScreen
+                        title={movie?.title || 'Video Player'}
+                        onLoad={() => {
+                            console.log("✅ DailyMotion iframe loaded");
+                            setVideoLoaded(true);
+                            setPlaying(true);
+                        }}
+                        onError={() => {
+                            setError("Failed to load DailyMotion video");
+                            setVideoLoaded(false);
                         }}
                     />
                 </div>
             );
         } else if (isVimeoVideo) {
-            // Vimeo embed - THEY handle controls
             return (
                 <div className="relative w-full h-full">
                     <iframe
@@ -639,17 +764,42 @@ const Player = () => {
                         frameBorder="0"
                         allow="autoplay; fullscreen; picture-in-picture"
                         allowFullScreen
-                        title={movie.title}
+                        title={movie?.title || 'Video Player'}
                         onLoad={() => {
-                            console.log("✅ Vimeo iframe loaded WITH controls");
+                            console.log("✅ Vimeo iframe loaded");
                             setVideoLoaded(true);
                             setPlaying(true);
+                        }}
+                        onError={() => {
+                            setError("Failed to load Vimeo video");
+                            setVideoLoaded(false);
+                        }}
+                    />
+                </div>
+            );
+        } else if (videoType === 'youtube') {
+            return (
+                <div className="relative w-full h-full">
+                    <iframe
+                        src={videoUrl}
+                        className="w-full h-full"
+                        frameBorder="0"
+                        allow="autoplay; fullscreen; picture-in-picture"
+                        allowFullScreen
+                        title={movie?.title || 'Video Player'}
+                        onLoad={() => {
+                            console.log("✅ YouTube iframe loaded");
+                            setVideoLoaded(true);
+                            setPlaying(true);
+                        }}
+                        onError={() => {
+                            setError("Failed to load YouTube video");
+                            setVideoLoaded(false);
                         }}
                     />
                 </div>
             );
         } else {
-            // HTML5 video - WE handle controls
             return (
                 <video
                     ref={videoRef}
@@ -657,11 +807,11 @@ const Player = () => {
                     src={videoUrl}
                     onTimeUpdate={handleTimeUpdate}
                     onLoadedMetadata={() => {
-                        console.log("✅ HTML5 video loaded");
+                        console.log("✅ HTML5 video metadata loaded");
                         setVideoLoaded(true);
                         if (videoRef.current) {
                             setDuration(videoRef.current.duration);
-                            // Try auto-play for HTML5 videos
+                            // Try auto-play
                             const playPromise = videoRef.current.play();
                             if (playPromise !== undefined) {
                                 playPromise
@@ -669,7 +819,7 @@ const Player = () => {
                                         setPlaying(true);
                                     })
                                     .catch(err => {
-                                        console.log("Auto-play failed - waiting for user click");
+                                        console.log("Auto-play prevented:", err);
                                         setPlaying(false);
                                     });
                             }
@@ -686,19 +836,47 @@ const Player = () => {
                     }}
                     onError={(e) => {
                         console.error("❌ Video error:", e);
-                        setError("Failed to load video");
+                        const video = videoRef.current;
+                        let errorMessage = "Failed to load video. ";
+
+                        if (video && video.error) {
+                            switch (video.error.code) {
+                                case MediaError.MEDIA_ERR_ABORTED:
+                                    errorMessage += "The video playback was aborted.";
+                                    break;
+                                case MediaError.MEDIA_ERR_NETWORK:
+                                    errorMessage += "A network error caused the video download to fail.";
+                                    break;
+                                case MediaError.MEDIA_ERR_DECODE:
+                                    errorMessage += "The video playback was aborted due to a corruption problem or because the video used features your browser does not support.";
+                                    break;
+                                case MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED:
+                                    errorMessage += "The video format is not supported by your browser.";
+                                    break;
+                                default:
+                                    errorMessage += "An unknown error occurred.";
+                            }
+                        } else {
+                            errorMessage += "The video source might be invalid or unavailable.";
+                        }
+
+                        setError(errorMessage);
+                        setVideoLoaded(false);
                     }}
                     playsInline
                     preload="auto"
                     muted={muted}
+                    crossOrigin="anonymous"
                 >
+                    <source src={videoUrl} type="video/mp4" />
+                    <source src={videoUrl} type="video/webm" />
+                    <source src={videoUrl} type="video/ogg" />
                     Your browser does not support the video tag.
                 </video>
             );
         }
     };
 
-    // Render Comments Section - THIS WAS MISSING!
     const renderCommentsSection = () => (
         <div className="mt-8 bg-gray-900/50 rounded-2xl p-6 border border-gray-800">
             <div className="flex items-center justify-between mb-6">
@@ -716,7 +894,6 @@ const Player = () => {
 
             {showComments && (
                 <>
-                    {/* Comment Form */}
                     <div className="mb-6 p-4 bg-gray-800/50 rounded-xl">
                         <div className="flex items-center gap-3 mb-4">
                             <img
@@ -758,7 +935,7 @@ const Player = () => {
                                 >
                                     {isSubmitting ? (
                                         <>
-                                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                            <FaSpinner className="animate-spin" />
                                             Posting...
                                         </>
                                     ) : (
@@ -771,7 +948,6 @@ const Player = () => {
                         </form>
                     </div>
 
-                    {/* Comments List */}
                     <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2">
                         {comments.length === 0 ? (
                             <div className="text-center py-8 text-gray-500">
@@ -810,7 +986,6 @@ const Player = () => {
                                                     </span>
                                                 </div>
 
-                                                {/* Comment actions - only for current user's comments */}
                                                 {comment.user_name === userName && (
                                                     <div className="flex items-center gap-2">
                                                         {editingComment === comment.id ? (
@@ -877,7 +1052,6 @@ const Player = () => {
                                                     <span>{comment.likes || 0}</span>
                                                 </button>
 
-                                                {/* Device info icon */}
                                                 {comment.device_info?.platform && (
                                                     <div className="text-xs text-gray-500 flex items-center gap-1">
                                                         {comment.device_info.platform.includes('Win') && '💻'}
@@ -895,7 +1069,6 @@ const Player = () => {
                         )}
                     </div>
 
-                    {/* Comments Statistics */}
                     {comments.length > 0 && (
                         <div className="mt-6 pt-4 border-t border-gray-800">
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -929,14 +1102,13 @@ const Player = () => {
         </div>
     );
 
-    // Only show custom controls for HTML5 videos, not for Vimeo/DailyMotion
-    const shouldShowCustomControls = !isVimeoVideo && !isDailyMotionVideo;
+    const shouldShowCustomControls = !isVimeoVideo && !isDailyMotionVideo && videoType !== 'youtube' && !useEmbed;
 
     if (loading) {
         return (
             <div className="min-h-screen bg-black flex items-center justify-center">
                 <div className="text-center">
-                    <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                    <div className="w-16 h-16 border-4 border-red-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
                     <p className="text-white text-xl">Loading player...</p>
                 </div>
             </div>
@@ -945,33 +1117,61 @@ const Player = () => {
 
     if (error || !movie) {
         return (
-            <div className="min-h-screen bg-black flex items-center justify-center">
-                <div className="text-center p-8 max-w-lg">
-                    <div className="text-red-500 text-6xl mb-4">!</div>
-                    <h1 className="text-3xl text-white font-bold mb-4">Error</h1>
+            <div className="min-h-screen bg-black flex items-center justify-center p-4">
+                <div className="text-center p-8 max-w-lg bg-gray-900/50 rounded-2xl border border-gray-800">
+                    <FaExclamationTriangle className="text-red-500 text-6xl mx-auto mb-4" />
+                    <h1 className="text-3xl text-white font-bold mb-4">Playback Error</h1>
                     <p className="text-gray-400 mb-6">{error || "No movie selected"}</p>
-                    <div className="flex gap-4 justify-center">
-                        <button onClick={() => navigate(-1)}
-                            className="px-6 py-3 bg-red-600 hover:bg-red-700 rounded-lg text-white transition-colors">
+                    <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                        <button
+                            onClick={() => navigate(-1)}
+                            className="px-6 py-3 bg-red-600 hover:bg-red-700 rounded-lg text-white transition-colors"
+                        >
                             Go Back
                         </button>
-                        <button onClick={handleGoHome}
-                            className="px-6 py-3 bg-gray-700 hover:bg-gray-600 rounded-lg text-white transition-colors flex items-center gap-2">
+                        <button
+                            onClick={handleGoHome}
+                            className="px-6 py-3 bg-gray-700 hover:bg-gray-600 rounded-lg text-white transition-colors flex items-center gap-2 justify-center"
+                        >
                             <FaHome /> Go Home
                         </button>
+                        {error && error.includes('format') && (
+                            <button
+                                onClick={handleUseEmbed}
+                                className="px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-lg text-white transition-colors"
+                            >
+                                Try Embed Player
+                            </button>
+                        )}
+                        {error && (
+                            <button
+                                onClick={handleRetry}
+                                className="px-6 py-3 bg-purple-600 hover:bg-purple-700 rounded-lg text-white transition-colors"
+                            >
+                                Retry
+                            </button>
+                        )}
                     </div>
                 </div>
             </div>
         );
     }
 
-    // Get player type badge color and icon
     const getPlayerTypeInfo = () => {
+        if (useEmbed) {
+            return {
+                color: 'text-orange-400',
+                bgColor: 'bg-orange-600',
+                label: 'Embed',
+                text: 'text-orange-300',
+                controls: 'Embed Player'
+            };
+        }
         if (isDailyMotionVideo) {
             return {
                 color: 'text-purple-400',
                 bgColor: 'bg-purple-600',
-                label: 'DailyMotion Player',
+                label: 'DailyMotion',
                 text: 'text-purple-300',
                 controls: 'Native DailyMotion Controls'
             };
@@ -979,9 +1179,17 @@ const Player = () => {
             return {
                 color: 'text-blue-400',
                 bgColor: 'bg-blue-600',
-                label: 'Vimeo Player',
+                label: 'Vimeo',
                 text: 'text-blue-300',
                 controls: 'Native Vimeo Controls'
+            };
+        } else if (videoType === 'youtube') {
+            return {
+                color: 'text-red-400',
+                bgColor: 'bg-red-600',
+                label: 'YouTube',
+                text: 'text-red-300',
+                controls: 'Native YouTube Controls'
             };
         } else {
             return {
@@ -996,13 +1204,15 @@ const Player = () => {
 
     const playerType = getPlayerTypeInfo();
 
+    // Check if download is available
+    const hasDownload = movie?.download || movie?.download_link || movie?.videoUrl || movie?.streamLink;
+
     return (
         <div className="min-h-screen bg-black text-white">
-            {/* Top Navigation */}
             {!isFullscreen && (
                 <div className="absolute top-0 left-0 right-0 p-4 bg-gradient-to-b from-black/90 to-transparent z-10">
                     <div className="max-w-7xl mx-auto flex items-center justify-between">
-                        <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-white hover:text-red-500">
+                        <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-white hover:text-red-500 transition-colors">
                             <FaArrowLeft /> Back
                         </button>
 
@@ -1017,27 +1227,105 @@ const Player = () => {
                         </div>
 
                         <div className="flex items-center gap-4">
-                            {movie?.download_link && (
-                                <button
-                                    onClick={handleDownload}
-                                    className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg"
-                                >
-                                    <FaDownload /> Download
-                                </button>
+                            {/* BEAUTIFUL DOWNLOAD BUTTON WITH DROPDOWN */}
+                            {hasDownload && (
+                                <div className="relative">
+                                    <button
+                                        onClick={() => setShowDownloadOptions(!showDownloadOptions)}
+                                        className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 rounded-xl text-white font-medium shadow-lg shadow-green-600/20 transition-all duration-200 transform hover:scale-105"
+                                        disabled={downloading}
+                                    >
+                                        {downloading ? (
+                                            <>
+                                                <FaSpinner className="animate-spin" />
+                                                Preparing...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <FaCloudDownloadAlt className="text-lg" />
+                                                Download
+                                                {showDownloadOptions ? <FaChevronUp className="ml-1 text-sm" /> : <FaChevronDown className="ml-1 text-sm" />}
+                                            </>
+                                        )}
+                                    </button>
+
+                                    {/* DOWNLOAD DROPDOWN MENU */}
+                                    {showDownloadOptions && !downloading && (
+                                        <div className="absolute right-0 mt-2 w-64 bg-gray-800/95 backdrop-blur-lg border border-gray-700 rounded-xl shadow-2xl overflow-hidden z-50">
+                                            <div className="p-3 border-b border-gray-700">
+                                                <p className="text-sm font-medium text-gray-300 flex items-center gap-2">
+                                                    <FaFileDownload className="text-green-400" />
+                                                    Download Options
+                                                </p>
+                                            </div>
+
+                                            <div className="p-2">
+                                                {/* Original Quality */}
+                                                <button
+                                                    onClick={(e) => handleDownload(e, 'original')}
+                                                    className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-gray-700/70 rounded-lg transition-colors group"
+                                                >
+                                                    <div className="w-8 h-8 bg-gradient-to-br from-green-500/20 to-emerald-500/20 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
+                                                        <FaHdd className="text-green-400 text-sm" />
+                                                    </div>
+                                                    <div className="flex-1 text-left">
+                                                        <p className="text-sm font-medium text-white">Original Quality</p>
+                                                        <p className="text-xs text-gray-400">Best quality, larger file</p>
+                                                    </div>
+                                                </button>
+
+                                                {/* HD Quality */}
+                                                <button
+                                                    onClick={(e) => handleDownload(e, 'hd')}
+                                                    className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-gray-700/70 rounded-lg transition-colors group"
+                                                >
+                                                    <div className="w-8 h-8 bg-gradient-to-br from-blue-500/20 to-cyan-500/20 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
+                                                        <FaFilm className="text-blue-400 text-sm" />
+                                                    </div>
+                                                    <div className="flex-1 text-left">
+                                                        <p className="text-sm font-medium text-white">HD Quality (720p)</p>
+                                                        <p className="text-xs text-gray-400">Good quality, smaller file</p>
+                                                    </div>
+                                                </button>
+
+                                                {/* Copy Link */}
+                                                <button
+                                                    onClick={handleCopyLink}
+                                                    className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-gray-700/70 rounded-lg transition-colors group mt-1 border-t border-gray-700/50 pt-3"
+                                                >
+                                                    <div className="w-8 h-8 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
+                                                        <FaLink className="text-purple-400 text-sm" />
+                                                    </div>
+                                                    <div className="flex-1 text-left">
+                                                        <p className="text-sm font-medium text-white">Copy Download Link</p>
+                                                        <p className="text-xs text-gray-400">Save for later</p>
+                                                    </div>
+                                                </button>
+                                            </div>
+
+                                            {/* File info footer */}
+                                            <div className="p-3 bg-gray-900/50 border-t border-gray-700">
+                                                <p className="text-xs text-gray-400 flex items-center gap-2">
+                                                    <FaDownload className="text-xs" />
+                                                    <span>Click to start downloading</span>
+                                                </p>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
                             )}
                         </div>
                     </div>
                 </div>
             )}
 
-            {/* Main Player Container */}
             <div
                 ref={playerContainerRef}
                 className={`relative w-full ${isMobile ? 'h-[60vh]' : 'h-screen'} bg-black`}
                 onMouseMove={shouldShowCustomControls ? showControlsWithTimer : undefined}
+                onMouseLeave={() => shouldShowCustomControls && setShowControls(false)}
                 onClick={(e) => {
-                    // Only toggle play/pause for HTML5 videos
-                    if (shouldShowCustomControls && !e.target.closest('button')) {
+                    if (shouldShowCustomControls && !e.target.closest('button') && !e.target.closest('input') && !e.target.closest('select')) {
                         handlePlayPause(e);
                     }
                     if (shouldShowCustomControls) {
@@ -1053,26 +1341,54 @@ const Player = () => {
                     zIndex: 9999
                 } : {}}
             >
-                {/* Video Player */}
                 {renderVideoPlayer()}
 
-                {/* Play Button Overlay - Only for HTML5 videos when paused */}
                 {shouldShowCustomControls && videoLoaded && !playing && (
                     <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-20">
                         <button
                             onClick={handlePlayPause}
-                            className="p-10 bg-gradient-to-r from-blue-600 to-blue-700 rounded-full hover:scale-110 transition-transform"
+                            className="w-24 h-24 bg-red-600/90 hover:bg-red-700 rounded-full flex items-center justify-center transition-all transform hover:scale-110"
                         >
-                            <FaPlay className="text-5xl text-white ml-2" />
+                            <FaPlay size={40} className="text-white ml-2" />
                         </button>
                     </div>
                 )}
 
-                {/* Bottom Controls - Only show for HTML5 videos */}
+                {!videoLoaded && !error && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/80 z-20">
+                        <div className="text-center">
+                            <FaSpinner className="text-4xl text-red-600 animate-spin mx-auto mb-4" />
+                            <p className="text-white">Loading video...</p>
+                        </div>
+                    </div>
+                )}
+
+                {error && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/90 z-20">
+                        <div className="text-center p-6 max-w-md">
+                            <FaExclamationTriangle className="text-red-500 text-5xl mx-auto mb-4" />
+                            <p className="text-white mb-4">{error}</p>
+                            <div className="flex gap-3 justify-center">
+                                <button
+                                    onClick={handleRetry}
+                                    className="px-6 py-3 bg-red-600 hover:bg-red-700 rounded-lg transition-colors"
+                                >
+                                    Try Again
+                                </button>
+                                <button
+                                    onClick={handleUseEmbed}
+                                    className="px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+                                >
+                                    Try Embed Player
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 {shouldShowCustomControls && (
                     <div className={`absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/90 to-transparent transition-all duration-300 z-30 ${showControls ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
                         <div className="max-w-7xl mx-auto">
-                            {/* Progress Bar */}
                             <div className="mb-4">
                                 <input
                                     type="range"
@@ -1081,7 +1397,7 @@ const Player = () => {
                                     step="0.001"
                                     value={progress}
                                     onChange={handleSeek}
-                                    className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-blue-600"
+                                    className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-red-600"
                                 />
                                 <div className="flex justify-between text-sm text-gray-300 mt-2">
                                     <span>{formatTime(currentTime)}</span>
@@ -1089,13 +1405,11 @@ const Player = () => {
                                 </div>
                             </div>
 
-                            {/* Control Buttons */}
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-4">
-                                    {/* Play/Pause Button */}
                                     <button
                                         onClick={handlePlayPause}
-                                        className="hover:text-blue-500 transition-colors p-2"
+                                        className="hover:text-red-500 transition-colors p-2"
                                     >
                                         {playing ? (
                                             <FaPause className={`${isMobile ? 'text-2xl' : 'text-3xl'}`} />
@@ -1108,13 +1422,13 @@ const Player = () => {
                                         <>
                                             <button
                                                 onClick={(e) => handleRewind(e, 10)}
-                                                className="hover:text-blue-500 transition-colors p-2"
+                                                className="hover:text-red-500 transition-colors p-2"
                                             >
                                                 <FaBackward className="text-2xl" />
                                             </button>
                                             <button
                                                 onClick={(e) => handleForward(e, 10)}
-                                                className="hover:text-blue-500 transition-colors p-2"
+                                                className="hover:text-red-500 transition-colors p-2"
                                             >
                                                 <FaForward className="text-2xl" />
                                             </button>
@@ -1125,7 +1439,7 @@ const Player = () => {
                                         <div className="flex items-center gap-3 ml-2">
                                             <button
                                                 onClick={handleToggleMute}
-                                                className="hover:text-blue-500 transition-colors p-2"
+                                                className="hover:text-red-500 transition-colors p-2"
                                             >
                                                 {muted ? <FaVolumeMute className="text-2xl" /> : <FaVolumeUp className="text-2xl" />}
                                             </button>
@@ -1136,14 +1450,13 @@ const Player = () => {
                                                 step="0.1"
                                                 value={volume}
                                                 onChange={handleVolumeChange}
-                                                className="w-32 h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-blue-600"
+                                                className="w-32 h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-red-600"
                                             />
                                         </div>
                                     )}
                                 </div>
 
                                 <div className="flex items-center gap-4">
-                                    {/* Playback Rate */}
                                     {!isMobile && (
                                         <div className="relative group">
                                             <button className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 rounded-lg text-sm">
@@ -1166,10 +1479,9 @@ const Player = () => {
                                         </div>
                                     )}
 
-                                    {/* Fullscreen */}
                                     <button
                                         onClick={handleFullscreen}
-                                        className="hover:text-blue-500 transition-colors p-2"
+                                        className="hover:text-red-500 transition-colors p-2"
                                     >
                                         {isFullscreen ? (
                                             <FaCompress className={`${isMobile ? 'text-xl' : 'text-2xl'}`} />
@@ -1183,55 +1495,139 @@ const Player = () => {
                     </div>
                 )}
 
-                {/* Platform Info - Show for embedded videos */}
                 {!shouldShowCustomControls && showControls && (
-                    <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black/80 backdrop-blur-sm rounded-lg px-4 py-2 border border-blue-500/30 z-30">
+                    <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black/80 backdrop-blur-sm rounded-lg px-4 py-2 border border-red-500/30 z-30">
                         <div className="flex items-center gap-2">
                             <FaVideo className={playerType.color} />
                             <span className="text-white text-sm">
-                                {isDailyMotionVideo ? 'Using DailyMotion Player with Native Controls' : 'Using Vimeo Player with Native Controls'}
+                                Using {playerType.label} Player with Native Controls
                             </span>
                         </div>
                     </div>
                 )}
             </div>
 
-            {/* Movie Info and Comments Section */}
             {!isFullscreen && (
                 <div className="max-w-7xl mx-auto px-4 py-8">
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                         <div className="lg:col-span-2">
-                            <h1 className="text-4xl font-bold mb-4">{movie.title}</h1>
+                            <div className="flex items-center justify-between mb-4">
+                                <h1 className="text-4xl font-bold">{movie.title}</h1>
+
+                                {/* BEAUTIFUL DOWNLOAD CARD FOR MOBILE/LATER */}
+                                {hasDownload && !showDownloadOptions && (
+                                    <button
+                                        onClick={() => setShowDownloadOptions(true)}
+                                        className="lg:hidden flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 rounded-xl text-white font-medium"
+                                    >
+                                        <FaDownload />
+                                        Download
+                                    </button>
+                                )}
+                            </div>
+
                             <div className="flex flex-wrap gap-3 mb-6">
                                 {movie.year && <span className="px-4 py-2 bg-red-600 rounded-full">{movie.year}</span>}
                                 {movie.rating && <span className="px-4 py-2 bg-yellow-600 rounded-full flex items-center gap-2"><FaStar /> {movie.rating}</span>}
+                                {movie.category && (
+                                    <span className="px-4 py-2 bg-purple-600 rounded-full">
+                                        {movie.category.split(',')[0]}
+                                    </span>
+                                )}
                                 <span className={`px-4 py-2 ${playerType.bgColor} rounded-full`}>
                                     {playerType.label}
                                 </span>
-                                <span className="px-4 py-2 bg-gray-700 rounded-full">
-                                    {playerType.controls}
-                                </span>
+                                {/* Download badge */}
+                                {hasDownload && (
+                                    <span className="px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 rounded-full flex items-center gap-2 shadow-lg">
+                                        <FaCloudDownloadAlt /> Download Available
+                                    </span>
+                                )}
                             </div>
-                            <p className="text-gray-300 mb-6">{movie.description || 'No description'}</p>
 
-                            {/* Player Status Card */}
+                            <p className="text-gray-300 mb-6 whitespace-pre-wrap">{movie.description || 'No description available'}</p>
+
+                            {/* Download section for desktop */}
+                            {hasDownload && (
+                                <div className="mb-8 p-6 bg-gradient-to-br from-gray-800/50 to-gray-900/50 backdrop-blur-lg rounded-2xl border border-green-500/30">
+                                    <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
+                                        <FaDownload className="text-green-400" />
+                                        Download Options
+                                    </h3>
+
+                                    <div className="grid md:grid-cols-2 gap-4">
+                                        {/* Original Quality Card */}
+                                        <button
+                                            onClick={(e) => handleDownload(e, 'original')}
+                                            className="flex items-center gap-4 p-4 bg-gray-800/70 hover:bg-gray-700/70 rounded-xl border border-gray-700 hover:border-green-500/50 transition-all group"
+                                            disabled={downloading}
+                                        >
+                                            <div className="w-12 h-12 bg-gradient-to-br from-green-500/20 to-emerald-500/20 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                                                <FaHdd className="text-green-400 text-xl" />
+                                            </div>
+                                            <div className="flex-1 text-left">
+                                                <p className="font-bold text-white">Original Quality</p>
+                                                <p className="text-sm text-gray-400">Best quality, larger file</p>
+                                                <p className="text-xs text-green-400 mt-1">Click to download</p>
+                                            </div>
+                                            <FaDownload className="text-green-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                        </button>
+
+                                        {/* HD Quality Card */}
+                                        <button
+                                            onClick={(e) => handleDownload(e, 'hd')}
+                                            className="flex items-center gap-4 p-4 bg-gray-800/70 hover:bg-gray-700/70 rounded-xl border border-gray-700 hover:border-blue-500/50 transition-all group"
+                                            disabled={downloading}
+                                        >
+                                            <div className="w-12 h-12 bg-gradient-to-br from-blue-500/20 to-cyan-500/20 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                                                <FaFilm className="text-blue-400 text-xl" />
+                                            </div>
+                                            <div className="flex-1 text-left">
+                                                <p className="font-bold text-white">HD Quality (720p)</p>
+                                                <p className="text-sm text-gray-400">Good quality, smaller file</p>
+                                                <p className="text-xs text-blue-400 mt-1">Click to download</p>
+                                            </div>
+                                            <FaDownload className="text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                        </button>
+
+                                        {/* Copy Link Card */}
+                                        <button
+                                            onClick={handleCopyLink}
+                                            className="md:col-span-2 flex items-center gap-4 p-4 bg-gray-800/70 hover:bg-gray-700/70 rounded-xl border border-gray-700 hover:border-purple-500/50 transition-all group"
+                                        >
+                                            <div className="w-12 h-12 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                                                <FaLink className="text-purple-400 text-xl" />
+                                            </div>
+                                            <div className="flex-1 text-left">
+                                                <p className="font-bold text-white">Copy Download Link</p>
+                                                <p className="text-sm text-gray-400">Save link for later or share</p>
+                                            </div>
+                                            <FaLink className="text-purple-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+
                             <div className="p-4 bg-gray-900/50 border border-gray-700 rounded-lg">
                                 <div className="flex items-center gap-3">
                                     <FaVideo className={playerType.color} />
                                     <div>
                                         <h4 className="text-white font-medium">Player Information</h4>
                                         <p className="text-gray-300 text-sm">
-                                            {isDailyMotionVideo
-                                                ? 'This video is hosted on DailyMotion and uses DailyMotion\'s native player controls.'
-                                                : isVimeoVideo
-                                                    ? 'This video is hosted on Vimeo and uses Vimeo\'s native player controls.'
-                                                    : 'This video uses our custom player controls with play, pause, volume, and seek functionality.'}
+                                            {useEmbed
+                                                ? 'Using embed player for better compatibility.'
+                                                : isDailyMotionVideo
+                                                    ? 'This video is hosted on DailyMotion and uses DailyMotion\'s native player controls.'
+                                                    : isVimeoVideo
+                                                        ? 'This video is hosted on Vimeo and uses Vimeo\'s native player controls.'
+                                                        : videoType === 'youtube'
+                                                            ? 'This video is hosted on YouTube and uses YouTube\'s native player controls.'
+                                                            : 'This video uses our custom player controls with play, pause, volume, and seek functionality.'}
                                         </p>
                                     </div>
                                 </div>
                             </div>
 
-                            {/* Comments Section */}
                             {renderCommentsSection()}
                         </div>
                     </div>
