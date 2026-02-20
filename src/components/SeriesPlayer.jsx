@@ -1,32 +1,44 @@
 import React, { useState, useRef, useEffect, useCallback, useContext } from 'react';
-import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import {
     FaPlay, FaPause, FaVolumeUp, FaVolumeMute, FaExpand, FaCompress,
     FaArrowLeft, FaDownload, FaHome, FaStar, FaForward, FaBackward,
     FaVideo, FaComment, FaHeart, FaPaperPlane, FaTrash, FaEdit, FaCheck, FaTimes,
     FaSpinner, FaExclamationTriangle, FaCloudDownloadAlt, FaFileDownload,
-    FaChevronDown, FaChevronUp, FaLink, FaHdd, FaFilm
+    FaChevronDown, FaChevronUp, FaLink, FaHdd, FaFilm, FaList, FaChevronLeft, FaChevronRight,
+    FaBookmark
 } from 'react-icons/fa';
 import { supabase } from '../lib/supabaseClient';
 import { MoviesContext } from '../context/MoviesContext';
 
-const Player = () => {
-    const location = useLocation();
+const SeriesPlayer = () => {
     const navigate = useNavigate();
+    const location = useLocation();
     const { id } = useParams();
-    const { movies } = useContext(MoviesContext);
+    const { movies, episodes = [], getEpisodesBySeries } = useContext(MoviesContext);
 
+    // Get series data from location state
+    const [series, setSeries] = useState(location.state?.series || null);
+    const [currentEpisode, setCurrentEpisode] = useState(location.state?.episode || null);
+    const [episodesList, setEpisodesList] = useState(location.state?.episodes || []);
+    const [currentEpisodeIndex, setCurrentEpisodeIndex] = useState(location.state?.episodeIndex || 0);
+
+    const [selectedSeason, setSelectedSeason] = useState(1);
+    const [seasons, setSeasons] = useState([]);
+    const [showEpisodeList, setShowEpisodeList] = useState(true);
+
+    // ========== REFS ==========
     const videoRef = useRef(null);
     const playerContainerRef = useRef(null);
     const youtubeContainerRef = useRef(null);
     const controlsTimerRef = useRef(null);
+    const iframeRef = useRef(null);
 
     // YouTube specific states
     const [youTubePlayer, setYouTubePlayer] = useState(null);
     const [youTubeApiReady, setYouTubeApiReady] = useState(false);
 
-    // Get movie data from location state or find from context using ID
-    const [movie, setMovie] = useState(location.state?.movie || null);
+    // Video player states
     const [videoUrl, setVideoUrl] = useState('');
     const [playing, setPlaying] = useState(false);
     const [volume, setVolume] = useState(0.8);
@@ -50,6 +62,7 @@ const Player = () => {
     const [showDownloadOptions, setShowDownloadOptions] = useState(false);
     const [downloading, setDownloading] = useState(false);
     const [youtubeId, setYoutubeId] = useState('');
+    const [isYouTubeVideo, setIsYouTubeVideo] = useState(false);
 
     // Comments state
     const [comments, setComments] = useState([]);
@@ -61,22 +74,117 @@ const Player = () => {
     const [editText, setEditText] = useState('');
     const [userAvatar, setUserAvatar] = useState('');
 
-    // Try to find movie from context if not in state
-    useEffect(() => {
-        if (!movie && id && movies.length > 0) {
-            const foundMovie = movies.find(m => m.id === id || m.id === parseInt(id));
-            if (foundMovie) {
-                setMovie(foundMovie);
-                setError('');
-            } else {
-                setError("Movie not found");
-            }
-        } else if (!movie && !id) {
-            setError("No movie selected");
-        }
-    }, [movie, id, movies]);
+    // Favorites/Watchlist
+    const [favorites, setFavorites] = useState([]);
+    const [watchlist, setWatchlist] = useState([]);
 
-    // Comments functions
+    // ========== INITIALIZATION ==========
+
+    // Sort episodes function
+    const sortEpisodes = (episodesArray) => {
+        if (!episodesArray || !Array.isArray(episodesArray)) return [];
+        return [...episodesArray].sort((a, b) => {
+            const seasonA = parseInt(a.seasonNumber) || parseInt(a.season_number) || 1;
+            const seasonB = parseInt(b.seasonNumber) || parseInt(b.season_number) || 1;
+            const episodeA = parseInt(a.episodeNumber) || parseInt(a.episode_number) || 1;
+            const episodeB = parseInt(b.episodeNumber) || parseInt(b.episode_number) || 1;
+            if (seasonA !== seasonB) return seasonA - seasonB;
+            return episodeA - episodeB;
+        });
+    };
+
+    // Get seasons from episodes
+    const getSeasonsFromEpisodes = (episodesArray) => {
+        const seasonSet = new Set();
+        episodesArray.forEach(ep => {
+            const season = parseInt(ep.seasonNumber) || parseInt(ep.season_number) || 1;
+            seasonSet.add(season);
+        });
+        return Array.from(seasonSet).sort((a, b) => a - b);
+    };
+
+    // Initialize series data
+    useEffect(() => {
+        if (!series && id && movies.length > 0) {
+            const foundSeries = movies.find(m => m.id === id || m.id === parseInt(id));
+            if (foundSeries) {
+                setSeries(foundSeries);
+
+                const seriesEpisodes = typeof getEpisodesBySeries === 'function'
+                    ? getEpisodesBySeries(foundSeries.id)
+                    : episodes.filter(ep =>
+                        ep.seriesId === foundSeries.id ||
+                        ep.series_id === foundSeries.id ||
+                        ep.movieId === foundSeries.id
+                    );
+
+                if (seriesEpisodes.length > 0) {
+                    const sorted = sortEpisodes(seriesEpisodes);
+                    setEpisodesList(sorted);
+
+                    const seasonList = getSeasonsFromEpisodes(sorted);
+                    setSeasons(seasonList);
+
+                    if (seasonList.length > 0) {
+                        setSelectedSeason(seasonList[0]);
+                    }
+
+                    if (currentEpisode) {
+                        const index = sorted.findIndex(ep => ep.id === currentEpisode.id);
+                        setCurrentEpisodeIndex(index > -1 ? index : 0);
+                        setCurrentEpisode(sorted[index > -1 ? index : 0]);
+                    } else {
+                        setCurrentEpisode(sorted[0]);
+                        setCurrentEpisodeIndex(0);
+                    }
+                }
+            }
+        }
+
+        if (episodesList.length > 0 && seasons.length === 0) {
+            const seasonList = getSeasonsFromEpisodes(episodesList);
+            setSeasons(seasonList);
+            if (seasonList.length > 0) {
+                setSelectedSeason(seasonList[0]);
+            }
+        }
+
+        if (currentEpisode && !series) {
+            const seriesId = currentEpisode.seriesId || currentEpisode.series_id;
+            if (seriesId) {
+                const foundSeries = movies.find(m => m.id === seriesId || m.id === parseInt(seriesId));
+                if (foundSeries) {
+                    setSeries(foundSeries);
+                }
+            }
+        }
+    }, [id, movies, episodes, getEpisodesBySeries]);
+
+    // Update when current episode index changes
+    useEffect(() => {
+        if (episodesList.length > 0 && currentEpisodeIndex >= 0 && currentEpisodeIndex < episodesList.length) {
+            const episode = episodesList[currentEpisodeIndex];
+            setCurrentEpisode(episode);
+            const episodeSeason = parseInt(episode.seasonNumber) || parseInt(episode.season_number) || 1;
+            setSelectedSeason(episodeSeason);
+        }
+    }, [currentEpisodeIndex, episodesList]);
+
+    // Initialize video when current episode changes
+    useEffect(() => {
+        if (currentEpisode) {
+            setLoading(true);
+            setError('');
+            setUseEmbed(false);
+            setVideoLoaded(false);
+            setProgress(0);
+            setCurrentTime(0);
+            initializeVideo(currentEpisode);
+        }
+    }, [currentEpisode, retryCount]);
+
+    // ========== COMMENTS FUNCTIONS ==========
+
     useEffect(() => {
         const savedUser = localStorage.getItem('videoCommenter');
         if (savedUser) {
@@ -94,24 +202,26 @@ const Player = () => {
             }));
         }
 
-        if (movie?.id) {
+        if (currentEpisode?.id) {
             fetchComments();
         }
-    }, [movie]);
+    }, [currentEpisode]);
 
     const fetchComments = async () => {
+        if (!currentEpisode?.id) return;
+
         try {
             const { data, error } = await supabase
                 .from('comments')
                 .select('*')
-                .eq('movie_id', movie.id.toString())
+                .eq('movie_id', currentEpisode.id.toString())
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
             setComments(data || []);
         } catch (error) {
             console.error('Error fetching comments:', error);
-            const localComments = localStorage.getItem(`comments_${movie.id}`);
+            const localComments = localStorage.getItem(`comments_${currentEpisode.id}`);
             if (localComments) {
                 setComments(JSON.parse(localComments));
             }
@@ -120,14 +230,16 @@ const Player = () => {
 
     const handleSubmitComment = async (e) => {
         e.preventDefault();
-        if (!newComment.trim() || !userName.trim()) return;
+        if (!newComment.trim() || !userName.trim() || !currentEpisode?.id) return;
 
         setIsSubmitting(true);
         const commentData = {
-            movie_id: movie.id.toString(),
+            movie_id: currentEpisode.id.toString(),
             user_name: userName,
             user_avatar: userAvatar,
             message: newComment.trim(),
+            content_type: 'episode',
+            series_id: series?.id,
             device_info: {
                 userAgent: navigator.userAgent,
                 platform: navigator.platform,
@@ -148,13 +260,13 @@ const Player = () => {
             setComments(prev => [data[0], ...prev]);
             setNewComment('');
 
-            const existingComments = JSON.parse(localStorage.getItem(`comments_${movie.id}`) || '[]');
+            const existingComments = JSON.parse(localStorage.getItem(`comments_${currentEpisode.id}`) || '[]');
             existingComments.unshift({
                 ...commentData,
                 id: Date.now(),
                 created_at: new Date().toISOString()
             });
-            localStorage.setItem(`comments_${movie.id}`, JSON.stringify(existingComments));
+            localStorage.setItem(`comments_${currentEpisode.id}`, JSON.stringify(existingComments));
 
         } catch (error) {
             console.error('Error submitting comment:', error);
@@ -163,9 +275,9 @@ const Player = () => {
                 id: Date.now(),
                 created_at: new Date().toISOString()
             };
-            const existingComments = JSON.parse(localStorage.getItem(`comments_${movie.id}`) || '[]');
+            const existingComments = JSON.parse(localStorage.getItem(`comments_${currentEpisode.id}`) || '[]');
             existingComments.unshift(fallbackComment);
-            localStorage.setItem(`comments_${movie.id}`, JSON.stringify(existingComments));
+            localStorage.setItem(`comments_${currentEpisode.id}`, JSON.stringify(existingComments));
             setComments(existingComments);
             setNewComment('');
         } finally {
@@ -191,11 +303,11 @@ const Player = () => {
                 c.id === commentId ? { ...c, likes: updatedLikes } : c
             ));
 
-            const existingComments = JSON.parse(localStorage.getItem(`comments_${movie.id}`) || '[]');
+            const existingComments = JSON.parse(localStorage.getItem(`comments_${currentEpisode.id}`) || '[]');
             const updatedComments = existingComments.map(c =>
                 c.id === commentId ? { ...c, likes: updatedLikes } : c
             );
-            localStorage.setItem(`comments_${movie.id}`, JSON.stringify(updatedComments));
+            localStorage.setItem(`comments_${currentEpisode.id}`, JSON.stringify(updatedComments));
 
         } catch (error) {
             console.error('Error liking comment:', error);
@@ -223,11 +335,11 @@ const Player = () => {
                 c.id === commentId ? { ...c, message: editText.trim() } : c
             ));
 
-            const existingComments = JSON.parse(localStorage.getItem(`comments_${movie.id}`) || '[]');
+            const existingComments = JSON.parse(localStorage.getItem(`comments_${currentEpisode.id}`) || '[]');
             const updatedComments = existingComments.map(c =>
                 c.id === commentId ? { ...c, message: editText.trim() } : c
             );
-            localStorage.setItem(`comments_${movie.id}`, JSON.stringify(updatedComments));
+            localStorage.setItem(`comments_${currentEpisode.id}`, JSON.stringify(updatedComments));
 
             setEditingComment(null);
             setEditText('');
@@ -249,9 +361,9 @@ const Player = () => {
 
             setComments(prev => prev.filter(c => c.id !== commentId));
 
-            const existingComments = JSON.parse(localStorage.getItem(`comments_${movie.id}`) || '[]');
+            const existingComments = JSON.parse(localStorage.getItem(`comments_${currentEpisode.id}`) || '[]');
             const updatedComments = existingComments.filter(c => c.id !== commentId);
-            localStorage.setItem(`comments_${movie.id}`, JSON.stringify(updatedComments));
+            localStorage.setItem(`comments_${currentEpisode.id}`, JSON.stringify(updatedComments));
 
         } catch (error) {
             console.error('Error deleting comment:', error);
@@ -278,41 +390,35 @@ const Player = () => {
         localStorage.setItem('videoCommenter', JSON.stringify(userData));
     };
 
-    // Improved video type detection
+    // ========== VIDEO FUNCTIONS ==========
+
     const detectVideoType = (url) => {
         if (!url || typeof url !== 'string') return 'direct';
 
-        // Check if it's a DailyMotion URL
         if (url.includes('dailymotion.com') || url.includes('dai.ly')) {
             return 'dailymotion';
         }
 
-        // Check if it's a Vimeo URL
         if (url.includes('vimeo.com') || url.includes('player.vimeo.com') || /^\d+$/.test(url.trim())) {
             return 'vimeo';
         }
 
-        // Check for YouTube
         if (url.includes('youtube.com') || url.includes('youtu.be') || url.includes('youtube-nocookie.com')) {
             return 'youtube';
         }
 
-        // Check if it's a direct video file - expanded formats
         if (url.match(/\.(mp4|webm|mkv|avi|mov|m3u8|mpd|ogg|ogv|wmv|flv|m4v|3gp|ts)$/i)) {
             return 'direct';
         }
 
-        // Check if it's a streaming URL (like from a CDN)
         if (url.includes('/stream/') || url.includes('/video/') || url.includes('/watch/')) {
             return 'direct';
         }
 
-        // Check for Mux
         if (url.includes('mux.com') || url.includes('.mpd')) {
             return 'mux';
         }
 
-        // Check if it's an embed code or iframe
         if (url.includes('<iframe') || url.includes('embed')) {
             return 'embed';
         }
@@ -384,7 +490,6 @@ const Player = () => {
     useEffect(() => {
         if (videoType !== 'youtube') return;
 
-        // Load YouTube API if not already loaded
         if (!window.YT) {
             const tag = document.createElement('script');
             tag.src = 'https://www.youtube.com/iframe_api';
@@ -405,66 +510,46 @@ const Player = () => {
 
     // Function to inject CSS into YouTube iframe to hide all branding
     const hideYouTubeBranding = (iframe) => {
+        if (!iframe || !iframe.contentDocument) return;
+
         try {
-            // Wait for iframe to load
-            setTimeout(() => {
-                if (!iframe || !iframe.contentDocument) return;
-
-                const style = document.createElement('style');
-                style.textContent = `
-                    /* Hide YouTube logo and all branding */
-                    .ytp-watermark, .ytp-youtube-button, .ytp-title, .ytp-title-link,
-                    .ytp-chrome-top, .ytp-chrome-bottom, .ytp-gradient-top, .ytp-gradient-bottom,
-                    .ytp-pause-overlay, .ytp-endscreen-content, .ytp-share-panel, 
-                    .ytp-watch-later-button, .ytp-iv-video-content, .ytp-iv-overlay,
-                    .html5-endscreen, .ytp-endscreen-previous, .ytp-chrome-top-buttons,
-                    .ytp-cards-button, .ytp-chapter-title, .ytp-paid-content-overlay,
-                    .ytp-ce-element, .ytp-spinner, .ytp-spinner-container,
-                    .ytp-popup, .ytp-tooltip, .ytp-tooltip-text,
-                    .ytp-upnext, .ytp-upnext-top, .ytp-upnext-bottom,
-                    .ytp-videowall-still, .ytp-videowall-still-info,
-                    .ytp-videowall-still-image, .ytp-videowall-still-info-content,
-                    .ytp-cued-thumbnail-overlay, .ytp-cued-thumbnail-overlay-image {
-                        display: none !important;
-                        opacity: 0 !important;
-                        visibility: hidden !important;
-                        pointer-events: none !important;
-                        width: 0 !important;
-                        height: 0 !important;
-                    }
-                    
-                    /* Make sure the video fills the entire player */
-                    .html5-video-player, .video-stream, .html5-main-video {
-                        width: 100% !important;
-                        height: 100% !important;
-                    }
-                    
-                    /* Remove any background */
-                    .html5-video-player {
-                        background: black !important;
-                    }
-                    
-                    /* Hide any text that might appear */
-                    .ytp-text, .ytp-button, .ytp-title-text {
-                        display: none !important;
-                    }
-                    
-                    /* Force video to cover full area */
-                    .video-stream.html5-main-video {
-                        object-fit: cover !important;
-                    }
-                `;
-
-                iframe.contentDocument.head.appendChild(style);
-
-                // Also try to inject into shadow DOM if present
-                const videoPlayer = iframe.contentDocument.querySelector('.html5-video-player');
-                if (videoPlayer && videoPlayer.shadowRoot) {
-                    const shadowStyle = document.createElement('style');
-                    shadowStyle.textContent = style.textContent;
-                    videoPlayer.shadowRoot.appendChild(shadowStyle);
+            const style = document.createElement('style');
+            style.textContent = `
+                /* Hide ALL YouTube elements */
+                .ytp-watermark, .ytp-youtube-button, .ytp-title, .ytp-title-link,
+                .ytp-chrome-top, .ytp-chrome-bottom, .ytp-gradient-top, .ytp-gradient-bottom,
+                .ytp-pause-overlay, .ytp-endscreen-content, .ytp-share-panel, 
+                .ytp-watch-later-button, .ytp-iv-video-content, .ytp-iv-overlay,
+                .html5-endscreen, .ytp-endscreen-previous, .ytp-chrome-top-buttons,
+                .ytp-cards-button, .ytp-chapter-title, .ytp-paid-content-overlay,
+                .ytp-ce-element, .ytp-spinner, .ytp-spinner-container,
+                .ytp-popup, .ytp-tooltip, .ytp-tooltip-text,
+                .ytp-upnext, .ytp-upnext-top, .ytp-upnext-bottom,
+                .ytp-videowall-still, .ytp-videowall-still-info,
+                .ytp-videowall-still-image, .ytp-videowall-still-info-content,
+                .ytp-cued-thumbnail-overlay, .ytp-cued-thumbnail-overlay-image,
+                .ytp-endscreen, .ytp-endscreen-content, .ytp-related-on-error,
+                .ytp-suggestions, .ytp-suggestion-set, .ytp-video-info {
+                    display: none !important;
+                    opacity: 0 !important;
+                    visibility: hidden !important;
+                    pointer-events: none !important;
                 }
-            }, 1000);
+                
+                /* Make sure the video fills the entire player */
+                .html5-video-player, .video-stream, .html5-main-video {
+                    width: 100% !important;
+                    height: 100% !important;
+                }
+                
+                /* Remove any background */
+                .html5-video-player {
+                    background: black !important;
+                }
+            `;
+
+            iframe.contentDocument.head.appendChild(style);
+
         } catch (error) {
             console.log('Could not inject CSS into YouTube iframe:', error);
         }
@@ -474,7 +559,6 @@ const Player = () => {
     useEffect(() => {
         if (!youTubeApiReady || videoType !== 'youtube' || !youtubeId || !youtubeContainerRef.current) return;
 
-        // Create YouTube player
         const player = new window.YT.Player(youtubeContainerRef.current, {
             videoId: youtubeId,
             height: '100%',
@@ -494,37 +578,31 @@ const Player = () => {
                 origin: window.location.origin,
                 widget_referrer: window.location.origin,
                 enablejsapi: 1,
-                loop: 1,
+                loop: 0,
                 mute: muted ? 1 : 0,
-                playlist: youtubeId,
                 hl: 'en',
                 autohide: 1,
-                theme: 'dark',
-                vq: 'hd1080'
+                theme: 'dark'
             },
             events: {
                 onReady: (event) => {
                     console.log("✅ YouTube player ready");
                     setYouTubePlayer(event.target);
                     setVideoLoaded(true);
+                    setLoading(false);
                     setPlaying(true);
                     setDuration(event.target.getDuration());
 
-                    // Set initial volume
                     event.target.setVolume(volume * 100);
-
-                    // Start progress tracking
                     startYouTubeProgressTracking(event.target);
 
-                    // Hide YouTube branding
                     const iframe = event.target.getIframe();
                     if (iframe) {
                         hideYouTubeBranding(iframe);
+                        iframe.setAttribute('style', 'border: none; margin: 0; padding: 0; width: 100%; height: 100%;');
 
-                        // Also try to hide by setting attributes
-                        iframe.setAttribute('style', 'border: none; margin: 0; padding: 0;');
-                        iframe.setAttribute('allowfullscreen', 'false');
-                        iframe.setAttribute('allow', 'autoplay; encrypted-media');
+                        setTimeout(() => hideYouTubeBranding(iframe), 500);
+                        setTimeout(() => hideYouTubeBranding(iframe), 1000);
                     }
                 },
                 onStateChange: (event) => {
@@ -532,25 +610,25 @@ const Player = () => {
 
                     if (event.data === window.YT.PlayerState.PLAYING) {
                         setDuration(event.target.getDuration());
-                    }
 
-                    // Handle ended - restart video instead of showing end screen
-                    if (event.data === window.YT.PlayerState.ENDED) {
-                        event.target.playVideo();
-                        setProgress(0);
-                        setCurrentTime(0);
-
-                        // Re-hide branding when video restarts
                         const iframe = event.target.getIframe();
                         if (iframe) {
-                            setTimeout(() => hideYouTubeBranding(iframe), 500);
+                            setTimeout(() => hideYouTubeBranding(iframe), 100);
                         }
+                    }
+
+                    if (event.data === window.YT.PlayerState.ENDED) {
+                        setPlaying(false);
+                        setProgress(1);
+                        setCurrentTime(duration);
+                        setShowControls(true);
                     }
                 },
                 onError: (event) => {
                     console.error("❌ YouTube error:", event);
                     setError("Failed to load YouTube video. Please try again.");
                     setVideoLoaded(false);
+                    setLoading(false);
                 }
             }
         });
@@ -566,16 +644,92 @@ const Player = () => {
     const startYouTubeProgressTracking = (player) => {
         const interval = setInterval(() => {
             if (player && player.getCurrentTime && player.getDuration) {
-                const current = player.getCurrentTime();
-                const total = player.getDuration();
-                if (total > 0) {
-                    setCurrentTime(current);
-                    setProgress(current / total);
+                try {
+                    const current = player.getCurrentTime();
+                    const total = player.getDuration();
+                    if (total > 0 && current <= total) {
+                        setCurrentTime(current);
+                        setProgress(current / total);
+                    }
+                } catch (e) {
+                    // Ignore errors
                 }
             }
         }, 500);
 
         return () => clearInterval(interval);
+    };
+
+    const initializeVideo = (episode) => {
+        if (!episode) return;
+
+        const url = episode?.videoUrl || episode?.streamLink || '';
+
+        if (!url) {
+            setError("No video URL available for this episode");
+            setLoading(false);
+            return;
+        }
+
+        const detectedType = detectVideoType(url);
+        setVideoType(detectedType);
+
+        if (detectedType === 'dailymotion') {
+            setIsDailyMotionVideo(true);
+            setIsVimeoVideo(false);
+            setIsYouTubeVideo(false);
+            const dailymotionId = extractDailyMotionId(url);
+            if (dailymotionId) {
+                setDailyMotionId(dailymotionId);
+                const embedUrl = `https://www.dailymotion.com/embed/video/${dailymotionId}?autoplay=1&queue-autoplay-next=0&queue-enable=0&sharing-enable=0&ui-logo=0&ui-start-screen-info=0&controls=true&ui-theme=dark&ui-advance=0&ui-chapters=0&ui-description=0&ui-mute=0&ui-endscreen=0&logo=0&info=0`;
+                setVideoUrl(embedUrl);
+                console.log("🎬 Using DailyMotion embedded player");
+            } else {
+                setError("Invalid DailyMotion URL");
+            }
+        } else if (detectedType === 'vimeo') {
+            setIsVimeoVideo(true);
+            setIsDailyMotionVideo(false);
+            setIsYouTubeVideo(false);
+            const vimeoId = extractVimeoId(url);
+            if (vimeoId) {
+                const embedUrl = `https://player.vimeo.com/video/${vimeoId}?autoplay=1&title=0&byline=0&portrait=0&controls=true&badge=0&transparent=1&color=ffffff&autopause=0&player_id=0&app_id=0`;
+                setVideoUrl(embedUrl);
+                console.log("🎬 Using Vimeo embedded player");
+            } else {
+                setError("Invalid Vimeo URL");
+            }
+        } else if (detectedType === 'youtube') {
+            setIsVimeoVideo(false);
+            setIsDailyMotionVideo(false);
+            setIsYouTubeVideo(true);
+            const youtubeId = extractYouTubeId(url);
+            if (youtubeId) {
+                setYoutubeId(youtubeId);
+                setVideoUrl('');
+                console.log("🎬 Using YouTube API player with custom controls");
+            } else {
+                setError("Invalid YouTube URL");
+            }
+        } else if (detectedType === 'embed') {
+            setIsVimeoVideo(false);
+            setIsDailyMotionVideo(false);
+            setIsYouTubeVideo(false);
+            const srcMatch = url.match(/src=["']([^"']+)["']/);
+            if (srcMatch) {
+                setVideoUrl(srcMatch[1]);
+            } else {
+                setVideoUrl(url);
+            }
+            console.log("🎬 Using embed player");
+        } else {
+            setIsVimeoVideo(false);
+            setIsDailyMotionVideo(false);
+            setIsYouTubeVideo(false);
+            setVideoUrl(url);
+            console.log("🎬 Using custom HTML5 player");
+        }
+        setLoading(false);
     };
 
     const handlePlayPause = useCallback((e) => {
@@ -585,23 +739,18 @@ const Player = () => {
             return;
         }
 
-        // YouTube player
         if (videoType === 'youtube' && youTubePlayer) {
             if (playing) {
                 youTubePlayer.pauseVideo();
             } else {
                 youTubePlayer.playVideo();
-
-                // Re-hide branding when playing
                 setTimeout(() => {
                     const iframe = youTubePlayer.getIframe();
                     if (iframe) hideYouTubeBranding(iframe);
                 }, 100);
             }
             setPlaying(!playing);
-        }
-        // HTML5 player
-        else {
+        } else {
             if (!videoRef.current) return;
 
             const video = videoRef.current;
@@ -616,7 +765,7 @@ const Player = () => {
                         video.muted = true;
                         setMuted(true);
                         video.play().then(() => setPlaying(true)).catch(e => {
-                            setError("Unable to play video. Please try again or use the external link.");
+                            setError("Unable to play video. Please try again.");
                         });
                     });
             } else {
@@ -643,12 +792,9 @@ const Player = () => {
         const newVolume = parseFloat(e.target.value);
         setVolume(newVolume);
 
-        // YouTube volume control
         if (videoType === 'youtube' && youTubePlayer) {
             youTubePlayer.setVolume(newVolume * 100);
-        }
-        // HTML5 volume control
-        else if (videoRef.current) {
+        } else if (videoRef.current) {
             videoRef.current.volume = newVolume;
         }
 
@@ -659,7 +805,6 @@ const Player = () => {
     const handleToggleMute = (e) => {
         e?.stopPropagation();
 
-        // YouTube mute toggle
         if (videoType === 'youtube' && youTubePlayer) {
             if (muted) {
                 youTubePlayer.unMute();
@@ -667,9 +812,7 @@ const Player = () => {
             } else {
                 youTubePlayer.mute();
             }
-        }
-        // HTML5 mute toggle
-        else if (videoRef.current) {
+        } else if (videoRef.current) {
             videoRef.current.muted = !videoRef.current.muted;
         }
 
@@ -682,14 +825,11 @@ const Player = () => {
         const seekTo = parseFloat(e.target.value);
         setProgress(seekTo);
 
-        // YouTube seek
         if (videoType === 'youtube' && youTubePlayer) {
             const newTime = seekTo * youTubePlayer.getDuration();
             youTubePlayer.seekTo(newTime, true);
             setCurrentTime(newTime);
-        }
-        // HTML5 seek
-        else if (videoRef.current && !isNaN(videoRef.current.duration)) {
+        } else if (videoRef.current && !isNaN(videoRef.current.duration)) {
             const newTime = seekTo * videoRef.current.duration;
             videoRef.current.currentTime = newTime;
             setCurrentTime(newTime);
@@ -700,14 +840,11 @@ const Player = () => {
     const handleForward = (e, seconds = 10) => {
         e?.stopPropagation();
 
-        // YouTube forward
         if (videoType === 'youtube' && youTubePlayer) {
             const newTime = Math.min(youTubePlayer.getCurrentTime() + seconds, youTubePlayer.getDuration());
             youTubePlayer.seekTo(newTime, true);
             setCurrentTime(newTime);
-        }
-        // HTML5 forward
-        else if (videoRef.current) {
+        } else if (videoRef.current) {
             videoRef.current.currentTime += seconds;
             setCurrentTime(videoRef.current.currentTime);
         }
@@ -717,14 +854,11 @@ const Player = () => {
     const handleRewind = (e, seconds = 10) => {
         e?.stopPropagation();
 
-        // YouTube rewind
         if (videoType === 'youtube' && youTubePlayer) {
             const newTime = Math.max(0, youTubePlayer.getCurrentTime() - seconds);
             youTubePlayer.seekTo(newTime, true);
             setCurrentTime(newTime);
-        }
-        // HTML5 rewind
-        else if (videoRef.current) {
+        } else if (videoRef.current) {
             videoRef.current.currentTime = Math.max(0, videoRef.current.currentTime - seconds);
             setCurrentTime(videoRef.current.currentTime);
         }
@@ -734,12 +868,9 @@ const Player = () => {
     const handlePlaybackRate = (rate, e) => {
         e?.stopPropagation();
 
-        // YouTube playback rate
         if (videoType === 'youtube' && youTubePlayer) {
             youTubePlayer.setPlaybackRate(rate);
-        }
-        // HTML5 playback rate
-        else if (videoRef.current) {
+        } else if (videoRef.current) {
             videoRef.current.playbackRate = rate;
         }
 
@@ -747,50 +878,39 @@ const Player = () => {
         showControlsWithTimer();
     };
 
-    // UPDATED: Enhanced download handler with quality options and progress simulation
     const handleDownload = async (e, quality = 'original') => {
         e?.stopPropagation();
 
-        // Check for download link in priority order:
-        // 1. download field (from admin form)
-        // 2. download_link field
-        // 3. videoUrl as fallback
-        // 4. streamLink as last resort
-        const downloadUrl = movie?.download || movie?.download_link || movie?.videoUrl || movie?.streamLink;
+        const downloadUrl = currentEpisode?.download || currentEpisode?.download_link || currentEpisode?.videoUrl || currentEpisode?.streamLink;
 
         if (downloadUrl) {
             setDownloading(true);
             setShowDownloadOptions(false);
 
-            // Simulate download preparation (for better UX)
             setTimeout(() => {
-                // Create an invisible anchor element to trigger download
                 const link = document.createElement('a');
                 link.href = downloadUrl;
-                link.download = ''; // Let the browser determine filename or use URL
-                link.target = '_blank'; // Open in new tab for cross-origin URLs
+                link.download = '';
+                link.target = '_blank';
                 link.rel = 'noopener noreferrer';
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
 
                 setDownloading(false);
-
-                // Show success message (optional)
-                const fileName = downloadUrl.split('/').pop() || movie.title;
+                const fileName = downloadUrl.split('/').pop() || currentEpisode.title;
                 alert(`Download started: ${fileName}`);
 
                 showControlsWithTimer();
             }, 1000);
         } else {
-            alert('Download link not available for this movie.');
+            alert('Download link not available for this episode.');
         }
     };
 
-    // Copy download link to clipboard
     const handleCopyLink = (e) => {
         e?.stopPropagation();
-        const downloadUrl = movie?.download || movie?.download_link || movie?.videoUrl || movie?.streamLink;
+        const downloadUrl = currentEpisode?.download || currentEpisode?.download_link || currentEpisode?.videoUrl || currentEpisode?.streamLink;
 
         if (downloadUrl) {
             navigator.clipboard.writeText(downloadUrl).then(() => {
@@ -834,8 +954,8 @@ const Player = () => {
         setError('');
         setLoading(true);
         setVideoLoaded(false);
-        if (movie) {
-            initializeVideo();
+        if (currentEpisode) {
+            initializeVideo(currentEpisode);
         }
     };
 
@@ -867,88 +987,7 @@ const Player = () => {
         return `${mm}:${ss}`;
     };
 
-    const initializeVideo = () => {
-        if (!movie) return;
-
-        const url = movie?.videoUrl || movie?.streamLink || '';
-
-        if (!url) {
-            setError("No video URL available for this movie");
-            setLoading(false);
-            return;
-        }
-
-        const detectedType = detectVideoType(url);
-        setVideoType(detectedType);
-
-        if (detectedType === 'dailymotion') {
-            setIsDailyMotionVideo(true);
-            setIsVimeoVideo(false);
-            const dailymotionId = extractDailyMotionId(url);
-            if (dailymotionId) {
-                setDailyMotionId(dailymotionId);
-                // Clean DailyMotion embed - no logo, no branding
-                const embedUrl = `https://www.dailymotion.com/embed/video/${dailymotionId}?autoplay=1&queue-autoplay-next=0&queue-enable=0&sharing-enable=0&ui-logo=0&ui-start-screen-info=0&controls=true&ui-theme=dark&ui-advance=0&ui-chapters=0&ui-description=0&ui-mute=0&ui-endscreen=0&logo=0&info=0`;
-                setVideoUrl(embedUrl);
-                console.log("🎬 Using DailyMotion embedded player (clean mode)");
-            } else {
-                setError("Invalid DailyMotion URL");
-            }
-        } else if (detectedType === 'vimeo') {
-            setIsVimeoVideo(true);
-            setIsDailyMotionVideo(false);
-            const vimeoId = extractVimeoId(url);
-            if (vimeoId) {
-                // Clean Vimeo embed - no logos, no text
-                const embedUrl = `https://player.vimeo.com/video/${vimeoId}?autoplay=1&title=0&byline=0&portrait=0&controls=true&badge=0&transparent=1&color=ffffff&autopause=0&player_id=0&app_id=0`;
-                setVideoUrl(embedUrl);
-                console.log("🎬 Using Vimeo embedded player (clean mode)");
-            } else {
-                setError("Invalid Vimeo URL");
-            }
-        } else if (detectedType === 'youtube') {
-            setIsVimeoVideo(false);
-            setIsDailyMotionVideo(false);
-            const youtubeId = extractYouTubeId(url);
-            if (youtubeId) {
-                setYoutubeId(youtubeId);
-                // We'll use the YouTube API player instead of iframe
-                setVideoUrl(''); // Not needed for API player
-                console.log("🎬 Using YouTube API player with custom controls (professional mode)");
-            } else {
-                setError("Invalid YouTube URL");
-            }
-        } else if (detectedType === 'embed') {
-            setIsVimeoVideo(false);
-            setIsDailyMotionVideo(false);
-            // Try to extract iframe src
-            const srcMatch = url.match(/src=["']([^"']+)["']/);
-            if (srcMatch) {
-                setVideoUrl(srcMatch[1]);
-            } else {
-                setVideoUrl(url);
-            }
-            console.log("🎬 Using embed player");
-        } else {
-            setIsVimeoVideo(false);
-            setIsDailyMotionVideo(false);
-            setVideoUrl(url);
-            console.log("🎬 Using custom HTML5 player");
-        }
-        setLoading(false);
-    };
-
     useEffect(() => {
-        if (!movie) {
-            setLoading(false);
-            return;
-        }
-
-        setLoading(true);
-        setError('');
-        setUseEmbed(false);
-        initializeVideo();
-
         const handleFullscreenChange = () => {
             setIsFullscreen(!!document.fullscreenElement);
         };
@@ -958,82 +997,54 @@ const Player = () => {
             if (controlsTimerRef.current) clearTimeout(controlsTimerRef.current);
             document.removeEventListener('fullscreenchange', handleFullscreenChange);
         };
-    }, [movie, retryCount]);
+    }, []);
+
+    // Episode navigation
+    const goToNextEpisode = () => {
+        if (currentEpisodeIndex < episodesList.length - 1) {
+            setCurrentEpisodeIndex(prev => prev + 1);
+        }
+    };
+
+    const goToPreviousEpisode = () => {
+        if (currentEpisodeIndex > 0) {
+            setCurrentEpisodeIndex(prev => prev - 1);
+        }
+    };
+
+    const goToEpisode = (index) => {
+        if (index >= 0 && index < episodesList.length) {
+            setCurrentEpisodeIndex(index);
+            setShowEpisodeList(false);
+        }
+    };
+
+    const toggleFavorite = () => {
+        if (!currentEpisode?.id) return;
+        setFavorites(prev =>
+            prev.includes(currentEpisode.id)
+                ? prev.filter(id => id !== currentEpisode.id)
+                : [...prev, currentEpisode.id]
+        );
+    };
+
+    const toggleWatchlist = () => {
+        if (!currentEpisode?.id) return;
+        setWatchlist(prev =>
+            prev.includes(currentEpisode.id)
+                ? prev.filter(id => id !== currentEpisode.id)
+                : [...prev, currentEpisode.id]
+        );
+    };
+
+    // ========== RENDER FUNCTIONS ==========
 
     const renderVideoPlayer = () => {
-        if (useEmbed) {
-            return (
-                <div className="relative w-full h-full">
-                    <iframe
-                        src={videoUrl}
-                        className="w-full h-full"
-                        frameBorder="0"
-                        allow="autoplay; fullscreen; picture-in-picture"
-                        allowFullScreen
-                        title={movie?.title || 'Video Player'}
-                        onLoad={() => {
-                            console.log("✅ Embed iframe loaded");
-                            setVideoLoaded(true);
-                            setPlaying(true);
-                        }}
-                        onError={() => {
-                            setError("Failed to load embedded video");
-                            setVideoLoaded(false);
-                        }}
-                    />
-                </div>
-            );
-        }
-
-        if (isDailyMotionVideo && dailyMotionId) {
-            return (
-                <div className="relative w-full h-full">
-                    <iframe
-                        src={videoUrl}
-                        className="w-full h-full"
-                        frameBorder="0"
-                        allow="autoplay; fullscreen; picture-in-picture"
-                        allowFullScreen
-                        title={movie?.title || 'Video Player'}
-                        onLoad={() => {
-                            console.log("✅ DailyMotion iframe loaded");
-                            setVideoLoaded(true);
-                            setPlaying(true);
-                        }}
-                        onError={() => {
-                            setError("Failed to load DailyMotion video");
-                            setVideoLoaded(false);
-                        }}
-                    />
-                </div>
-            );
-        } else if (isVimeoVideo) {
-            return (
-                <div className="relative w-full h-full">
-                    <iframe
-                        src={videoUrl}
-                        className="w-full h-full"
-                        frameBorder="0"
-                        allow="autoplay; fullscreen; picture-in-picture"
-                        allowFullScreen
-                        title={movie?.title || 'Video Player'}
-                        onLoad={() => {
-                            console.log("✅ Vimeo iframe loaded");
-                            setVideoLoaded(true);
-                            setPlaying(true);
-                        }}
-                        onError={() => {
-                            setError("Failed to load Vimeo video");
-                            setVideoLoaded(false);
-                        }}
-                    />
-                </div>
-            );
-        } else if (videoType === 'youtube') {
-            // ULTRA-CLEAN YOUTUBE PLAYER - NO BRANDING AT ALL
+        // For YouTube videos
+        if (videoType === 'youtube') {
             return (
                 <div className="relative w-full h-full bg-black">
-                    {/* YouTube Player Container */}
+                    {/* YouTube Player Container - always visible */}
                     <div
                         ref={youtubeContainerRef}
                         className="w-full h-full"
@@ -1043,7 +1054,7 @@ const Player = () => {
                         }}
                     />
 
-                    {/* COMPLETE OVERLAY - Blocks ALL YouTube elements */}
+                    {/* Simple click overlay for play/pause - no black overlay when paused */}
                     <div
                         className="absolute inset-0 z-20"
                         style={{
@@ -1054,30 +1065,63 @@ const Player = () => {
                         onMouseEnter={() => showControlsWithTimer()}
                         onMouseLeave={() => setShowControls(false)}
                     />
+                </div>
+            );
+        }
 
-                    {/* Additional overlay to ensure nothing shows through */}
-                    <div
-                        className="absolute inset-0 z-10"
-                        style={{
-                            background: 'rgba(0,0,0,0.001)',
-                            pointerEvents: 'none'
+        // For embedded videos (Vimeo, DailyMotion, etc.)
+        if (useEmbed || isDailyMotionVideo || isVimeoVideo) {
+            return (
+                <div className="relative w-full h-full bg-black">
+                    <iframe
+                        ref={iframeRef}
+                        src={videoUrl}
+                        className="w-full h-full"
+                        frameBorder="0"
+                        allow="autoplay; fullscreen; picture-in-picture"
+                        allowFullScreen
+                        title={currentEpisode?.title || 'Video Player'}
+                        onLoad={() => {
+                            console.log("✅ Iframe loaded");
+                            setVideoLoaded(true);
+                            setLoading(false);
                         }}
+                        onError={() => {
+                            setError("Failed to load video");
+                            setVideoLoaded(false);
+                            setLoading(false);
+                        }}
+                    />
+
+                    {/* Simple click overlay for play/pause */}
+                    <div
+                        className="absolute inset-0 z-20"
+                        style={{
+                            background: 'transparent',
+                            cursor: 'pointer'
+                        }}
+                        onClick={handlePlayPause}
+                        onMouseEnter={() => showControlsWithTimer()}
+                        onMouseLeave={() => setShowControls(false)}
                     />
                 </div>
             );
-        } else {
-            return (
+        }
+
+        // For HTML5 video
+        return (
+            <div className="relative w-full h-full bg-black">
                 <video
                     ref={videoRef}
-                    className="w-full h-full object-contain bg-black"
+                    className="w-full h-full object-contain"
                     src={videoUrl}
                     onTimeUpdate={handleTimeUpdate}
                     onLoadedMetadata={() => {
                         console.log("✅ HTML5 video metadata loaded");
                         setVideoLoaded(true);
+                        setLoading(false);
                         if (videoRef.current) {
                             setDuration(videoRef.current.duration);
-                            // Try auto-play
                             const playPromise = videoRef.current.play();
                             if (playPromise !== undefined) {
                                 playPromise
@@ -1099,6 +1143,11 @@ const Player = () => {
                     onPause={() => {
                         console.log("⏸️ HTML5 video paused");
                         setPlaying(false);
+                    }}
+                    onEnded={() => {
+                        console.log("⏹️ HTML5 video ended");
+                        setPlaying(false);
+                        setProgress(1);
                     }}
                     onError={(e) => {
                         console.error("❌ Video error:", e);
@@ -1128,6 +1177,7 @@ const Player = () => {
 
                         setError(errorMessage);
                         setVideoLoaded(false);
+                        setLoading(false);
                     }}
                     playsInline
                     preload="auto"
@@ -1139,8 +1189,20 @@ const Player = () => {
                     <source src={videoUrl} type="video/ogg" />
                     Your browser does not support the video tag.
                 </video>
-            );
-        }
+
+                {/* Simple click overlay for play/pause */}
+                <div
+                    className="absolute inset-0 z-20"
+                    style={{
+                        background: 'transparent',
+                        cursor: 'pointer'
+                    }}
+                    onClick={handlePlayPause}
+                    onMouseEnter={() => showControlsWithTimer()}
+                    onMouseLeave={() => setShowControls(false)}
+                />
+            </div>
+        );
     };
 
     const renderCommentsSection = () => (
@@ -1186,7 +1248,7 @@ const Player = () => {
                                 value={newComment}
                                 onChange={(e) => setNewComment(e.target.value)}
                                 className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-xl text-white resize-none"
-                                placeholder="Share your thoughts about this movie..."
+                                placeholder="Share your thoughts about this episode..."
                                 rows="3"
                                 maxLength="500"
                             />
@@ -1381,13 +1443,13 @@ const Player = () => {
         );
     }
 
-    if (error || !movie) {
+    if (error || !currentEpisode) {
         return (
             <div className="min-h-screen bg-black flex items-center justify-center p-4">
                 <div className="text-center p-8 max-w-lg bg-gray-900/50 rounded-2xl border border-gray-800">
                     <FaExclamationTriangle className="text-red-500 text-6xl mx-auto mb-4" />
                     <h1 className="text-3xl text-white font-bold mb-4">Playback Error</h1>
-                    <p className="text-gray-400 mb-6">{error || "No movie selected"}</p>
+                    <p className="text-gray-400 mb-6">{error || "No episode selected"}</p>
                     <div className="flex flex-col sm:flex-row gap-4 justify-center">
                         <button
                             onClick={() => navigate(-1)}
@@ -1469,31 +1531,86 @@ const Player = () => {
     };
 
     const playerType = getPlayerTypeInfo();
-
-    // Check if download is available
-    const hasDownload = movie?.download || movie?.download_link || movie?.videoUrl || movie?.streamLink;
+    const hasDownload = currentEpisode?.download || currentEpisode?.download_link || currentEpisode?.videoUrl || currentEpisode?.streamLink;
+    const isFavorite = favorites.includes(currentEpisode?.id);
+    const inWatchlist = watchlist.includes(currentEpisode?.id);
 
     return (
         <div className="min-h-screen bg-black text-white">
             {!isFullscreen && (
-                <div className="absolute top-0 left-0 right-0 p-4 bg-gradient-to-b from-black/90 to-transparent z-10">
+                <div className="absolute top-0 left-0 right-0 p-4 bg-gradient-to-b from-black/90 to-transparent z-30">
                     <div className="max-w-7xl mx-auto flex items-center justify-between">
                         <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-white hover:text-red-500 transition-colors">
                             <FaArrowLeft /> Back
                         </button>
 
                         <div className="flex-1 text-center px-4">
-                            <h1 className="text-xl font-bold truncate max-w-2xl mx-auto">{movie.title}</h1>
+                            <h1 className="text-xl font-bold truncate max-w-2xl mx-auto">{series?.title || 'Series'}</h1>
                             <div className="flex items-center justify-center gap-2 mt-1">
                                 <FaVideo className={playerType.color} />
                                 <span className={`text-sm ${playerType.text}`}>
                                     {playerType.label} - {playerType.controls}
                                 </span>
                             </div>
+                            <div className="text-xs text-gray-400 mt-1">
+                                S{currentEpisode.seasonNumber || currentEpisode.season_number || 1} • E{currentEpisode.episodeNumber || currentEpisode.episode_number || 1}: {currentEpisode.title}
+                            </div>
                         </div>
 
                         <div className="flex items-center gap-4">
-                            {/* BEAUTIFUL DOWNLOAD BUTTON WITH DROPDOWN */}
+                            {/* Favorite & Watchlist Buttons */}
+                            <button
+                                onClick={toggleFavorite}
+                                className={`p-2 rounded-lg transition-colors ${isFavorite ? 'text-red-500' : 'text-gray-400 hover:text-red-500'}`}
+                                title={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+                            >
+                                <FaHeart size={20} />
+                            </button>
+                            <button
+                                onClick={toggleWatchlist}
+                                className={`p-2 rounded-lg transition-colors ${inWatchlist ? 'text-blue-500' : 'text-gray-400 hover:text-blue-500'}`}
+                                title={inWatchlist ? 'Remove from watchlist' : 'Add to watchlist'}
+                            >
+                                <FaBookmark size={20} />
+                            </button>
+
+                            {/* Episode Navigation */}
+                            <button
+                                onClick={goToPreviousEpisode}
+                                disabled={currentEpisodeIndex === 0}
+                                className={`p-2 rounded-lg transition-colors ${currentEpisodeIndex === 0
+                                    ? 'bg-gray-800/50 text-gray-600 cursor-not-allowed'
+                                    : 'bg-gray-800 hover:bg-gray-700 text-white'
+                                    }`}
+                                title="Previous Episode"
+                            >
+                                <FaChevronLeft size={16} />
+                            </button>
+                            <span className="text-sm text-gray-300">
+                                {currentEpisodeIndex + 1}/{episodesList.length}
+                            </span>
+                            <button
+                                onClick={goToNextEpisode}
+                                disabled={currentEpisodeIndex === episodesList.length - 1}
+                                className={`p-2 rounded-lg transition-colors ${currentEpisodeIndex === episodesList.length - 1
+                                    ? 'bg-gray-800/50 text-gray-600 cursor-not-allowed'
+                                    : 'bg-gray-800 hover:bg-gray-700 text-white'
+                                    }`}
+                                title="Next Episode"
+                            >
+                                <FaChevronRight size={16} />
+                            </button>
+
+                            {/* Episode List Toggle */}
+                            <button
+                                onClick={() => setShowEpisodeList(!showEpisodeList)}
+                                className="p-2 bg-gray-800 hover:bg-gray-700 rounded-lg text-white"
+                                title={showEpisodeList ? 'Hide episodes' : 'Show episodes'}
+                            >
+                                <FaList size={20} />
+                            </button>
+
+                            {/* Download Button */}
                             {hasDownload && (
                                 <div className="relative">
                                     <button
@@ -1515,7 +1632,6 @@ const Player = () => {
                                         )}
                                     </button>
 
-                                    {/* DOWNLOAD DROPDOWN MENU */}
                                     {showDownloadOptions && !downloading && (
                                         <div className="absolute right-0 mt-2 w-64 bg-gray-800/95 backdrop-blur-lg border border-gray-700 rounded-xl shadow-2xl overflow-hidden z-50">
                                             <div className="p-3 border-b border-gray-700">
@@ -1526,7 +1642,6 @@ const Player = () => {
                                             </div>
 
                                             <div className="p-2">
-                                                {/* Original Quality */}
                                                 <button
                                                     onClick={(e) => handleDownload(e, 'original')}
                                                     className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-gray-700/70 rounded-lg transition-colors group"
@@ -1536,25 +1651,10 @@ const Player = () => {
                                                     </div>
                                                     <div className="flex-1 text-left">
                                                         <p className="text-sm font-medium text-white">Original Quality</p>
-                                                        <p className="text-xs text-gray-400">Best quality, larger file</p>
+                                                        <p className="text-xs text-gray-400">Best quality</p>
                                                     </div>
                                                 </button>
 
-                                                {/* HD Quality */}
-                                                <button
-                                                    onClick={(e) => handleDownload(e, 'hd')}
-                                                    className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-gray-700/70 rounded-lg transition-colors group"
-                                                >
-                                                    <div className="w-8 h-8 bg-gradient-to-br from-blue-500/20 to-cyan-500/20 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
-                                                        <FaFilm className="text-blue-400 text-sm" />
-                                                    </div>
-                                                    <div className="flex-1 text-left">
-                                                        <p className="text-sm font-medium text-white">HD Quality (720p)</p>
-                                                        <p className="text-xs text-gray-400">Good quality, smaller file</p>
-                                                    </div>
-                                                </button>
-
-                                                {/* Copy Link */}
                                                 <button
                                                     onClick={handleCopyLink}
                                                     className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-gray-700/70 rounded-lg transition-colors group mt-1 border-t border-gray-700/50 pt-3"
@@ -1567,14 +1667,6 @@ const Player = () => {
                                                         <p className="text-xs text-gray-400">Save for later</p>
                                                     </div>
                                                 </button>
-                                            </div>
-
-                                            {/* File info footer */}
-                                            <div className="p-3 bg-gray-900/50 border-t border-gray-700">
-                                                <p className="text-xs text-gray-400 flex items-center gap-2">
-                                                    <FaDownload className="text-xs" />
-                                                    <span>Click to start downloading</span>
-                                                </p>
                                             </div>
                                         </div>
                                     )}
@@ -1590,14 +1682,6 @@ const Player = () => {
                 className={`relative w-full ${isMobile ? 'h-[60vh]' : 'h-screen'} bg-black`}
                 onMouseMove={shouldShowCustomControls ? showControlsWithTimer : undefined}
                 onMouseLeave={() => shouldShowCustomControls && setShowControls(false)}
-                onClick={(e) => {
-                    if (shouldShowCustomControls && !e.target.closest('button') && !e.target.closest('input') && !e.target.closest('select')) {
-                        handlePlayPause(e);
-                    }
-                    if (shouldShowCustomControls) {
-                        showControlsWithTimer();
-                    }
-                }}
                 style={isFullscreen ? {
                     position: 'fixed',
                     top: 0,
@@ -1609,19 +1693,8 @@ const Player = () => {
             >
                 {renderVideoPlayer()}
 
-                {shouldShowCustomControls && videoLoaded && !playing && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-20">
-                        <button
-                            onClick={handlePlayPause}
-                            className="w-24 h-24 bg-red-600/90 hover:bg-red-700 rounded-full flex items-center justify-center transition-all transform hover:scale-110"
-                        >
-                            <FaPlay size={40} className="text-white ml-2" />
-                        </button>
-                    </div>
-                )}
-
                 {!videoLoaded && !error && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/80 z-20">
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/80 z-40">
                         <div className="text-center">
                             <FaSpinner className="text-4xl text-red-600 animate-spin mx-auto mb-4" />
                             <p className="text-white">Loading video...</p>
@@ -1630,7 +1703,7 @@ const Player = () => {
                 )}
 
                 {error && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/90 z-20">
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/90 z-40">
                         <div className="text-center p-6 max-w-md">
                             <FaExclamationTriangle className="text-red-500 text-5xl mx-auto mb-4" />
                             <p className="text-white mb-4">{error}</p>
@@ -1777,104 +1850,95 @@ const Player = () => {
                 <div className="max-w-7xl mx-auto px-4 py-8">
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                         <div className="lg:col-span-2">
-                            <div className="flex items-center justify-between mb-4">
-                                <h1 className="text-4xl font-bold">{movie.title}</h1>
-
-                                {/* BEAUTIFUL DOWNLOAD CARD FOR MOBILE/LATER */}
-                                {hasDownload && !showDownloadOptions && (
-                                    <button
-                                        onClick={() => setShowDownloadOptions(true)}
-                                        className="lg:hidden flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 rounded-xl text-white font-medium"
-                                    >
-                                        <FaDownload />
-                                        Download
-                                    </button>
-                                )}
-                            </div>
-
-                            <div className="flex flex-wrap gap-3 mb-6">
-                                {movie.year && <span className="px-4 py-2 bg-red-600 rounded-full">{movie.year}</span>}
-                                {movie.rating && <span className="px-4 py-2 bg-yellow-600 rounded-full flex items-center gap-2"><FaStar /> {movie.rating}</span>}
-                                {movie.category && (
+                            {/* Episode Info */}
+                            <div className="mb-6">
+                                <h1 className="text-4xl font-bold mb-2">{series?.title}</h1>
+                                <div className="flex items-center gap-4 mb-4">
+                                    <span className="px-4 py-2 bg-red-600 rounded-full">
+                                        Season {currentEpisode.seasonNumber || currentEpisode.season_number || 1}
+                                    </span>
                                     <span className="px-4 py-2 bg-purple-600 rounded-full">
-                                        {movie.category.split(',')[0]}
+                                        Episode {currentEpisode.episodeNumber || currentEpisode.episode_number || 1}
                                     </span>
-                                )}
-                                <span className={`px-4 py-2 ${playerType.bgColor} rounded-full`}>
-                                    {playerType.label}
-                                </span>
-                                {/* Download badge */}
-                                {hasDownload && (
-                                    <span className="px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 rounded-full flex items-center gap-2 shadow-lg">
-                                        <FaCloudDownloadAlt /> Download Available
-                                    </span>
-                                )}
+                                    {series?.year && (
+                                        <span className="px-4 py-2 bg-gray-700 rounded-full">
+                                            {series.year}
+                                        </span>
+                                    )}
+                                    {series?.rating && (
+                                        <span className="px-4 py-2 bg-yellow-600 rounded-full flex items-center gap-2">
+                                            <FaStar /> {series.rating}
+                                        </span>
+                                    )}
+                                </div>
+                                <h2 className="text-2xl font-bold mb-2">{currentEpisode.title}</h2>
+                                <p className="text-gray-300 mb-4">{currentEpisode.description || 'No description available'}</p>
                             </div>
 
-                            <p className="text-gray-300 mb-6 whitespace-pre-wrap">{movie.description || 'No description available'}</p>
-
-                            {/* Download section for desktop */}
-                            {hasDownload && (
-                                <div className="mb-8 p-6 bg-gradient-to-br from-gray-800/50 to-gray-900/50 backdrop-blur-lg rounded-2xl border border-green-500/30">
-                                    <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
-                                        <FaDownload className="text-green-400" />
-                                        Download Options
-                                    </h3>
-
-                                    <div className="grid md:grid-cols-2 gap-4">
-                                        {/* Original Quality Card */}
-                                        <button
-                                            onClick={(e) => handleDownload(e, 'original')}
-                                            className="flex items-center gap-4 p-4 bg-gray-800/70 hover:bg-gray-700/70 rounded-xl border border-gray-700 hover:border-green-500/50 transition-all group"
-                                            disabled={downloading}
-                                        >
-                                            <div className="w-12 h-12 bg-gradient-to-br from-green-500/20 to-emerald-500/20 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
-                                                <FaHdd className="text-green-400 text-xl" />
-                                            </div>
-                                            <div className="flex-1 text-left">
-                                                <p className="font-bold text-white">Original Quality</p>
-                                                <p className="text-sm text-gray-400">Best quality, larger file</p>
-                                                <p className="text-xs text-green-400 mt-1">Click to download</p>
-                                            </div>
-                                            <FaDownload className="text-green-400 opacity-0 group-hover:opacity-100 transition-opacity" />
-                                        </button>
-
-                                        {/* HD Quality Card */}
-                                        <button
-                                            onClick={(e) => handleDownload(e, 'hd')}
-                                            className="flex items-center gap-4 p-4 bg-gray-800/70 hover:bg-gray-700/70 rounded-xl border border-gray-700 hover:border-blue-500/50 transition-all group"
-                                            disabled={downloading}
-                                        >
-                                            <div className="w-12 h-12 bg-gradient-to-br from-blue-500/20 to-cyan-500/20 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
-                                                <FaFilm className="text-blue-400 text-xl" />
-                                            </div>
-                                            <div className="flex-1 text-left">
-                                                <p className="font-bold text-white">HD Quality (720p)</p>
-                                                <p className="text-sm text-gray-400">Good quality, smaller file</p>
-                                                <p className="text-xs text-blue-400 mt-1">Click to download</p>
-                                            </div>
-                                            <FaDownload className="text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity" />
-                                        </button>
-
-                                        {/* Copy Link Card */}
-                                        <button
-                                            onClick={handleCopyLink}
-                                            className="md:col-span-2 flex items-center gap-4 p-4 bg-gray-800/70 hover:bg-gray-700/70 rounded-xl border border-gray-700 hover:border-purple-500/50 transition-all group"
-                                        >
-                                            <div className="w-12 h-12 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
-                                                <FaLink className="text-purple-400 text-xl" />
-                                            </div>
-                                            <div className="flex-1 text-left">
-                                                <p className="font-bold text-white">Copy Download Link</p>
-                                                <p className="text-sm text-gray-400">Save link for later or share</p>
-                                            </div>
-                                            <FaLink className="text-purple-400 opacity-0 group-hover:opacity-100 transition-opacity" />
-                                        </button>
+                            {/* Season Selector */}
+                            {seasons.length > 0 && (
+                                <div className="mb-6">
+                                    <h3 className="text-xl font-bold mb-3">Seasons</h3>
+                                    <div className="flex gap-2 overflow-x-auto pb-2">
+                                        {seasons.map(season => (
+                                            <button
+                                                key={season}
+                                                onClick={() => setSelectedSeason(season)}
+                                                className={`px-4 py-2 rounded-full whitespace-nowrap transition-colors ${selectedSeason === season
+                                                        ? 'bg-red-600 text-white'
+                                                        : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                                                    }`}
+                                            >
+                                                Season {season}
+                                            </button>
+                                        ))}
                                     </div>
                                 </div>
                             )}
 
-                            <div className="p-4 bg-gray-900/50 border border-gray-700 rounded-lg">
+                            {/* Episodes Grid */}
+                            {episodesList.length > 0 && (
+                                <div className="mb-8">
+                                    <h3 className="text-xl font-bold mb-3">Episodes</h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                        {episodesList
+                                            .filter(ep => (parseInt(ep.seasonNumber) || parseInt(ep.season_number) || 1) === selectedSeason)
+                                            .map((episode) => {
+                                                const epNumber = parseInt(episode.episodeNumber) || parseInt(episode.episode_number) || 1;
+                                                const isCurrent = currentEpisode?.id === episode.id;
+                                                const globalIndex = episodesList.findIndex(ep => ep.id === episode.id);
+                                                return (
+                                                    <button
+                                                        key={episode.id}
+                                                        onClick={() => goToEpisode(globalIndex)}
+                                                        className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${isCurrent
+                                                                ? 'bg-red-600/20 border border-red-500/50'
+                                                                : 'bg-gray-800/30 hover:bg-gray-800/50'
+                                                            }`}
+                                                    >
+                                                        <div className="w-8 h-8 bg-gradient-to-r from-red-600 to-pink-600 rounded flex items-center justify-center flex-shrink-0">
+                                                            <span className="text-xs font-bold">{epNumber}</span>
+                                                        </div>
+                                                        <div className="flex-1 text-left">
+                                                            <h4 className="font-medium text-white truncate">
+                                                                {episode.title}
+                                                            </h4>
+                                                            {episode.duration && (
+                                                                <p className="text-xs text-gray-400">{episode.duration}</p>
+                                                            )}
+                                                        </div>
+                                                        {isCurrent && (
+                                                            <FaPlay size={10} className="text-red-400 flex-shrink-0" />
+                                                        )}
+                                                    </button>
+                                                );
+                                            })}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Player Info */}
+                            <div className="p-4 bg-gray-900/50 border border-gray-700 rounded-lg mb-8">
                                 <div className="flex items-center gap-3">
                                     <FaVideo className={playerType.color} />
                                     <div>
@@ -1894,6 +1958,7 @@ const Player = () => {
                                 </div>
                             </div>
 
+                            {/* Comments Section */}
                             {renderCommentsSection()}
                         </div>
                     </div>
@@ -1903,4 +1968,4 @@ const Player = () => {
     );
 };
 
-export default Player;
+export default SeriesPlayer;

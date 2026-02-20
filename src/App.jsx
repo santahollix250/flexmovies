@@ -9,7 +9,9 @@ import Movies from './components/PopularMovies';
 import Series from './pages/Series';
 import Admin from './pages/Admin';
 import Player from "./components/Player";
-import WhatsAppFloatingButton from './components/WhatsAppFloatingButton'; // Make sure this import path is correct
+import WhatsAppFloatingButton from './components/WhatsAppFloatingButton';
+import SeriesPlayer from './components/SeriesPlayer';
+// Make sure this import path is correct
 import './index.css';
 
 function App() {
@@ -22,7 +24,8 @@ function App() {
             <Route path="/" element={<Movies />} />
             <Route path="/movies" element={<Movies />} />
             <Route path="/series" element={<Series />} />
-            <Route path="/player/:id" element={<Player />} />{/* ADD THIS ROUTE */}
+            <Route path="/player/:id" element={<Player />} />
+            <Route path="/series-player/:id" element={<SeriesPlayer />} />{/* ADD THIS ROUTE */}
             <Route path="/admin" element={
               <ProtectedRoute>
                 <Admin />

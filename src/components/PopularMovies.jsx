@@ -34,7 +34,8 @@ import {
   FaMagic,
   FaBars,
   FaEye,
-  FaClock
+  FaClock,
+  FaSpinner
 } from "react-icons/fa";
 
 export default function Movies() {
@@ -65,6 +66,7 @@ export default function Movies() {
   const [showQuickView, setShowQuickView] = useState(false);
   const [quickViewMovie, setQuickViewMovie] = useState(null);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const [imageLoading, setImageLoading] = useState(true);
   const itemsPerPage = 24;
 
   // Get hero content
@@ -269,13 +271,28 @@ export default function Movies() {
     navigate(`/player/${movie?.id}`, { state: { movie } });
   };
 
-  // Loading state
+  // Loading state with simple logo animation
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-black via-gray-900 to-black flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-red-600 mx-auto"></div>
-          <p className="text-white mt-4">Loading movies...</p>
+          {/* Simple Logo Loading Animation */}
+          <div className="relative mb-6">
+            {/* Main Logo */}
+            <div className="text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-red-600 to-red-400 animate-pulse">
+              MOVIE<span className="text-white">FLIX</span>
+            </div>
+
+            {/* Simple Spinner */}
+            <div className="mt-4 flex justify-center">
+              <FaSpinner className="text-red-600 text-2xl animate-spin" />
+            </div>
+
+            {/* Loading Text */}
+            <p className="text-gray-400 text-sm mt-3 animate-pulse">
+              Loading amazing content...
+            </p>
+          </div>
         </div>
       </div>
     );
@@ -283,82 +300,120 @@ export default function Movies() {
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-black via-gray-900 to-black">
-      {/* HERO SLIDER SECTION */}
+      {/* HERO SLIDER SECTION - OPTIMIZED FOR MOBILE */}
       {filteredHeroContent.length > 0 && (
         <section
-          className="relative h-[70vh] md:h-[85vh] overflow-hidden"
+          className="relative h-[50vh] sm:h-[60vh] md:h-[70vh] lg:h-[85vh] overflow-hidden group"
           onMouseEnter={() => setIsHoveringHero(true)}
           onMouseLeave={() => setIsHoveringHero(false)}
         >
-          {/* Background Images */}
+          {/* Background Images with optimal mobile display */}
           {filteredHeroContent.map((item, index) => (
             <div
               key={item?.id}
               className={`absolute inset-0 transition-opacity duration-1000 ${index === currentHeroSlide ? 'opacity-100 z-10' : 'opacity-0 z-0'
                 }`}
             >
-              <img
-                src={item?.background || item?.poster}
-                alt={item?.title}
-                className="w-full h-full object-cover"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black via-black/70 to-transparent" />
+              {/* Image with loading state */}
+              <div className="relative w-full h-full">
+                {imageLoading && index === currentHeroSlide && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-gray-900">
+                    <div className="text-center">
+                      <FaSpinner className="text-red-600 text-3xl animate-spin mb-2" />
+                      <p className="text-gray-400 text-xs">Loading image...</p>
+                    </div>
+                  </div>
+                )}
+                <img
+                  src={item?.background || item?.poster}
+                  alt={item?.title}
+                  className="w-full h-full object-cover md:object-cover object-center"
+                  style={{
+                    objectFit: window.innerWidth <= 640 ? 'contain' : 'cover',
+                    backgroundColor: '#000000',
+                  }}
+                  onLoad={() => setImageLoading(false)}
+                  onError={() => setImageLoading(false)}
+                />
+              </div>
+
+              {/* Lighter gradient on mobile, darker on desktop */}
+              <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent md:via-black/70" />
+              {/* Minimal overlay on mobile */}
+              <div className="absolute inset-0 bg-black/10 md:bg-black/20" />
             </div>
           ))}
 
-          {/* Hero Content */}
-          <div className="absolute bottom-0 left-0 right-0 p-4 pb-16 z-20 bg-gradient-to-t from-black via-black/50 to-transparent">
+          {/* Hero Content - Minimal shadows on mobile */}
+          <div className="absolute bottom-0 left-0 right-0 p-4 pb-8 sm:p-6 sm:pb-12 z-20 bg-gradient-to-t from-black via-black/80 to-transparent md:via-black/90">
             <div className="max-w-3xl">
+              {/* Type Badge - No shadow on mobile */}
               <div className="flex items-center gap-2 mb-2">
-                <span className={`px-2 py-1 rounded-full text-xs font-semibold ${currentHeroItem?.type === "series"
+                <span className={`px-2 py-1 rounded-full text-[10px] sm:text-xs font-semibold ${currentHeroItem?.type === "series"
                   ? "bg-gradient-to-r from-purple-600 to-pink-600"
                   : "bg-gradient-to-r from-red-600 to-orange-600"
                   }`}>
-                  {currentHeroItem?.type === "series" ? <FaTv className="inline mr-1" /> : <FaPlay className="inline mr-1" />}
+                  {currentHeroItem?.type === "series" ? <FaTv className="inline mr-1 text-[8px] sm:text-xs" /> : <FaPlay className="inline mr-1 text-[8px] sm:text-xs" />}
                   {currentHeroItem?.type === "series" ? 'SERIES' : 'MOVIE'}
+                </span>
+                {/* Minimal badge on mobile */}
+                <span className="px-2 py-1 rounded-full bg-black/40 text-[8px] sm:text-xs text-white border border-white/10">
+                  {window.innerWidth <= 640 ? 'HD' : '4K ULTRA HD'}
                 </span>
               </div>
 
-              <h1 className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-2">
+              {/* Title */}
+              <h1 className="text-xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold text-white mb-2 line-clamp-2">
                 {currentHeroItem?.title}
               </h1>
 
-              <div className="flex items-center gap-2 mb-4 overflow-x-auto pb-1">
+              {/* Metadata - No shadows on mobile */}
+              <div className="flex flex-wrap items-center gap-2 mb-3">
                 {currentHeroItem?.rating && (
-                  <span className="flex items-center gap-1 text-xs text-yellow-400 bg-yellow-900/30 px-2 py-1 rounded-lg">
-                    <FaStar /> {currentHeroItem.rating}
+                  <span className="flex items-center gap-1 text-[10px] sm:text-xs text-yellow-400 bg-yellow-900/20 px-2 py-1 rounded-lg">
+                    <FaStar className="text-[8px] sm:text-xs" /> {currentHeroItem.rating}
                   </span>
                 )}
                 {currentHeroItem?.year && (
-                  <span className="flex items-center gap-1 text-xs text-gray-300 bg-gray-800/50 px-2 py-1 rounded-lg">
-                    <FaCalendarAlt /> {currentHeroItem.year}
+                  <span className="flex items-center gap-1 text-[10px] sm:text-xs text-gray-300 bg-gray-800/30 px-2 py-1 rounded-lg">
+                    <FaCalendarAlt className="text-[8px] sm:text-xs" /> {currentHeroItem.year}
                   </span>
                 )}
+                <span className="flex items-center gap-1 text-[10px] sm:text-xs text-gray-300 bg-gray-800/30 px-2 py-1 rounded-lg">
+                  <FaClock className="text-[8px] sm:text-xs" />
+                  {window.innerWidth <= 640 ? '2h' : '2h 15m'}
+                </span>
               </div>
 
-              <p className="text-sm text-gray-300 mb-4 line-clamp-2 max-w-2xl">
-                {currentHeroItem?.description || 'Experience this amazing content.'}
+              {/* Description - Minimal on mobile */}
+              <p className="text-xs sm:text-sm text-gray-300 mb-4 line-clamp-2 max-w-2xl">
+                {currentHeroItem?.description?.length > 100 && window.innerWidth <= 640
+                  ? currentHeroItem?.description.substring(0, 60) + '...'
+                  : currentHeroItem?.description || 'Experience this amazing content.'}
               </p>
 
-              <div className="flex gap-2">
+              {/* Action Buttons - Minimal shadows on mobile */}
+              <div className="flex gap-3">
                 <button
                   onClick={handleHeroPlayClick}
-                  className="px-4 py-2 bg-gradient-to-r from-red-600 to-red-700 rounded-lg text-white text-sm font-semibold flex items-center gap-2"
+                  className="px-6 py-3 sm:px-8 sm:py-4 bg-gradient-to-r from-red-600 to-red-700 rounded-lg text-white text-xs sm:text-sm font-semibold flex items-center gap-2 min-w-[90px] sm:min-w-[100px] justify-center shadow-none sm:shadow-lg sm:shadow-red-600/30 hover:from-red-700 hover:to-red-800 transition-all duration-300"
                 >
-                  <FaPlay /> Play
+                  <FaPlay className="text-xs sm:text-sm" />
+                  <span>Play</span>
                 </button>
                 <button
                   onClick={handleHeroInfoClick}
-                  className="px-4 py-2 bg-gray-800/70 rounded-lg text-white text-sm font-semibold flex items-center gap-2"
+                  className="px-6 py-3 sm:px-8 sm:py-4 bg-gray-800/70 sm:bg-gray-800/90 rounded-lg text-white text-xs sm:text-sm font-semibold flex items-center gap-2 min-w-[90px] sm:min-w-[100px] justify-center border border-gray-700 hover:bg-gray-700/90 transition-all duration-300"
                 >
-                  <FaInfoCircle /> Info
+                  <FaInfoCircle className="text-xs sm:text-sm" />
+                  <span>Info</span>
                 </button>
               </div>
             </div>
           </div>
 
-          {/* Navigation Dots */}
-          <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-1.5 z-20">
+          {/* Navigation Dots - Minimal on mobile */}
+          <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex gap-2 z-20">
             {filteredHeroContent.map((_, index) => (
               <button
                 key={index}
@@ -367,28 +422,87 @@ export default function Movies() {
                   setIsAutoPlaying(false);
                   setTimeout(() => setIsAutoPlaying(true), 10000);
                 }}
-                className={`transition-all duration-300 ${index === currentHeroSlide ? 'w-6 h-1.5' : 'w-1.5 h-1.5'
-                  }`}
+                className="p-2 -m-2 group/dot"
               >
-                <span className={`block w-full h-full rounded-full ${index === currentHeroSlide ? 'bg-red-600' : 'bg-gray-600'
+                <span className={`block transition-all duration-300 rounded-full ${index === currentHeroSlide
+                  ? 'w-4 sm:w-6 h-1 sm:h-1.5 bg-red-600'
+                  : 'w-1 sm:w-1.5 h-1 sm:h-1.5 bg-gray-500 group-hover/dot:bg-gray-300'
                   }`} />
               </button>
             ))}
           </div>
 
-          {/* Navigation Arrows */}
+          {/* Navigation Arrows - HIDDEN ON MOBILE, visible on tablet and desktop */}
+          {/* Left Arrow - Hidden on mobile */}
           <button
             onClick={prevHeroSlide}
-            className="hidden sm:block absolute left-4 top-1/2 transform -translate-y-1/2 p-3 bg-black/50 rounded-full text-white z-20"
+            className="hidden sm:block absolute left-2 sm:left-4 top-1/2 transform -translate-y-1/2 z-30 group/arrow"
+            aria-label="Previous slide"
           >
-            <FaChevronLeft />
+            <div className="relative">
+              {/* Arrow background with glow effect - desktop only */}
+              <div className="absolute inset-0 bg-gradient-to-r from-red-600 to-red-700 rounded-full blur-md opacity-0 group-hover/arrow:opacity-50 transition-opacity duration-300 hidden md:block"></div>
+
+              {/* Main arrow button */}
+              <div className="relative w-10 h-10 sm:w-12 sm:h-12 bg-black/60 backdrop-blur-md rounded-full flex items-center justify-center border border-white/20 group-hover/arrow:border-red-500/50 transition-all duration-300 group-hover/arrow:scale-110">
+                <FaChevronLeft className="text-white text-sm sm:text-base group-hover/arrow:text-red-400 transition-colors duration-300" />
+              </div>
+
+              {/* Tooltip - desktop only */}
+              <span className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 bg-black/90 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover/arrow:opacity-100 transition-opacity duration-300 whitespace-nowrap hidden md:block">
+                Previous
+              </span>
+            </div>
           </button>
+
+          {/* Right Arrow - Hidden on mobile */}
           <button
             onClick={nextHeroSlide}
-            className="hidden sm:block absolute right-4 top-1/2 transform -translate-y-1/2 p-3 bg-black/50 rounded-full text-white z-20"
+            className="hidden sm:block absolute right-2 sm:right-4 top-1/2 transform -translate-y-1/2 z-30 group/arrow"
+            aria-label="Next slide"
           >
-            <FaChevronRight />
+            <div className="relative">
+              {/* Arrow background with glow effect - desktop only */}
+              <div className="absolute inset-0 bg-gradient-to-l from-red-600 to-red-700 rounded-full blur-md opacity-0 group-hover/arrow:opacity-50 transition-opacity duration-300 hidden md:block"></div>
+
+              {/* Main arrow button */}
+              <div className="relative w-10 h-10 sm:w-12 sm:h-12 bg-black/60 backdrop-blur-md rounded-full flex items-center justify-center border border-white/20 group-hover/arrow:border-red-500/50 transition-all duration-300 group-hover/arrow:scale-110">
+                <FaChevronRight className="text-white text-sm sm:text-base group-hover/arrow:text-red-400 transition-colors duration-300" />
+              </div>
+
+              {/* Tooltip - desktop only */}
+              <span className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 bg-black/90 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover/arrow:opacity-100 transition-opacity duration-300 whitespace-nowrap hidden md:block">
+                Next
+              </span>
+            </div>
           </button>
+
+          {/* Mobile swipe hint - subtle */}
+          <div className="absolute top-1/2 left-0 right-0 flex justify-between px-2 sm:hidden z-20 pointer-events-none opacity-30">
+            <div className="text-white/30 text-xs">←</div>
+            <div className="text-white/30 text-xs">→</div>
+          </div>
+
+          {/* Slide counter for mobile - minimal */}
+          <div className="absolute top-3 right-3 z-20 bg-black/40 px-2 py-1 rounded-full text-[8px] text-white border border-white/10">
+            <span className="text-red-400">{currentHeroSlide + 1}</span>/{filteredHeroContent.length}
+          </div>
+
+          {/* Quality badge for mobile - minimal */}
+          <div className="absolute top-3 left-3 z-20 flex gap-2">
+            <span className="px-2 py-1 bg-black/40 rounded-full text-[8px] text-white border border-white/10 flex items-center gap-1">
+              <FaStar className="text-yellow-500 text-[6px]" />
+              {currentHeroItem?.type === "series" ? 'TV' : 'MOV'}
+            </span>
+          </div>
+
+          {/* Progress bar - thinner on mobile */}
+          <div className="absolute bottom-0 left-0 right-0 h-0.5 sm:h-1 bg-gray-800/50 z-20">
+            <div
+              className="h-full bg-gradient-to-r from-red-600 to-red-400 transition-all duration-300"
+              style={{ width: `${((currentHeroSlide + 1) / filteredHeroContent.length) * 100}%` }}
+            ></div>
+          </div>
         </section>
       )}
 
