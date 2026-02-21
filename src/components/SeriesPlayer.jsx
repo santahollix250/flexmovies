@@ -555,7 +555,7 @@ const SeriesPlayer = () => {
         }
     };
 
-    // Initialize YouTube player
+    // Initialize YouTube player - FIXED: autoplay: 0
     useEffect(() => {
         if (!youTubeApiReady || videoType !== 'youtube' || !youtubeId || !youtubeContainerRef.current) return;
 
@@ -564,7 +564,7 @@ const SeriesPlayer = () => {
             height: '100%',
             width: '100%',
             playerVars: {
-                autoplay: 1,
+                autoplay: 0, // ← CHANGED FROM 1 TO 0
                 controls: 0,
                 modestbranding: 1,
                 rel: 0,
@@ -590,11 +590,11 @@ const SeriesPlayer = () => {
                     setYouTubePlayer(event.target);
                     setVideoLoaded(true);
                     setLoading(false);
-                    setPlaying(true);
+                    // Don't set playing to true here - wait for user click
                     setDuration(event.target.getDuration());
 
                     event.target.setVolume(volume * 100);
-                    startYouTubeProgressTracking(event.target);
+                    // Don't start progress tracking until playing
 
                     const iframe = event.target.getIframe();
                     if (iframe) {
@@ -610,6 +610,7 @@ const SeriesPlayer = () => {
 
                     if (event.data === window.YT.PlayerState.PLAYING) {
                         setDuration(event.target.getDuration());
+                        startYouTubeProgressTracking(event.target);
 
                         const iframe = event.target.getIframe();
                         if (iframe) {
@@ -1044,17 +1045,22 @@ const SeriesPlayer = () => {
         if (videoType === 'youtube') {
             return (
                 <div className="relative w-full h-full bg-black">
-                    {/* YouTube Player Container - always visible */}
+                    {/* YouTube Player Container - visible when playing, hidden when paused */}
                     <div
                         ref={youtubeContainerRef}
-                        className="w-full h-full"
+                        className={`w-full h-full transition-opacity duration-300 ${playing ? 'opacity-100' : 'opacity-0'}`}
                         style={{
                             position: 'relative',
-                            zIndex: 1
+                            zIndex: playing ? 1 : 0
                         }}
                     />
 
-                    {/* Simple click overlay for play/pause - no black overlay when paused */}
+                    {/* Black overlay when paused - completely hides the video */}
+                    {!playing && (
+                        <div className="absolute inset-0 bg-black z-10"></div>
+                    )}
+
+                    {/* Click overlay for play/pause - always present */}
                     <div
                         className="absolute inset-0 z-20"
                         style={{
@@ -1076,7 +1082,7 @@ const SeriesPlayer = () => {
                     <iframe
                         ref={iframeRef}
                         src={videoUrl}
-                        className="w-full h-full"
+                        className={`w-full h-full transition-opacity duration-300 ${playing ? 'opacity-100' : 'opacity-0'}`}
                         frameBorder="0"
                         allow="autoplay; fullscreen; picture-in-picture"
                         allowFullScreen
@@ -1093,7 +1099,12 @@ const SeriesPlayer = () => {
                         }}
                     />
 
-                    {/* Simple click overlay for play/pause */}
+                    {/* Black overlay when paused */}
+                    {!playing && (
+                        <div className="absolute inset-0 bg-black z-10"></div>
+                    )}
+
+                    {/* Click overlay for play/pause */}
                     <div
                         className="absolute inset-0 z-20"
                         style={{
@@ -1108,12 +1119,12 @@ const SeriesPlayer = () => {
             );
         }
 
-        // For HTML5 video
+        // For HTML5 video - FIXED: removed auto-play
         return (
             <div className="relative w-full h-full bg-black">
                 <video
                     ref={videoRef}
-                    className="w-full h-full object-contain"
+                    className={`w-full h-full object-contain transition-opacity duration-300 ${playing ? 'opacity-100' : 'opacity-0'}`}
                     src={videoUrl}
                     onTimeUpdate={handleTimeUpdate}
                     onLoadedMetadata={() => {
@@ -1122,17 +1133,7 @@ const SeriesPlayer = () => {
                         setLoading(false);
                         if (videoRef.current) {
                             setDuration(videoRef.current.duration);
-                            const playPromise = videoRef.current.play();
-                            if (playPromise !== undefined) {
-                                playPromise
-                                    .then(() => {
-                                        setPlaying(true);
-                                    })
-                                    .catch(err => {
-                                        console.log("Auto-play prevented:", err);
-                                        setPlaying(false);
-                                    });
-                            }
+                            // DON'T auto-play - wait for user click
                         }
                     }}
                     onPlay={() => {
@@ -1190,7 +1191,12 @@ const SeriesPlayer = () => {
                     Your browser does not support the video tag.
                 </video>
 
-                {/* Simple click overlay for play/pause */}
+                {/* Black overlay when paused */}
+                {!playing && (
+                    <div className="absolute inset-0 bg-black z-10"></div>
+                )}
+
+                {/* Click overlay for play/pause */}
                 <div
                     className="absolute inset-0 z-20"
                     style={{

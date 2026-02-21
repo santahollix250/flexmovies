@@ -403,7 +403,7 @@ const Player = () => {
         };
     }, [videoType]);
 
-    // Function to inject CSS into YouTube iframe to hide all branding
+    // Function to inject CSS into YouTube iframe to hide all branding and recommended videos
     const hideYouTubeBranding = (iframe) => {
         try {
             // Wait for iframe to load
@@ -433,6 +433,14 @@ const Player = () => {
                         height: 0 !important;
                     }
                     
+                    /* Specifically hide the recommended videos overlay when paused */
+                    .ytp-pause-overlay, .ytp-endscreen-content, .html5-endscreen,
+                    .ytp-upnext, .ytp-videowall-still, .ytp-ce-element {
+                        display: none !important;
+                        opacity: 0 !important;
+                        visibility: hidden !important;
+                    }
+                    
                     /* Make sure the video fills the entire player */
                     .html5-video-player, .video-stream, .html5-main-video {
                         width: 100% !important;
@@ -453,6 +461,11 @@ const Player = () => {
                     .video-stream.html5-main-video {
                         object-fit: cover !important;
                     }
+
+                    /* Hide the YouTube logo that appears on pause */
+                    .ytp-chrome-top, .ytp-gradient-top {
+                        display: none !important;
+                    }
                 `;
 
                 iframe.contentDocument.head.appendChild(style);
@@ -464,7 +477,28 @@ const Player = () => {
                     shadowStyle.textContent = style.textContent;
                     videoPlayer.shadowRoot.appendChild(shadowStyle);
                 }
-            }, 1000);
+
+                // Remove any overlay elements that might appear dynamically
+                const observer = new MutationObserver((mutations) => {
+                    mutations.forEach(() => {
+                        const pauseOverlay = iframe.contentDocument.querySelector('.ytp-pause-overlay');
+                        if (pauseOverlay) pauseOverlay.style.display = 'none';
+
+                        const endscreen = iframe.contentDocument.querySelector('.html5-endscreen');
+                        if (endscreen) endscreen.style.display = 'none';
+
+                        const upnext = iframe.contentDocument.querySelector('.ytp-upnext');
+                        if (upnext) upnext.style.display = 'none';
+                    });
+                });
+
+                observer.observe(iframe.contentDocument.body, {
+                    childList: true,
+                    subtree: true,
+                    attributes: true
+                });
+
+            }, 500);
         } catch (error) {
             console.log('Could not inject CSS into YouTube iframe:', error);
         }
@@ -516,7 +550,7 @@ const Player = () => {
                     // Start progress tracking
                     startYouTubeProgressTracking(event.target);
 
-                    // Hide YouTube branding
+                    // Hide YouTube branding and recommended videos
                     const iframe = event.target.getIframe();
                     if (iframe) {
                         hideYouTubeBranding(iframe);
@@ -532,6 +566,14 @@ const Player = () => {
 
                     if (event.data === window.YT.PlayerState.PLAYING) {
                         setDuration(event.target.getDuration());
+                    }
+
+                    // When paused, immediately hide any overlays
+                    if (event.data === window.YT.PlayerState.PAUSED) {
+                        const iframe = event.target.getIframe();
+                        if (iframe) {
+                            setTimeout(() => hideYouTubeBranding(iframe), 50);
+                        }
                     }
 
                     // Handle ended - restart video instead of showing end screen
@@ -1030,7 +1072,7 @@ const Player = () => {
                 </div>
             );
         } else if (videoType === 'youtube') {
-            // ULTRA-CLEAN YOUTUBE PLAYER - NO BRANDING AT ALL
+            // ULTRA-CLEAN YOUTUBE PLAYER - NO BRANDING OR RECOMMENDED VIDEOS
             return (
                 <div className="relative w-full h-full bg-black">
                     {/* YouTube Player Container */}
@@ -1043,7 +1085,7 @@ const Player = () => {
                         }}
                     />
 
-                    {/* COMPLETE OVERLAY - Blocks ALL YouTube elements */}
+                    {/* COMPLETE OVERLAY - Blocks ALL YouTube elements including recommended videos */}
                     <div
                         className="absolute inset-0 z-20"
                         style={{
@@ -1063,6 +1105,17 @@ const Player = () => {
                             pointerEvents: 'none'
                         }}
                     />
+
+                    {/* When paused, show a simple black overlay to hide any YouTube elements */}
+                    {!playing && (
+                        <div
+                            className="absolute inset-0 z-25"
+                            style={{
+                                background: 'black',
+                                pointerEvents: 'none'
+                            }}
+                        />
+                    )}
                 </div>
             );
         } else {
@@ -1455,7 +1508,7 @@ const Player = () => {
                 bgColor: 'bg-red-600',
                 label: 'YouTube',
                 text: 'text-red-300',
-                controls: 'Custom Controls (No Branding)'
+                controls: 'Custom Controls (No Branding, No Recommendations)'
             };
         } else {
             return {
@@ -1887,7 +1940,7 @@ const Player = () => {
                                                     : isVimeoVideo
                                                         ? 'This video is hosted on Vimeo and uses Vimeo\'s native player controls.'
                                                         : videoType === 'youtube'
-                                                            ? 'This video is hosted on YouTube with completely custom controls - no YouTube branding visible.'
+                                                            ? 'This video is hosted on YouTube with completely custom controls - no YouTube branding or recommended videos visible when paused.'
                                                             : 'This video uses our custom player controls with play, pause, volume, and seek functionality.'}
                                         </p>
                                     </div>
