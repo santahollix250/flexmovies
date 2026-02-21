@@ -1,4 +1,4 @@
-import { createContext, useEffect, useState, useCallback } from "react";
+import { createContext, useEffect, useState, useCallback, useMemo } from "react";
 import { supabase } from '../lib/supabase';
 
 // Supported video platforms - ADDED DAILYMOTION
@@ -167,6 +167,100 @@ const processVideoUrl = (videoUrl, videoType) => {
   };
 };
 
+// Search helper function
+const searchInContent = (items, searchQuery, filters = {}) => {
+  if (!items || items.length === 0) return [];
+
+  return items.filter(item => {
+    // Text search
+    if (searchQuery && searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim();
+      const matchesTitle = item.title?.toLowerCase().includes(query);
+      const matchesDescription = item.description?.toLowerCase().includes(query);
+      const matchesDirector = item.director?.toLowerCase().includes(query);
+      const matchesCategory = item.category?.toLowerCase().includes(query);
+      const matchesNation = item.nation?.toLowerCase().includes(query);
+      const matchesTranslator = item.translator?.toLowerCase().includes(query);
+
+      if (!(matchesTitle || matchesDescription || matchesDirector || matchesCategory || matchesNation || matchesTranslator)) {
+        return false;
+      }
+    }
+
+    // Genre/Category filter
+    if (filters.genre && filters.genre !== '') {
+      if (item.category?.toLowerCase() !== filters.genre.toLowerCase()) {
+        return false;
+      }
+    }
+
+    // Year filter
+    if (filters.year && filters.year !== '') {
+      const itemYear = parseInt(item.year);
+      const filterYear = parseInt(filters.year);
+      if (itemYear !== filterYear) {
+        return false;
+      }
+    }
+
+    // Rating filter
+    if (filters.rating && filters.rating !== '') {
+      const minRating = parseFloat(filters.rating);
+      const itemRating = parseFloat(item.rating || item.imdbRating || 0);
+      if (itemRating < minRating) {
+        return false;
+      }
+    }
+
+    // Country/Nation filter
+    if (filters.country && filters.country !== '') {
+      if (item.nation?.toLowerCase() !== filters.country.toLowerCase()) {
+        return false;
+      }
+    }
+
+    // Language filter (if available in your data)
+    if (filters.language && filters.language !== '') {
+      // Assuming you have a language field, if not, skip this filter
+      if (item.language && item.language.toLowerCase() !== filters.language.toLowerCase()) {
+        return false;
+      }
+    }
+
+    // Type filter (movie/series/all)
+    if (filters.type && filters.type !== 'all') {
+      if (item.type !== filters.type) {
+        return false;
+      }
+    }
+
+    return true;
+  });
+};
+
+// Sort helper function
+const sortResults = (items, sortBy) => {
+  const sorted = [...items];
+
+  switch (sortBy) {
+    case 'popular':
+      return sorted.sort((a, b) => (b.views || 0) - (a.views || 0));
+    case 'newest':
+      return sorted.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    case 'rating':
+      return sorted.sort((a, b) => (b.rating || b.imdbRating || 0) - (a.rating || a.imdbRating || 0));
+    case 'trending':
+      // You can implement your trending algorithm here
+      return sorted.sort((a, b) => (b.views || 0) - (a.views || 0));
+    case 'az':
+      return sorted.sort((a, b) => a.title?.localeCompare(b.title));
+    case 'za':
+      return sorted.sort((a, b) => b.title?.localeCompare(a.title));
+    default:
+      return sorted;
+  }
+};
+
 export const MoviesContext = createContext({
   movies: [],
   episodes: [],
@@ -174,6 +268,22 @@ export const MoviesContext = createContext({
   loadingProgress: 0,
   isOnline: true,
   error: null,
+  // Global search state
+  globalSearchQuery: '',
+  globalSearchResults: [],
+  globalSearchFilters: {},
+  updateGlobalSearch: () => { },
+  clearGlobalSearch: () => { },
+  // Search related
+  searchResults: [],
+  searchEpisodes: [],
+  searchMovies: () => { },
+  searchAll: () => { },
+  getSuggestions: () => [],
+  clearSearch: () => { },
+  recentSearches: [],
+  saveRecentSearch: () => { },
+  // Original CRUD operations
   addMovie: () => Promise.reject(new Error("MoviesContext not initialized")),
   updateMovie: () => Promise.reject(new Error("MoviesContext not initialized")),
   deleteMovie: () => Promise.reject(new Error("MoviesContext not initialized")),
@@ -186,7 +296,8 @@ export const MoviesContext = createContext({
   refreshMovies: () => { },
   refreshEpisodes: () => { },
   clearAllMovies: () => Promise.reject(new Error("MoviesContext not initialized")),
-  clearAllEpisodes: () => Promise.reject(new Error("MoviesContext not initialized"))
+  clearAllEpisodes: () => Promise.reject(new Error("MoviesContext not initialized")),
+  VIDEO_PLATFORMS: VIDEO_PLATFORMS
 });
 
 export function MoviesProvider({ children }) {
@@ -196,6 +307,16 @@ export function MoviesProvider({ children }) {
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [error, setError] = useState(null);
+
+  // Search related state
+  const [searchResults, setSearchResults] = useState([]);
+  const [searchEpisodes, setSearchEpisodes] = useState([]);
+  const [recentSearches, setRecentSearches] = useState([]);
+
+  // GLOBAL SEARCH STATE - Single source of truth for all search inputs
+  const [globalSearchQuery, setGlobalSearchQuery] = useState('');
+  const [globalSearchResults, setGlobalSearchResults] = useState([]);
+  const [globalSearchFilters, setGlobalSearchFilters] = useState({});
 
   // Check online status
   useEffect(() => {
@@ -209,6 +330,31 @@ export function MoviesProvider({ children }) {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
+  }, []);
+
+  // Load recent searches from localStorage
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('recentSearches');
+      if (saved) {
+        setRecentSearches(JSON.parse(saved).slice(0, 10));
+      }
+    } catch (err) {
+      console.error('Error loading recent searches:', err);
+    }
+  }, []);
+
+  // Save recent search
+  const saveRecentSearch = useCallback((searchData) => {
+    setRecentSearches(prev => {
+      const newSearches = [searchData, ...prev.filter(s =>
+        s.query !== searchData.query ||
+        JSON.stringify(s.filters) !== JSON.stringify(searchData.filters)
+      )].slice(0, 10);
+
+      localStorage.setItem('recentSearches', JSON.stringify(newSearches));
+      return newSearches;
+    });
   }, []);
 
   // Update loading progress
@@ -284,7 +430,7 @@ export function MoviesProvider({ children }) {
             videoUrl: movie.video_url || movie.stream_link || '',
             streamLink: videoInfo.embedUrl || movie.stream_link || '',
             download_link: movie.download_link || '',
-            download: movie.download || '', // Added download field
+            download: movie.download || '',
             nation: movie.nation || '',
             translator: movie.translator || '',
             year: movie.year || new Date().getFullYear(),
@@ -365,6 +511,158 @@ export function MoviesProvider({ children }) {
     }
   }, [isOnline, updateProgress]);
 
+  // SEARCH FUNCTIONS
+
+  // UPDATE GLOBAL SEARCH - Single source of truth
+  const updateGlobalSearch = useCallback((query, filters = {}) => {
+    setGlobalSearchQuery(query);
+    setGlobalSearchFilters(filters);
+
+    if (query.trim() || Object.keys(filters).length > 0) {
+      // Search in movies
+      const movieResults = searchInContent(movies, query, filters);
+      const sortedMovies = sortResults(movieResults, filters.sortBy || 'popular');
+
+      // Search in episodes
+      const episodeResults = searchInContent(episodes, query, filters);
+      const sortedEpisodes = sortResults(episodeResults, filters.sortBy || 'popular');
+
+      setGlobalSearchResults(sortedMovies);
+      setSearchResults(sortedMovies);
+      setSearchEpisodes(sortedEpisodes);
+
+      // Save to recent searches if there's a query
+      if (query.trim()) {
+        saveRecentSearch({
+          query: query.trim(),
+          filters,
+          timestamp: new Date().toISOString()
+        });
+      }
+    } else {
+      setGlobalSearchResults([]);
+      setSearchResults([]);
+      setSearchEpisodes([]);
+    }
+  }, [movies, episodes, saveRecentSearch]);
+
+  // Clear global search
+  const clearGlobalSearch = useCallback(() => {
+    setGlobalSearchQuery('');
+    setGlobalSearchResults([]);
+    setGlobalSearchFilters({});
+    setSearchResults([]);
+    setSearchEpisodes([]);
+  }, []);
+
+  // Search movies only
+  const searchMovies = useCallback((query, filters = {}) => {
+    const results = searchInContent(movies, query, filters);
+    const sorted = sortResults(results, filters.sortBy || 'popular');
+    setSearchResults(sorted);
+    return sorted;
+  }, [movies]);
+
+  // Search episodes only
+  const searchEpisodesOnly = useCallback((query, filters = {}) => {
+    const results = searchInContent(episodes, query, filters);
+    const sorted = sortResults(results, filters.sortBy || 'popular');
+    setSearchEpisodes(sorted);
+    return sorted;
+  }, [episodes]);
+
+  // Search all content (movies and episodes)
+  const searchAll = useCallback((searchData) => {
+    const { query, ...filters } = searchData;
+
+    // Search movies
+    const movieResults = searchInContent(movies, query, filters);
+    const sortedMovies = sortResults(movieResults, filters.sortBy || 'popular');
+
+    // Search episodes
+    const episodeResults = searchInContent(episodes, query, filters);
+    const sortedEpisodes = sortResults(episodeResults, filters.sortBy || 'popular');
+
+    setSearchResults(sortedMovies);
+    setSearchEpisodes(sortedEpisodes);
+
+    // Save to recent searches
+    saveRecentSearch({
+      query,
+      filters,
+      timestamp: new Date().toISOString()
+    });
+
+    return {
+      movies: sortedMovies,
+      episodes: sortedEpisodes
+    };
+  }, [movies, episodes, saveRecentSearch]);
+
+  // Get search suggestions (for autocomplete)
+  const getSuggestions = useCallback((query, limit = 5) => {
+    if (!query || query.trim().length < 2) return [];
+
+    const searchTerm = query.toLowerCase().trim();
+    const suggestions = [];
+
+    // Add movie title suggestions
+    movies.forEach(movie => {
+      if (movie.title?.toLowerCase().includes(searchTerm)) {
+        suggestions.push({
+          type: 'movie',
+          id: movie.id,
+          title: movie.title,
+          poster: movie.poster,
+          year: movie.year,
+          category: movie.category
+        });
+      }
+    });
+
+    // Add series/episode suggestions
+    episodes.forEach(episode => {
+      if (episode.title?.toLowerCase().includes(searchTerm)) {
+        suggestions.push({
+          type: 'episode',
+          id: episode.id,
+          seriesId: episode.seriesId,
+          seriesTitle: episode.seriesTitle,
+          title: episode.title,
+          thumbnail: episode.thumbnail,
+          seasonNumber: episode.seasonNumber,
+          episodeNumber: episode.episodeNumber
+        });
+      }
+    });
+
+    // Add category suggestions
+    const categories = new Set();
+    movies.forEach(movie => {
+      if (movie.category?.toLowerCase().includes(searchTerm)) {
+        categories.add(movie.category);
+      }
+    });
+
+    categories.forEach(category => {
+      suggestions.push({
+        type: 'category',
+        title: category,
+        query: category
+      });
+    });
+
+    return suggestions.slice(0, limit);
+  }, [movies, episodes]);
+
+  // Clear search results
+  const clearSearch = useCallback(() => {
+    setSearchResults([]);
+    setSearchEpisodes([]);
+    setGlobalSearchResults([]);
+    setGlobalSearchQuery('');
+  }, []);
+
   // Add movie with multi-platform support
   const addMovie = useCallback(async (movie) => {
     try {
@@ -387,7 +685,7 @@ export function MoviesProvider({ children }) {
         video_url: movie.videoUrl || "",
         stream_link: videoInfo.embedUrl || movie.streamLink || "",
         download_link: movie.download_link || "",
-        download: movie.download || "", // Added download field
+        download: movie.download || "",
         nation: movie.nation || "",
         translator: movie.translator || "",
         year: movie.year || new Date().getFullYear(),
@@ -425,7 +723,7 @@ export function MoviesProvider({ children }) {
         videoUrl: data.video_url || '',
         streamLink: data.embed_url || data.stream_link || '',
         download_link: data.download_link || "",
-        download: data.download || "", // Added download field
+        download: data.download || "",
         nation: data.nation,
         translator: data.translator,
         year: data.year,
@@ -467,7 +765,7 @@ export function MoviesProvider({ children }) {
         videoUrl: movie.videoUrl || "",
         streamLink: videoInfo.embedUrl || movie.streamLink || "",
         download_link: movie.download_link || "",
-        download: movie.download || "", // Added download field
+        download: movie.download || "",
         nation: movie.nation || "",
         translator: movie.translator || "",
         year: movie.year || new Date().getFullYear(),
@@ -516,7 +814,7 @@ export function MoviesProvider({ children }) {
         video_url: updates.videoUrl || '',
         stream_link: videoInfo.embedUrl || updates.streamLink || '',
         download_link: updates.download_link || "",
-        download: updates.download || "", // Added download field
+        download: updates.download || "",
         nation: updates.nation,
         translator: updates.translator,
         year: updates.year,
@@ -880,6 +1178,22 @@ export function MoviesProvider({ children }) {
     loadingProgress,
     isOnline,
     error,
+    // Global search state - SINGLE SOURCE OF TRUTH
+    globalSearchQuery,
+    globalSearchResults,
+    globalSearchFilters,
+    updateGlobalSearch,
+    clearGlobalSearch,
+    // Search related
+    searchResults,
+    searchEpisodes,
+    searchMovies,
+    searchAll,
+    getSuggestions,
+    clearSearch,
+    recentSearches,
+    saveRecentSearch,
+    // Original CRUD operations
     addMovie,
     updateMovie,
     deleteMovie,

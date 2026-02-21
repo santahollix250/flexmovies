@@ -1476,53 +1476,6 @@ const Player = () => {
         );
     }
 
-    const getPlayerTypeInfo = () => {
-        if (useEmbed) {
-            return {
-                color: 'text-orange-400',
-                bgColor: 'bg-orange-600',
-                label: 'Embed',
-                text: 'text-orange-300',
-                controls: 'Embed Player'
-            };
-        }
-        if (isDailyMotionVideo) {
-            return {
-                color: 'text-purple-400',
-                bgColor: 'bg-purple-600',
-                label: 'DailyMotion',
-                text: 'text-purple-300',
-                controls: 'Native DailyMotion Controls'
-            };
-        } else if (isVimeoVideo) {
-            return {
-                color: 'text-blue-400',
-                bgColor: 'bg-blue-600',
-                label: 'Vimeo',
-                text: 'text-blue-300',
-                controls: 'Native Vimeo Controls'
-            };
-        } else if (videoType === 'youtube') {
-            return {
-                color: 'text-red-400',
-                bgColor: 'bg-red-600',
-                label: 'YouTube',
-                text: 'text-red-300',
-                controls: 'Custom Controls (No Branding, No Recommendations)'
-            };
-        } else {
-            return {
-                color: 'text-green-400',
-                bgColor: 'bg-green-600',
-                label: 'Custom Player',
-                text: 'text-green-300',
-                controls: 'Custom Controls'
-            };
-        }
-    };
-
-    const playerType = getPlayerTypeInfo();
-
     // Check if download is available
     const hasDownload = movie?.download || movie?.download_link || movie?.videoUrl || movie?.streamLink;
 
@@ -1537,11 +1490,9 @@ const Player = () => {
 
                         <div className="flex-1 text-center px-4">
                             <h1 className="text-xl font-bold truncate max-w-2xl mx-auto">{movie.title}</h1>
-                            <div className="flex items-center justify-center gap-2 mt-1">
-                                <FaVideo className={playerType.color} />
-                                <span className={`text-sm ${playerType.text}`}>
-                                    {playerType.label} - {playerType.controls}
-                                </span>
+                            <div className="flex items-center justify-center gap-2 mt-1 text-sm text-gray-400">
+                                <FaVideo className="text-red-400" />
+                                <span>Now Playing</span>
                             </div>
                         </div>
 
@@ -1817,9 +1768,9 @@ const Player = () => {
                 {!shouldShowCustomControls && showControls && (
                     <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black/80 backdrop-blur-sm rounded-lg px-4 py-2 border border-red-500/30 z-30">
                         <div className="flex items-center gap-2">
-                            <FaVideo className={playerType.color} />
+                            <FaVideo className="text-red-400" />
                             <span className="text-white text-sm">
-                                Using {playerType.label} Player with Native Controls
+                                Now Playing
                             </span>
                         </div>
                     </div>
@@ -1853,9 +1804,6 @@ const Player = () => {
                                         {movie.category.split(',')[0]}
                                     </span>
                                 )}
-                                <span className={`px-4 py-2 ${playerType.bgColor} rounded-full`}>
-                                    {playerType.label}
-                                </span>
                                 {/* Download badge */}
                                 {hasDownload && (
                                     <span className="px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 rounded-full flex items-center gap-2 shadow-lg">
@@ -1926,26 +1874,6 @@ const Player = () => {
                                     </div>
                                 </div>
                             )}
-
-                            <div className="p-4 bg-gray-900/50 border border-gray-700 rounded-lg">
-                                <div className="flex items-center gap-3">
-                                    <FaVideo className={playerType.color} />
-                                    <div>
-                                        <h4 className="text-white font-medium">Player Information</h4>
-                                        <p className="text-gray-300 text-sm">
-                                            {useEmbed
-                                                ? 'Using embed player for better compatibility.'
-                                                : isDailyMotionVideo
-                                                    ? 'This video is hosted on DailyMotion and uses DailyMotion\'s native player controls.'
-                                                    : isVimeoVideo
-                                                        ? 'This video is hosted on Vimeo and uses Vimeo\'s native player controls.'
-                                                        : videoType === 'youtube'
-                                                            ? 'This video is hosted on YouTube with completely custom controls - no YouTube branding or recommended videos visible when paused.'
-                                                            : 'This video uses our custom player controls with play, pause, volume, and seek functionality.'}
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
 
                             {renderCommentsSection()}
                         </div>

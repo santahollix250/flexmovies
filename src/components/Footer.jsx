@@ -1,4 +1,4 @@
-import { FaYoutube, FaTwitter, FaInstagram, FaFacebook, FaTiktok, FaEnvelope, FaPhone, FaMapMarkerAlt, FaGithub, FaLinkedin, FaDiscord, FaWhatsapp } from 'react-icons/fa';
+import { FaYoutube, FaTwitter, FaInstagram, FaFacebook, FaTiktok, FaEnvelope, FaPhone, FaMapMarkerAlt, FaGithub, FaLinkedin, FaDiscord, FaWhatsapp, FaCode } from 'react-icons/fa';
 import { FiMail, FiPhone } from 'react-icons/fi';
 import logo from '../assets/logo.png'; // Import your logo
 
@@ -34,9 +34,19 @@ export default function Footer() {
   const contactInfo = {
     phone: "+250 783 948 792", // Your phone number
     whatsappNumber: "+250783948792", // Your WhatsApp number (without spaces or symbols)
-    email: "support@agasobanuyeflex.com", // Your email
-    address: "Kigali Heights, Kigali, Rwanda", // Your address
+    email: "@agasobanuyeflex.com", // Your email  
+    address: "bugesera Heights, Kigali, Rwanda", // Your address
     website: "https://agasobanuyeflex.com" // Your website
+  };
+
+  // Developer information
+  const developer = {
+    name: "Lamaer Developer",
+    role: "Full Stack Developer & Designer",
+    // Replace with actual developer website
+    github: "https://github.com/santahollix250",
+    linkedin: "https://linkedin.com/in/lamaer-dev", // Replace with actual LinkedIn
+    email: "santalamaer@gmail.com" // Replace with developer email
   };
 
   // Function to open links in new tab
@@ -195,37 +205,6 @@ export default function Footer() {
                     WhatsApp Group
                   </span>
                 </button>
-
-                {/* Optional: Add more platforms if you have them */}
-                {/* 
-                {socialLinks.github && (
-                  <button
-                    onClick={() => openLink(socialLinks.github)}
-                    className="w-10 h-10 rounded-full bg-gray-900 hover:bg-gradient-to-r hover:from-gray-800 hover:to-gray-600 transition-all duration-300 flex items-center justify-center transform hover:scale-110 group relative"
-                    aria-label="GitHub"
-                    title="GitHub Profile"
-                  >
-                    <FaGithub className="text-white text-lg" />
-                    <span className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-black text-white text-xs py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                      GitHub
-                    </span>
-                  </button>
-                )}
-
-                {socialLinks.linkedin && (
-                  <button
-                    onClick={() => openLink(socialLinks.linkedin)}
-                    className="w-10 h-10 rounded-full bg-gray-900 hover:bg-gradient-to-r hover:from-blue-700 hover:to-blue-900 transition-all duration-300 flex items-center justify-center transform hover:scale-110 group relative"
-                    aria-label="LinkedIn"
-                    title="LinkedIn Profile"
-                  >
-                    <FaLinkedin className="text-white text-lg" />
-                    <span className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-black text-white text-xs py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                      LinkedIn
-                    </span>
-                  </button>
-                )}
-                */}
               </div>
 
               {/* WhatsApp Direct Chat Button */}
@@ -420,8 +399,54 @@ export default function Footer() {
             </div>
           </div>
 
+          {/* Developer Credit - NEW */}
+          <div className="mt-8 pt-6 border-t border-gray-800/30">
+            <div className="flex flex-col items-center justify-center space-y-3">
+              {/* Developer Badge */}
+              <div className="inline-flex items-center gap-3 px-4 py-2 bg-gradient-to-r from-purple-600/20 via-pink-600/20 to-blue-600/20 rounded-full border border-purple-600/30">
+                <FaCode className="text-purple-400 text-lg" />
+                <span className="text-sm text-gray-300">
+                  Developed with <span className="text-red-500 animate-pulse">❤️</span> by
+                </span>
+                <span className="text-base font-bold bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400 bg-clip-text text-transparent">
+                  {developer.name}
+                </span>
+              </div>
 
+              {/* Developer Links */}
+              <div className="flex flex-wrap items-center justify-center gap-4 text-xs">
+                <button
+                  onClick={() => openLink(developer.website)}
+                  className="text-gray-400 hover:text-purple-400 transition-colors flex items-center gap-1"
+                >
+                  <span>🌐</span> Website
+                </button>
+                <button
+                  onClick={() => openLink(developer.github)}
+                  className="text-gray-400 hover:text-purple-400 transition-colors flex items-center gap-1"
+                >
+                  <FaGithub /> GitHub
+                </button>
+                <button
+                  onClick={() => openLink(developer.linkedin)}
+                  className="text-gray-400 hover:text-purple-400 transition-colors flex items-center gap-1"
+                >
+                  <FaLinkedin /> LinkedIn
+                </button>
+                <button
+                  onClick={() => sendEmail(developer.email)}
+                  className="text-gray-400 hover:text-purple-400 transition-colors flex items-center gap-1"
+                >
+                  <FiMail /> Email Developer
+                </button>
+              </div>
 
+              {/* Role/Title */}
+              <p className="text-xs text-gray-500">
+                {developer.role} • Crafting digital experiences with passion and precision
+              </p>
+            </div>
+          </div>
 
           {/* Disclaimer */}
           <div className="text-center text-gray-500 text-xs mt-8 pt-4 border-t border-gray-800/30">

@@ -179,6 +179,7 @@ const SeriesPlayer = () => {
             setVideoLoaded(false);
             setProgress(0);
             setCurrentTime(0);
+            setPlaying(false); // Don't auto-play
             initializeVideo(currentEpisode);
         }
     }, [currentEpisode, retryCount]);
@@ -508,54 +509,107 @@ const SeriesPlayer = () => {
         };
     }, [videoType]);
 
-    // Function to inject CSS into YouTube iframe to hide all branding
+    // Function to inject CSS into YouTube iframe to hide all branding and recommended videos
     const hideYouTubeBranding = (iframe) => {
-        if (!iframe || !iframe.contentDocument) return;
-
         try {
-            const style = document.createElement('style');
-            style.textContent = `
-                /* Hide ALL YouTube elements */
-                .ytp-watermark, .ytp-youtube-button, .ytp-title, .ytp-title-link,
-                .ytp-chrome-top, .ytp-chrome-bottom, .ytp-gradient-top, .ytp-gradient-bottom,
-                .ytp-pause-overlay, .ytp-endscreen-content, .ytp-share-panel, 
-                .ytp-watch-later-button, .ytp-iv-video-content, .ytp-iv-overlay,
-                .html5-endscreen, .ytp-endscreen-previous, .ytp-chrome-top-buttons,
-                .ytp-cards-button, .ytp-chapter-title, .ytp-paid-content-overlay,
-                .ytp-ce-element, .ytp-spinner, .ytp-spinner-container,
-                .ytp-popup, .ytp-tooltip, .ytp-tooltip-text,
-                .ytp-upnext, .ytp-upnext-top, .ytp-upnext-bottom,
-                .ytp-videowall-still, .ytp-videowall-still-info,
-                .ytp-videowall-still-image, .ytp-videowall-still-info-content,
-                .ytp-cued-thumbnail-overlay, .ytp-cued-thumbnail-overlay-image,
-                .ytp-endscreen, .ytp-endscreen-content, .ytp-related-on-error,
-                .ytp-suggestions, .ytp-suggestion-set, .ytp-video-info {
-                    display: none !important;
-                    opacity: 0 !important;
-                    visibility: hidden !important;
-                    pointer-events: none !important;
-                }
-                
-                /* Make sure the video fills the entire player */
-                .html5-video-player, .video-stream, .html5-main-video {
-                    width: 100% !important;
-                    height: 100% !important;
-                }
-                
-                /* Remove any background */
-                .html5-video-player {
-                    background: black !important;
-                }
-            `;
+            setTimeout(() => {
+                if (!iframe || !iframe.contentDocument) return;
 
-            iframe.contentDocument.head.appendChild(style);
+                const style = document.createElement('style');
+                style.textContent = `
+                    /* Hide YouTube logo and all branding */
+                    .ytp-watermark, .ytp-youtube-button, .ytp-title, .ytp-title-link,
+                    .ytp-chrome-top, .ytp-chrome-bottom, .ytp-gradient-top, .ytp-gradient-bottom,
+                    .ytp-pause-overlay, .ytp-endscreen-content, .ytp-share-panel, 
+                    .ytp-watch-later-button, .ytp-iv-video-content, .ytp-iv-overlay,
+                    .html5-endscreen, .ytp-endscreen-previous, .ytp-chrome-top-buttons,
+                    .ytp-cards-button, .ytp-chapter-title, .ytp-paid-content-overlay,
+                    .ytp-ce-element, .ytp-spinner, .ytp-spinner-container,
+                    .ytp-popup, .ytp-tooltip, .ytp-tooltip-text,
+                    .ytp-upnext, .ytp-upnext-top, .ytp-upnext-bottom,
+                    .ytp-videowall-still, .ytp-videowall-still-info,
+                    .ytp-videowall-still-image, .ytp-videowall-still-info-content,
+                    .ytp-cued-thumbnail-overlay, .ytp-cued-thumbnail-overlay-image {
+                        display: none !important;
+                        opacity: 0 !important;
+                        visibility: hidden !important;
+                        pointer-events: none !important;
+                        width: 0 !important;
+                        height: 0 !important;
+                    }
+                    
+                    /* Specifically hide the recommended videos overlay when paused */
+                    .ytp-pause-overlay, .ytp-endscreen-content, .html5-endscreen,
+                    .ytp-upnext, .ytp-videowall-still, .ytp-ce-element {
+                        display: none !important;
+                        opacity: 0 !important;
+                        visibility: hidden !important;
+                    }
+                    
+                    /* Make sure the video fills the entire player */
+                    .html5-video-player, .video-stream, .html5-main-video {
+                        width: 100% !important;
+                        height: 100% !important;
+                    }
+                    
+                    /* Remove any background */
+                    .html5-video-player {
+                        background: black !important;
+                    }
+                    
+                    /* Hide any text that might appear */
+                    .ytp-text, .ytp-button, .ytp-title-text {
+                        display: none !important;
+                    }
+                    
+                    /* Force video to cover full area */
+                    .video-stream.html5-main-video {
+                        object-fit: contain !important;
+                    }
 
+                    /* Hide the YouTube logo that appears on pause */
+                    .ytp-chrome-top, .ytp-gradient-top {
+                        display: none !important;
+                    }
+                `;
+
+                iframe.contentDocument.head.appendChild(style);
+
+                // Also try to inject into shadow DOM if present
+                const videoPlayer = iframe.contentDocument.querySelector('.html5-video-player');
+                if (videoPlayer && videoPlayer.shadowRoot) {
+                    const shadowStyle = document.createElement('style');
+                    shadowStyle.textContent = style.textContent;
+                    videoPlayer.shadowRoot.appendChild(shadowStyle);
+                }
+
+                // Remove any overlay elements that might appear dynamically
+                const observer = new MutationObserver((mutations) => {
+                    mutations.forEach(() => {
+                        const pauseOverlay = iframe.contentDocument.querySelector('.ytp-pause-overlay');
+                        if (pauseOverlay) pauseOverlay.style.display = 'none';
+
+                        const endscreen = iframe.contentDocument.querySelector('.html5-endscreen');
+                        if (endscreen) endscreen.style.display = 'none';
+
+                        const upnext = iframe.contentDocument.querySelector('.ytp-upnext');
+                        if (upnext) upnext.style.display = 'none';
+                    });
+                });
+
+                observer.observe(iframe.contentDocument.body, {
+                    childList: true,
+                    subtree: true,
+                    attributes: true
+                });
+
+            }, 500);
         } catch (error) {
             console.log('Could not inject CSS into YouTube iframe:', error);
         }
     };
 
-    // Initialize YouTube player - FIXED: autoplay: 0
+    // Initialize YouTube player - EXACTLY like the movies player
     useEffect(() => {
         if (!youTubeApiReady || videoType !== 'youtube' || !youtubeId || !youtubeContainerRef.current) return;
 
@@ -564,7 +618,7 @@ const SeriesPlayer = () => {
             height: '100%',
             width: '100%',
             playerVars: {
-                autoplay: 0, // ← CHANGED FROM 1 TO 0
+                autoplay: 1,
                 controls: 0,
                 modestbranding: 1,
                 rel: 0,
@@ -578,31 +632,31 @@ const SeriesPlayer = () => {
                 origin: window.location.origin,
                 widget_referrer: window.location.origin,
                 enablejsapi: 1,
-                loop: 0,
+                loop: 1,
                 mute: muted ? 1 : 0,
+                playlist: youtubeId,
                 hl: 'en',
                 autohide: 1,
-                theme: 'dark'
+                theme: 'dark',
+                vq: 'hd1080'
             },
             events: {
                 onReady: (event) => {
                     console.log("✅ YouTube player ready");
                     setYouTubePlayer(event.target);
                     setVideoLoaded(true);
-                    setLoading(false);
-                    // Don't set playing to true here - wait for user click
+                    setPlaying(true);
                     setDuration(event.target.getDuration());
 
                     event.target.setVolume(volume * 100);
-                    // Don't start progress tracking until playing
+                    startYouTubeProgressTracking(event.target);
 
                     const iframe = event.target.getIframe();
                     if (iframe) {
                         hideYouTubeBranding(iframe);
-                        iframe.setAttribute('style', 'border: none; margin: 0; padding: 0; width: 100%; height: 100%;');
-
-                        setTimeout(() => hideYouTubeBranding(iframe), 500);
-                        setTimeout(() => hideYouTubeBranding(iframe), 1000);
+                        iframe.setAttribute('style', 'border: none; margin: 0; padding: 0;');
+                        iframe.setAttribute('allowfullscreen', 'false');
+                        iframe.setAttribute('allow', 'autoplay; encrypted-media');
                     }
                 },
                 onStateChange: (event) => {
@@ -610,26 +664,30 @@ const SeriesPlayer = () => {
 
                     if (event.data === window.YT.PlayerState.PLAYING) {
                         setDuration(event.target.getDuration());
-                        startYouTubeProgressTracking(event.target);
+                    }
 
+                    if (event.data === window.YT.PlayerState.PAUSED) {
                         const iframe = event.target.getIframe();
                         if (iframe) {
-                            setTimeout(() => hideYouTubeBranding(iframe), 100);
+                            setTimeout(() => hideYouTubeBranding(iframe), 50);
                         }
                     }
 
                     if (event.data === window.YT.PlayerState.ENDED) {
-                        setPlaying(false);
-                        setProgress(1);
-                        setCurrentTime(duration);
-                        setShowControls(true);
+                        event.target.playVideo();
+                        setProgress(0);
+                        setCurrentTime(0);
+
+                        const iframe = event.target.getIframe();
+                        if (iframe) {
+                            setTimeout(() => hideYouTubeBranding(iframe), 500);
+                        }
                     }
                 },
                 onError: (event) => {
                     console.error("❌ YouTube error:", event);
                     setError("Failed to load YouTube video. Please try again.");
                     setVideoLoaded(false);
-                    setLoading(false);
                 }
             }
         });
@@ -645,15 +703,11 @@ const SeriesPlayer = () => {
     const startYouTubeProgressTracking = (player) => {
         const interval = setInterval(() => {
             if (player && player.getCurrentTime && player.getDuration) {
-                try {
-                    const current = player.getCurrentTime();
-                    const total = player.getDuration();
-                    if (total > 0 && current <= total) {
-                        setCurrentTime(current);
-                        setProgress(current / total);
-                    }
-                } catch (e) {
-                    // Ignore errors
+                const current = player.getCurrentTime();
+                const total = player.getDuration();
+                if (total > 0) {
+                    setCurrentTime(current);
+                    setProgress(current / total);
                 }
             }
         }, 500);
@@ -684,7 +738,7 @@ const SeriesPlayer = () => {
                 setDailyMotionId(dailymotionId);
                 const embedUrl = `https://www.dailymotion.com/embed/video/${dailymotionId}?autoplay=1&queue-autoplay-next=0&queue-enable=0&sharing-enable=0&ui-logo=0&ui-start-screen-info=0&controls=true&ui-theme=dark&ui-advance=0&ui-chapters=0&ui-description=0&ui-mute=0&ui-endscreen=0&logo=0&info=0`;
                 setVideoUrl(embedUrl);
-                console.log("🎬 Using DailyMotion embedded player");
+                console.log("🎬 Using DailyMotion embedded player (clean mode)");
             } else {
                 setError("Invalid DailyMotion URL");
             }
@@ -696,7 +750,7 @@ const SeriesPlayer = () => {
             if (vimeoId) {
                 const embedUrl = `https://player.vimeo.com/video/${vimeoId}?autoplay=1&title=0&byline=0&portrait=0&controls=true&badge=0&transparent=1&color=ffffff&autopause=0&player_id=0&app_id=0`;
                 setVideoUrl(embedUrl);
-                console.log("🎬 Using Vimeo embedded player");
+                console.log("🎬 Using Vimeo embedded player (clean mode)");
             } else {
                 setError("Invalid Vimeo URL");
             }
@@ -766,7 +820,7 @@ const SeriesPlayer = () => {
                         video.muted = true;
                         setMuted(true);
                         video.play().then(() => setPlaying(true)).catch(e => {
-                            setError("Unable to play video. Please try again.");
+                            setError("Unable to play video. Please try again or use the external link.");
                         });
                     });
             } else {
@@ -1041,70 +1095,89 @@ const SeriesPlayer = () => {
     // ========== RENDER FUNCTIONS ==========
 
     const renderVideoPlayer = () => {
-        // For YouTube videos
-        if (videoType === 'youtube') {
+        if (useEmbed) {
             return (
-                <div className="relative w-full h-full bg-black">
-                    {/* YouTube Player Container - visible when playing, hidden when paused */}
-                    <div
-                        ref={youtubeContainerRef}
-                        className={`w-full h-full transition-opacity duration-300 ${playing ? 'opacity-100' : 'opacity-0'}`}
-                        style={{
-                            position: 'relative',
-                            zIndex: playing ? 1 : 0
-                        }}
-                    />
-
-                    {/* Black overlay when paused - completely hides the video */}
-                    {!playing && (
-                        <div className="absolute inset-0 bg-black z-10"></div>
-                    )}
-
-                    {/* Click overlay for play/pause - always present */}
-                    <div
-                        className="absolute inset-0 z-20"
-                        style={{
-                            background: 'transparent',
-                            cursor: 'pointer'
-                        }}
-                        onClick={handlePlayPause}
-                        onMouseEnter={() => showControlsWithTimer()}
-                        onMouseLeave={() => setShowControls(false)}
-                    />
-                </div>
-            );
-        }
-
-        // For embedded videos (Vimeo, DailyMotion, etc.)
-        if (useEmbed || isDailyMotionVideo || isVimeoVideo) {
-            return (
-                <div className="relative w-full h-full bg-black">
+                <div className="relative w-full h-full">
                     <iframe
-                        ref={iframeRef}
                         src={videoUrl}
-                        className={`w-full h-full transition-opacity duration-300 ${playing ? 'opacity-100' : 'opacity-0'}`}
+                        className="w-full h-full"
                         frameBorder="0"
                         allow="autoplay; fullscreen; picture-in-picture"
                         allowFullScreen
                         title={currentEpisode?.title || 'Video Player'}
                         onLoad={() => {
-                            console.log("✅ Iframe loaded");
+                            console.log("✅ Embed iframe loaded");
                             setVideoLoaded(true);
-                            setLoading(false);
+                            setPlaying(true);
                         }}
                         onError={() => {
-                            setError("Failed to load video");
+                            setError("Failed to load embedded video");
                             setVideoLoaded(false);
-                            setLoading(false);
+                        }}
+                    />
+                </div>
+            );
+        }
+
+        if (isDailyMotionVideo && dailyMotionId) {
+            return (
+                <div className="relative w-full h-full">
+                    <iframe
+                        src={videoUrl}
+                        className="w-full h-full"
+                        frameBorder="0"
+                        allow="autoplay; fullscreen; picture-in-picture"
+                        allowFullScreen
+                        title={currentEpisode?.title || 'Video Player'}
+                        onLoad={() => {
+                            console.log("✅ DailyMotion iframe loaded");
+                            setVideoLoaded(true);
+                            setPlaying(true);
+                        }}
+                        onError={() => {
+                            setError("Failed to load DailyMotion video");
+                            setVideoLoaded(false);
+                        }}
+                    />
+                </div>
+            );
+        } else if (isVimeoVideo) {
+            return (
+                <div className="relative w-full h-full">
+                    <iframe
+                        src={videoUrl}
+                        className="w-full h-full"
+                        frameBorder="0"
+                        allow="autoplay; fullscreen; picture-in-picture"
+                        allowFullScreen
+                        title={currentEpisode?.title || 'Video Player'}
+                        onLoad={() => {
+                            console.log("✅ Vimeo iframe loaded");
+                            setVideoLoaded(true);
+                            setPlaying(true);
+                        }}
+                        onError={() => {
+                            setError("Failed to load Vimeo video");
+                            setVideoLoaded(false);
+                        }}
+                    />
+                </div>
+            );
+        } else if (videoType === 'youtube') {
+            // ULTRA-CLEAN YOUTUBE PLAYER - EXACTLY LIKE MOVIES PLAYER
+            return (
+                <div className="relative w-full h-full bg-black">
+                    {/* YouTube Player Container */}
+                    <div
+                        ref={youtubeContainerRef}
+                        className="w-full h-full"
+                        style={{
+                            position: 'relative',
+                            zIndex: 1
                         }}
                     />
 
-                    {/* Black overlay when paused */}
-                    {!playing && (
-                        <div className="absolute inset-0 bg-black z-10"></div>
-                    )}
-
-                    {/* Click overlay for play/pause */}
+                    {/* COMPLETE OVERLAY - Blocks ALL YouTube elements */}
                     <div
                         className="absolute inset-0 z-20"
                         style={{
@@ -1115,25 +1188,51 @@ const SeriesPlayer = () => {
                         onMouseEnter={() => showControlsWithTimer()}
                         onMouseLeave={() => setShowControls(false)}
                     />
+
+                    {/* Additional overlay to ensure nothing shows through */}
+                    <div
+                        className="absolute inset-0 z-10"
+                        style={{
+                            background: 'rgba(0,0,0,0.001)',
+                            pointerEvents: 'none'
+                        }}
+                    />
+
+                    {/* When paused, show a simple black overlay to hide any YouTube elements */}
+                    {!playing && (
+                        <div
+                            className="absolute inset-0 z-25"
+                            style={{
+                                background: 'black',
+                                pointerEvents: 'none'
+                            }}
+                        />
+                    )}
                 </div>
             );
-        }
-
-        // For HTML5 video - FIXED: removed auto-play
-        return (
-            <div className="relative w-full h-full bg-black">
+        } else {
+            return (
                 <video
                     ref={videoRef}
-                    className={`w-full h-full object-contain transition-opacity duration-300 ${playing ? 'opacity-100' : 'opacity-0'}`}
+                    className="w-full h-full object-contain bg-black"
                     src={videoUrl}
                     onTimeUpdate={handleTimeUpdate}
                     onLoadedMetadata={() => {
                         console.log("✅ HTML5 video metadata loaded");
                         setVideoLoaded(true);
-                        setLoading(false);
                         if (videoRef.current) {
                             setDuration(videoRef.current.duration);
-                            // DON'T auto-play - wait for user click
+                            const playPromise = videoRef.current.play();
+                            if (playPromise !== undefined) {
+                                playPromise
+                                    .then(() => {
+                                        setPlaying(true);
+                                    })
+                                    .catch(err => {
+                                        console.log("Auto-play prevented:", err);
+                                        setPlaying(false);
+                                    });
+                            }
                         }
                     }}
                     onPlay={() => {
@@ -1144,11 +1243,6 @@ const SeriesPlayer = () => {
                     onPause={() => {
                         console.log("⏸️ HTML5 video paused");
                         setPlaying(false);
-                    }}
-                    onEnded={() => {
-                        console.log("⏹️ HTML5 video ended");
-                        setPlaying(false);
-                        setProgress(1);
                     }}
                     onError={(e) => {
                         console.error("❌ Video error:", e);
@@ -1178,7 +1272,6 @@ const SeriesPlayer = () => {
 
                         setError(errorMessage);
                         setVideoLoaded(false);
-                        setLoading(false);
                     }}
                     playsInline
                     preload="auto"
@@ -1190,25 +1283,8 @@ const SeriesPlayer = () => {
                     <source src={videoUrl} type="video/ogg" />
                     Your browser does not support the video tag.
                 </video>
-
-                {/* Black overlay when paused */}
-                {!playing && (
-                    <div className="absolute inset-0 bg-black z-10"></div>
-                )}
-
-                {/* Click overlay for play/pause */}
-                <div
-                    className="absolute inset-0 z-20"
-                    style={{
-                        background: 'transparent',
-                        cursor: 'pointer'
-                    }}
-                    onClick={handlePlayPause}
-                    onMouseEnter={() => showControlsWithTimer()}
-                    onMouseLeave={() => setShowControls(false)}
-                />
-            </div>
-        );
+            );
+        }
     };
 
     const renderCommentsSection = () => (
@@ -1497,8 +1573,7 @@ const SeriesPlayer = () => {
                 color: 'text-orange-400',
                 bgColor: 'bg-orange-600',
                 label: 'Embed',
-                text: 'text-orange-300',
-                controls: 'Embed Player'
+                text: 'text-orange-300'
             };
         }
         if (isDailyMotionVideo) {
@@ -1506,32 +1581,28 @@ const SeriesPlayer = () => {
                 color: 'text-purple-400',
                 bgColor: 'bg-purple-600',
                 label: 'DailyMotion',
-                text: 'text-purple-300',
-                controls: 'Native DailyMotion Controls'
+                text: 'text-purple-300'
             };
         } else if (isVimeoVideo) {
             return {
                 color: 'text-blue-400',
                 bgColor: 'bg-blue-600',
                 label: 'Vimeo',
-                text: 'text-blue-300',
-                controls: 'Native Vimeo Controls'
+                text: 'text-blue-300'
             };
         } else if (videoType === 'youtube') {
             return {
                 color: 'text-red-400',
                 bgColor: 'bg-red-600',
                 label: 'YouTube',
-                text: 'text-red-300',
-                controls: 'Custom Controls (No Branding)'
+                text: 'text-red-300'
             };
         } else {
             return {
                 color: 'text-green-400',
                 bgColor: 'bg-green-600',
                 label: 'Custom Player',
-                text: 'text-green-300',
-                controls: 'Custom Controls'
+                text: 'text-green-300'
             };
         }
     };
@@ -1555,7 +1626,7 @@ const SeriesPlayer = () => {
                             <div className="flex items-center justify-center gap-2 mt-1">
                                 <FaVideo className={playerType.color} />
                                 <span className={`text-sm ${playerType.text}`}>
-                                    {playerType.label} - {playerType.controls}
+                                    {playerType.label}
                                 </span>
                             </div>
                             <div className="text-xs text-gray-400 mt-1">
@@ -1688,6 +1759,14 @@ const SeriesPlayer = () => {
                 className={`relative w-full ${isMobile ? 'h-[60vh]' : 'h-screen'} bg-black`}
                 onMouseMove={shouldShowCustomControls ? showControlsWithTimer : undefined}
                 onMouseLeave={() => shouldShowCustomControls && setShowControls(false)}
+                onClick={(e) => {
+                    if (shouldShowCustomControls && !e.target.closest('button') && !e.target.closest('input') && !e.target.closest('select')) {
+                        handlePlayPause(e);
+                    }
+                    if (shouldShowCustomControls) {
+                        showControlsWithTimer();
+                    }
+                }}
                 style={isFullscreen ? {
                     position: 'fixed',
                     top: 0,
@@ -1699,8 +1778,19 @@ const SeriesPlayer = () => {
             >
                 {renderVideoPlayer()}
 
+                {shouldShowCustomControls && videoLoaded && !playing && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-20">
+                        <button
+                            onClick={handlePlayPause}
+                            className="w-24 h-24 bg-red-600/90 hover:bg-red-700 rounded-full flex items-center justify-center transition-all transform hover:scale-110"
+                        >
+                            <FaPlay size={40} className="text-white ml-2" />
+                        </button>
+                    </div>
+                )}
+
                 {!videoLoaded && !error && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/80 z-40">
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/80 z-20">
                         <div className="text-center">
                             <FaSpinner className="text-4xl text-red-600 animate-spin mx-auto mb-4" />
                             <p className="text-white">Loading video...</p>
@@ -1709,7 +1799,7 @@ const SeriesPlayer = () => {
                 )}
 
                 {error && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/90 z-40">
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/90 z-20">
                         <div className="text-center p-6 max-w-md">
                             <FaExclamationTriangle className="text-red-500 text-5xl mx-auto mb-4" />
                             <p className="text-white mb-4">{error}</p>
@@ -1845,7 +1935,7 @@ const SeriesPlayer = () => {
                         <div className="flex items-center gap-2">
                             <FaVideo className={playerType.color} />
                             <span className="text-white text-sm">
-                                Using {playerType.label} Player with Native Controls
+                                {playerType.label} Player
                             </span>
                         </div>
                     </div>
@@ -1891,8 +1981,8 @@ const SeriesPlayer = () => {
                                                 key={season}
                                                 onClick={() => setSelectedSeason(season)}
                                                 className={`px-4 py-2 rounded-full whitespace-nowrap transition-colors ${selectedSeason === season
-                                                        ? 'bg-red-600 text-white'
-                                                        : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                                                    ? 'bg-red-600 text-white'
+                                                    : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
                                                     }`}
                                             >
                                                 Season {season}
@@ -1918,8 +2008,8 @@ const SeriesPlayer = () => {
                                                         key={episode.id}
                                                         onClick={() => goToEpisode(globalIndex)}
                                                         className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${isCurrent
-                                                                ? 'bg-red-600/20 border border-red-500/50'
-                                                                : 'bg-gray-800/30 hover:bg-gray-800/50'
+                                                            ? 'bg-red-600/20 border border-red-500/50'
+                                                            : 'bg-gray-800/30 hover:bg-gray-800/50'
                                                             }`}
                                                     >
                                                         <div className="w-8 h-8 bg-gradient-to-r from-red-600 to-pink-600 rounded flex items-center justify-center flex-shrink-0">
@@ -1942,27 +2032,6 @@ const SeriesPlayer = () => {
                                     </div>
                                 </div>
                             )}
-
-                            {/* Player Info */}
-                            <div className="p-4 bg-gray-900/50 border border-gray-700 rounded-lg mb-8">
-                                <div className="flex items-center gap-3">
-                                    <FaVideo className={playerType.color} />
-                                    <div>
-                                        <h4 className="text-white font-medium">Player Information</h4>
-                                        <p className="text-gray-300 text-sm">
-                                            {useEmbed
-                                                ? 'Using embed player for better compatibility.'
-                                                : isDailyMotionVideo
-                                                    ? 'This video is hosted on DailyMotion and uses DailyMotion\'s native player controls.'
-                                                    : isVimeoVideo
-                                                        ? 'This video is hosted on Vimeo and uses Vimeo\'s native player controls.'
-                                                        : videoType === 'youtube'
-                                                            ? 'This video is hosted on YouTube with completely custom controls - no YouTube branding visible.'
-                                                            : 'This video uses our custom player controls with play, pause, volume, and seek functionality.'}
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
 
                             {/* Comments Section */}
                             {renderCommentsSection()}

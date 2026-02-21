@@ -1,24 +1,115 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useContext } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { FiSearch } from 'react-icons/fi';
+import { FiSearch, FiX, FiFilm, FiTv } from 'react-icons/fi';
+import { MoviesContext } from '../context/MoviesContext';
 import logo from '../assets/logo.png';
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
+  const [showResults, setShowResults] = useState(false);
+  const [selectedIndex, setSelectedIndex] = useState(-1);
+  const [suggestions, setSuggestions] = useState([]);
+
+  const searchRef = useRef(null);
+  const inputRef = useRef(null);
   const navigate = useNavigate();
   const location = useLocation();
+  const searchTimeout = useRef(null);
 
-  // Update search from URL when on movies page
+  // Get context values - using global search state
+  const {
+    globalSearchQuery,
+    globalSearchResults,
+    updateGlobalSearch,
+    clearGlobalSearch,
+    getSuggestions,
+    recentSearches,
+    saveRecentSearch
+  } = useContext(MoviesContext);
+
+  // Sync local search with global search query
   useEffect(() => {
-    if (location.pathname === '/movies') {
-      const params = new URLSearchParams(location.search);
-      const urlSearch = params.get('search') || '';
-      if (urlSearch !== search) {
-        setSearch(urlSearch);
+    setSearch(globalSearchQuery);
+  }, [globalSearchQuery]);
+
+  // Handle click outside to close search results
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (searchRef.current && !searchRef.current.contains(event.target)) {
+        setShowResults(false);
+        setSelectedIndex(-1);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Get suggestions as user types
+  useEffect(() => {
+    if (searchTimeout.current) {
+      clearTimeout(searchTimeout.current);
+    }
+
+    if (search.trim().length >= 2) {
+      searchTimeout.current = setTimeout(() => {
+        const results = getSuggestions(search, 8);
+        setSuggestions(results);
+        setShowResults(true);
+      }, 300);
+    } else {
+      setSuggestions([]);
+      if (!search.trim()) {
+        setShowResults(false);
       }
     }
-  }, [location, search]);
+
+    return () => {
+      if (searchTimeout.current) {
+        clearTimeout(searchTimeout.current);
+      }
+    };
+  }, [search, getSuggestions]);
+
+  // Handle keyboard navigation
+  const handleKeyDown = (e) => {
+    if (!showResults) return;
+
+    const totalItems = suggestions.length + (recentSearches.length > 0 && !search.trim() ? recentSearches.length : 0);
+
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault();
+        setSelectedIndex(prev => (prev < totalItems - 1 ? prev + 1 : prev));
+        break;
+      case 'ArrowUp':
+        e.preventDefault();
+        setSelectedIndex(prev => (prev > 0 ? prev - 1 : -1));
+        break;
+      case 'Enter':
+        e.preventDefault();
+        if (selectedIndex >= 0) {
+          if (suggestions.length > 0 && selectedIndex < suggestions.length) {
+            handleSuggestionClick(suggestions[selectedIndex]);
+          } else if (recentSearches.length > 0 && !search.trim()) {
+            const recentIndex = selectedIndex - suggestions.length;
+            if (recentIndex >= 0 && recentIndex < recentSearches.length) {
+              handleRecentSearchClick(recentSearches[recentIndex]);
+            }
+          }
+        } else if (search.trim()) {
+          handleSearchSubmit();
+        }
+        break;
+      case 'Escape':
+        setShowResults(false);
+        setSelectedIndex(-1);
+        break;
+      default:
+        break;
+    }
+  };
 
   // Handle navigation
   const handleNavigation = (path, closeMenu = false) => (e) => {
@@ -27,31 +118,184 @@ export default function Navbar() {
       navigate(path);
     }
     if (closeMenu) setIsOpen(false);
+    setShowResults(false);
   };
 
-  // Handle search submission
-  const handleSearchSubmit = (e) => {
-    e.preventDefault();
+  // Handle search submission - UPDATED to use global search
+  const handleSearchSubmit = () => {
     if (search.trim()) {
-      // Navigate to movies page with search query
-      navigate(`/movies?search=${encodeURIComponent(search.trim())}`);
+      // Update global search state
+      updateGlobalSearch(search.trim());
+
+      // Save to recent searches
+      saveRecentSearch({
+        query: search.trim(),
+        timestamp: new Date().toISOString()
+      });
+
+      // Navigate to search results page
+      if (location.pathname !== '/search') {
+        navigate(`/search?q=${encodeURIComponent(search.trim())}`);
+      }
+
       setIsOpen(false);
+      setShowResults(false);
     }
   };
 
-  // Handle search key press
-  const handleSearchKeyPress = (e) => {
-    if (e.key === 'Enter') {
-      handleSearchSubmit(e);
+  // Handle form submit
+  const handleFormSubmit = (e) => {
+    e.preventDefault();
+    handleSearchSubmit();
+  };
+
+  // Handle suggestion click
+  const handleSuggestionClick = (suggestion) => {
+    // Update global search
+    updateGlobalSearch(suggestion.title);
+
+    setShowResults(false);
+    setSelectedIndex(-1);
+
+    switch (suggestion.type) {
+      case 'movie':
+        navigate(`/movie/${suggestion.id}`);
+        break;
+      case 'episode':
+        navigate(`/series/${suggestion.seriesId}?season=${suggestion.seasonNumber}&episode=${suggestion.episodeNumber}`);
+        break;
+      case 'category':
+        navigate(`/movies?category=${encodeURIComponent(suggestion.title)}`);
+        break;
+      default:
+        break;
     }
+
+    setIsOpen(false);
+  };
+
+  // Handle recent search click
+  const handleRecentSearchClick = (recent) => {
+    setSearch(recent.query || '');
+    if (recent.query) {
+      // Update global search
+      updateGlobalSearch(recent.query);
+      navigate(`/search?q=${encodeURIComponent(recent.query)}`);
+    }
+    setShowResults(false);
+    setSelectedIndex(-1);
+    setIsOpen(false);
   };
 
   // Clear search
   const handleClearSearch = () => {
     setSearch('');
-    if (location.pathname === '/movies') {
-      navigate('/movies'); // Clear search from URL
+    setSuggestions([]);
+    setShowResults(false);
+    setSelectedIndex(-1);
+    clearGlobalSearch();
+    inputRef.current?.focus();
+
+    // If on search page, go back to movies
+    if (location.pathname === '/search') {
+      navigate('/movies');
     }
+  };
+
+  // Render search suggestions dropdown
+  const renderSuggestions = () => {
+    const hasSuggestions = suggestions.length > 0;
+    const hasRecent = recentSearches.length > 0 && !search.trim();
+
+    return (
+      <div className="absolute top-full left-0 right-0 mt-2 bg-gray-900 border border-purple-600/30 rounded-xl shadow-2xl overflow-hidden z-50">
+        {/* Recent Searches */}
+        {hasRecent && (
+          <>
+            <div className="p-2 text-xs text-gray-400 border-b border-purple-600/30 flex items-center gap-2">
+              <span>🕒 Recent Searches</span>
+            </div>
+            {recentSearches.slice(0, 5).map((recent, index) => (
+              <button
+                key={index}
+                onClick={() => handleRecentSearchClick(recent)}
+                className={`w-full px-4 py-2 text-left hover:bg-purple-600/20 transition-colors flex items-center gap-3 ${selectedIndex === index ? 'bg-purple-600/30' : ''
+                  }`}
+              >
+                <span className="text-gray-400">🕒</span>
+                <span className="text-white flex-1">{recent.query || 'All Content'}</span>
+                {recent.type && (
+                  <span className="text-xs px-2 py-0.5 bg-purple-600/20 text-purple-400 rounded-full">
+                    {recent.type}
+                  </span>
+                )}
+              </button>
+            ))}
+          </>
+        )}
+
+        {/* Suggestions */}
+        {hasSuggestions && (
+          <>
+            <div className="p-2 text-xs text-gray-400 border-b border-purple-600/30">
+              Suggestions
+            </div>
+            {suggestions.map((item, index) => {
+              const displayIndex = hasRecent ? recentSearches.length + index : index;
+              return (
+                <button
+                  key={`${item.type}-${item.id || item.title}`}
+                  onClick={() => handleSuggestionClick(item)}
+                  className={`w-full flex items-center gap-3 p-3 hover:bg-purple-600/20 transition-colors border-b border-purple-600/10 last:border-0 ${selectedIndex === displayIndex ? 'bg-purple-600/30' : ''
+                    }`}
+                >
+                  {/* Icon based on type */}
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-600/30 to-pink-600/30 flex items-center justify-center">
+                    {item.type === 'movie' && <FiFilm className="text-purple-400" />}
+                    {item.type === 'episode' && <FiTv className="text-pink-400" />}
+                    {item.type === 'category' && <span className="text-blue-400">#</span>}
+                  </div>
+
+                  {/* Info */}
+                  <div className="flex-1 text-left">
+                    <h4 className="font-medium text-white">
+                      {item.title}
+                      {item.type === 'episode' && (
+                        <span className="ml-2 text-xs text-gray-400">
+                          S{item.seasonNumber}:E{item.episodeNumber}
+                        </span>
+                      )}
+                    </h4>
+                    <p className="text-xs text-gray-400">
+                      {item.type === 'movie' && `Movie • ${item.year || ''}`}
+                      {item.type === 'episode' && `${item.seriesTitle}`}
+                      {item.type === 'category' && 'Category'}
+                    </p>
+                  </div>
+                </button>
+              );
+            })}
+          </>
+        )}
+
+        {/* Search action */}
+        {search.trim() && (
+          <button
+            onClick={handleSearchSubmit}
+            className="w-full p-3 text-center text-sm text-purple-400 hover:text-purple-300 hover:bg-purple-600/10 border-t border-purple-600/30 transition-colors"
+          >
+            Search for "{search}"
+          </button>
+        )}
+
+        {/* Empty state */}
+        {!hasSuggestions && !hasRecent && !search.trim() && (
+          <div className="p-4 text-center text-gray-400 text-sm">
+            Type to search movies & series...
+          </div>
+        )}
+      </div>
+    );
   };
 
   return (
@@ -97,7 +341,7 @@ export default function Navbar() {
             </a>
           </div>
 
-          {/* Desktop Navigation - Simple */}
+          {/* Desktop Navigation */}
           <div className="hidden md:flex items-center gap-1">
             <a
               href="/"
@@ -133,149 +377,127 @@ export default function Navbar() {
 
           {/* Right Side - Search & Admin */}
           <div className="flex items-center gap-3">
-
-            {/* Search Bar */}
-            <form
-              onSubmit={handleSearchSubmit}
-              className="hidden md:flex items-center relative group"
-            >
-              <FiSearch className="absolute left-3 text-gray-400 text-sm group-hover:text-purple-400 transition-colors" />
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                onKeyPress={handleSearchKeyPress}
-                placeholder="Search movies & series..."
-                className="pl-10 pr-10 py-2.5 w-48 lg:w-56 text-sm rounded-xl bg-white/5 border border-purple-600/30 text-white placeholder:text-gray-400 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all duration-300"
-              />
-              {search && (
-                <button
-                  type="button"
-                  onClick={handleClearSearch}
-                  className="absolute right-10 text-gray-400 hover:text-white text-sm p-1"
-                >
-                  ✕
-                </button>
-              )}
-              <button
-                type="submit"
-                className="absolute right-3 text-gray-400 hover:text-purple-400 text-sm p-1"
-                title="Search"
-              >
-                🔍
-              </button>
-            </form>
-
-            {/* Admin Button Only */}
-            <div className="hidden md:flex items-center gap-2">
-              <a
-                href="/admin"
-                onClick={handleNavigation('/admin')}
-                className={`px-4 py-2.5 text-sm font-medium border rounded-xl transition-all duration-300 ${location.pathname === '/admin'
-                    ? 'text-purple-300 border-purple-500 bg-purple-600/20 shadow-lg shadow-purple-600/20'
-                    : 'text-purple-400 hover:text-purple-300 border-purple-600/50 hover:border-purple-400 hover:bg-purple-600/10 hover:shadow-lg hover:shadow-purple-600/20'
-                  }`}
-              >
-                <span className="mr-1">👤</span> Admin
-              </a>
+            {/* Desktop Search */}
+            <div className="hidden md:block relative" ref={searchRef}>
+              <form onSubmit={handleFormSubmit} className="relative">
+                <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  onFocus={() => {
+                    if (suggestions.length > 0 || recentSearches.length > 0 || search.trim()) {
+                      setShowResults(true);
+                    }
+                  }}
+                  placeholder="Search..."
+                  className="pl-9 pr-8 py-2 w-48 lg:w-64 text-sm rounded-lg bg-white/5 border border-purple-600/30 text-white placeholder:text-gray-400 focus:outline-none focus:border-purple-500"
+                />
+                {search && (
+                  <button
+                    type="button"
+                    onClick={handleClearSearch}
+                    className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white"
+                  >
+                    <FiX size={16} />
+                  </button>
+                )}
+              </form>
+              {showResults && renderSuggestions()}
             </div>
+
+            {/* Admin Button */}
+            <a
+              href="/admin"
+              onClick={handleNavigation('/admin')}
+              className="hidden md:block px-4 py-2 text-sm font-medium border border-purple-600/50 rounded-lg text-purple-400 hover:bg-purple-600/10"
+            >
+              Admin
+            </a>
 
             {/* Mobile Menu Button */}
             <button
               onClick={() => setIsOpen(!isOpen)}
-              className="md:hidden p-2 text-gray-300 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
+              className="md:hidden p-2 text-gray-300 hover:text-white"
             >
-              {isOpen ? (
-                <span className="text-xl">✕</span>
-              ) : (
-                <span className="text-2xl">☰</span>
-              )}
+              {isOpen ? <FiX size={24} /> : <span className="text-2xl">☰</span>}
             </button>
           </div>
         </div>
       </div>
 
-      {/* Mobile Menu - Simple */}
+      {/* Mobile Menu */}
       {isOpen && (
-        <div className="md:hidden bg-gradient-to-b from-black/98 via-black/95 to-black/90 backdrop-blur-xl border-t border-purple-600/30 shadow-2xl animate-slideDown">
-          <div className="px-4 py-4 space-y-2">
+        <div className="md:hidden bg-black/95 border-t border-purple-600/30">
+          <div className="px-4 py-4 space-y-3">
             {/* Mobile Search */}
-            <form onSubmit={handleSearchSubmit} className="relative mb-3">
-              <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                onKeyPress={handleSearchKeyPress}
-                placeholder="Search movies & series..."
-                className="w-full pl-10 pr-10 py-3 rounded-xl bg-white/5 border border-purple-600/30 text-white placeholder:text-gray-400 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20"
-              />
-              {search && (
-                <button
-                  type="button"
-                  onClick={handleClearSearch}
-                  className="absolute right-10 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white text-sm p-1"
-                >
-                  ✕
-                </button>
+            <div className="relative" ref={searchRef}>
+              <form onSubmit={handleFormSubmit}>
+                <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  onFocus={() => {
+                    if (suggestions.length > 0 || recentSearches.length > 0 || search.trim()) {
+                      setShowResults(true);
+                    }
+                  }}
+                  placeholder="Search..."
+                  className="w-full pl-9 pr-8 py-2 rounded-lg bg-white/5 border border-purple-600/30 text-white"
+                />
+                {search && (
+                  <button
+                    type="button"
+                    onClick={handleClearSearch}
+                    className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400"
+                  >
+                    <FiX size={16} />
+                  </button>
+                )}
+              </form>
+              {showResults && (
+                <div className="absolute top-full left-0 right-0 mt-2">
+                  {renderSuggestions()}
+                </div>
               )}
-              <button
-                type="submit"
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-purple-400 text-sm p-1"
-                title="Search"
-              >
-                🔍
-              </button>
-            </form>
+            </div>
 
-            {/* Mobile Links - Simple */}
+            {/* Mobile Navigation Links */}
             <a
               href="/"
               onClick={handleNavigation('/', true)}
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 group ${location.pathname === '/'
-                  ? 'text-white bg-gradient-to-r from-purple-600/30 to-transparent'
-                  : 'text-gray-300 hover:text-white hover:bg-gradient-to-r from-purple-600/20 to-transparent'
+              className={`block px-4 py-2 rounded-lg ${location.pathname === '/' ? 'text-white bg-purple-600/20' : 'text-gray-300'
                 }`}
             >
-              <span className="text-lg group-hover:text-purple-300">🏠</span>
-              <span className="font-medium">Home</span>
+              Home
             </a>
             <a
               href="/movies"
               onClick={handleNavigation('/movies', true)}
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 group ${location.pathname === '/movies'
-                  ? 'text-white bg-gradient-to-r from-blue-600/30 to-transparent'
-                  : 'text-gray-300 hover:text-white hover:bg-gradient-to-r from-blue-600/20 to-transparent'
+              className={`block px-4 py-2 rounded-lg ${location.pathname === '/movies' ? 'text-white bg-blue-600/20' : 'text-gray-300'
                 }`}
             >
-              <span className="text-lg group-hover:text-blue-300">🎬</span>
-              <span className="font-medium">Movies</span>
+              Movies
             </a>
             <a
               href="/series"
               onClick={handleNavigation('/series', true)}
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 group ${location.pathname === '/series'
-                  ? 'text-white bg-gradient-to-r from-pink-600/30 to-transparent'
-                  : 'text-gray-300 hover:text-white hover:bg-gradient-to-r from-pink-600/20 to-transparent'
+              className={`block px-4 py-2 rounded-lg ${location.pathname === '/series' ? 'text-white bg-pink-600/20' : 'text-gray-300'
                 }`}
             >
-              <span className="text-lg group-hover:text-pink-300">📺</span>
-              <span className="font-medium">Series</span>
+              Series
             </a>
-
-            {/* Admin Button */}
-            <div className="pt-4">
-              <a
-                href="/admin"
-                onClick={handleNavigation('/admin', true)}
-                className={`flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium border rounded-xl transition-all duration-300 ${location.pathname === '/admin'
-                    ? 'text-purple-300 border-purple-500 bg-purple-600/20'
-                    : 'text-purple-400 border-purple-600/50 hover:bg-purple-600/10'
-                  }`}
-              >
-                <span>👤</span> Admin Panel
-              </a>
-            </div>
+            <a
+              href="/admin"
+              onClick={handleNavigation('/admin', true)}
+              className="block px-4 py-2 text-purple-400"
+            >
+              Admin
+            </a>
           </div>
         </div>
       )}
