@@ -461,8 +461,8 @@ export default function Movies() {
 
       if (diffDays === 0) return 'Today';
       if (diffDays === 1) return 'Yesterday';
-      if (diffDays < 7) return `${diffDays} days ago`;
-      if (diffDays < 30) return `${Math.floor(diffDays / 7)} week(s) ago`;
+      if (diffDays < 7) return `${diffDays}d ago`;
+      if (diffDays < 30) return `${Math.floor(diffDays / 7)}w ago`;
       return date.toLocaleDateString();
     } catch (e) {
       return 'Recently';
@@ -492,10 +492,10 @@ export default function Movies() {
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-black via-gray-900 to-black">
-      {/* HERO SLIDER SECTION */}
+      {/* HERO SLIDER SECTION - MOBILE OPTIMIZED / DESKTOP FULL */}
       {filteredHeroContent.length > 0 && !globalSearchQuery && (
         <section
-          className="relative h-[50vh] sm:h-[60vh] md:h-[70vh] lg:h-[85vh] overflow-hidden group"
+          className="relative h-[40vh] sm:h-[50vh] md:h-[60vh] lg:h-[70vh] xl:h-[80vh] overflow-hidden group"
           onMouseEnter={() => setIsHoveringHero(true)}
           onMouseLeave={() => setIsHoveringHero(false)}
         >
@@ -511,31 +511,78 @@ export default function Movies() {
                   <div className="absolute inset-0 flex items-center justify-center bg-gray-900">
                     <div className="text-center">
                       <FaSpinner className="text-red-600 text-3xl animate-spin mb-2" />
-                      <p className="text-gray-400 text-xs">Loading image...</p>
+                      <p className="text-gray-400 text-xs">Loading...</p>
                     </div>
                   </div>
                 )}
                 <img
                   src={item?.background || item?.poster}
                   alt={item?.title}
-                  className="w-full h-full object-cover md:object-cover object-center"
+                  className="w-full h-full object-cover"
                   style={{
-                    objectFit: window.innerWidth <= 640 ? 'contain' : 'cover',
-                    backgroundColor: '#000000',
+                    objectPosition: 'center 20%',
                   }}
                   onLoad={() => setImageLoading(false)}
                   onError={() => setImageLoading(false)}
                 />
               </div>
-              <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent md:via-black/70" />
-              <div className="absolute inset-0 bg-black/10 md:bg-black/20" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent" />
             </div>
           ))}
 
-          {/* Hero Content */}
-          <div className="absolute bottom-0 left-0 right-0 p-4 pb-8 sm:p-6 sm:pb-12 z-20 bg-gradient-to-t from-black via-black/80 to-transparent md:via-black/90">
+          {/* Hero Content - MOBILE OPTIMIZED */}
+          <div className="absolute bottom-0 left-0 right-0 p-3 pb-4 sm:p-6 sm:pb-8 z-20 bg-gradient-to-t from-black via-black/80 to-transparent">
             <div className="max-w-3xl">
-              <div className="flex items-center gap-2 mb-2 flex-wrap">
+              {/* Mobile view - compact badges */}
+              <div className="flex sm:hidden items-center gap-1 mb-1 flex-wrap">
+                {/* Type badge - smaller on mobile */}
+                <span className={`px-1.5 py-0.5 rounded-full text-[8px] font-semibold ${isSeriesWithNewEpisode
+                  ? "bg-gradient-to-r from-purple-600 to-pink-600"
+                  : currentHeroItem?.type === "series"
+                    ? "bg-gradient-to-r from-purple-600 to-pink-600"
+                    : "bg-gradient-to-r from-red-600 to-orange-600"
+                  }`}>
+                  {isSeriesWithNewEpisode ? (
+                    <>SERIES</>
+                  ) : currentHeroItem?.type === "series" ? (
+                    <>SERIES</>
+                  ) : (
+                    <>MOVIE</>
+                  )}
+                </span>
+
+                {/* New Episode Badge - only show icon on mobile */}
+                {isSeriesWithNewEpisode && (
+                  <span className="px-1.5 py-0.5 rounded-full bg-green-600 text-white text-[8px] font-semibold flex items-center gap-0.5 animate-pulse">
+                    <FaPlusCircle className="text-[6px]" />
+                    <span>NEW</span>
+                  </span>
+                )}
+
+                {/* Episode info - compact */}
+                {isSeriesWithNewEpisode && (
+                  <span className="px-1.5 py-0.5 rounded-full bg-purple-600/80 text-white text-[8px] font-semibold">
+                    S{currentHeroItem.latestEpisode.seasonNumber}:E{currentHeroItem.latestEpisode.episodeNumber}
+                  </span>
+                )}
+
+                {/* Rating - mobile optimized */}
+                {currentHeroItem?.rating && (
+                  <span className="flex items-center gap-0.5 text-[8px] text-yellow-400 bg-yellow-900/20 px-1.5 py-0.5 rounded-lg">
+                    <FaStar className="text-[6px]" /> {currentHeroItem.rating}
+                  </span>
+                )}
+
+                {/* Year - show only on larger mobile */}
+                {currentHeroItem?.year && (
+                  <span className="hidden xs:flex items-center gap-0.5 text-[8px] text-gray-300 bg-gray-800/30 px-1.5 py-0.5 rounded-lg">
+                    <FaCalendarAlt className="text-[6px]" /> {currentHeroItem.year}
+                  </span>
+                )}
+              </div>
+
+              {/* Desktop view - full badges */}
+              <div className="hidden sm:flex items-center gap-2 mb-2 flex-wrap">
                 {/* Type badge */}
                 <span className={`px-2 py-1 rounded-full text-[10px] sm:text-xs font-semibold ${isSeriesWithNewEpisode
                   ? "bg-gradient-to-r from-purple-600 to-pink-600"
@@ -577,11 +624,51 @@ export default function Movies() {
                 )}
 
                 <span className="px-2 py-1 rounded-full bg-black/40 text-[8px] sm:text-xs text-white border border-white/10">
-                  {window.innerWidth <= 640 ? 'HD' : '4K ULTRA HD'}
+                  4K ULTRA HD
                 </span>
+
+                {/* Rating - desktop */}
+                {currentHeroItem?.rating && (
+                  <span className="flex items-center gap-1 text-[10px] sm:text-xs text-yellow-400 bg-yellow-900/20 px-2 py-1 rounded-lg">
+                    <FaStar className="text-[8px] sm:text-xs" /> {currentHeroItem.rating}
+                  </span>
+                )}
+
+                {/* Year - desktop */}
+                {currentHeroItem?.year && (
+                  <span className="flex items-center gap-1 text-[10px] sm:text-xs text-gray-300 bg-gray-800/30 px-2 py-1 rounded-lg">
+                    <FaCalendarAlt className="text-[8px] sm:text-xs" /> {currentHeroItem.year}
+                  </span>
+                )}
+
+                {/* Episode count - desktop */}
+                {isSeriesWithNewEpisode && currentHeroItem.episodeCount && (
+                  <span className="flex items-center gap-1 text-[10px] sm:text-xs text-purple-300 bg-purple-900/20 px-2 py-1 rounded-lg">
+                    <FaTv className="text-[8px] sm:text-xs" /> {currentHeroItem.episodeCount} Episodes
+                  </span>
+                )}
+
+                {/* Duration - desktop */}
+                <span className="flex items-center gap-1 text-[10px] sm:text-xs text-gray-300 bg-gray-800/30 px-2 py-1 rounded-lg">
+                  <FaClock className="text-[8px] sm:text-xs" />
+                  {isSeriesWithNewEpisode ? (currentHeroItem.latestEpisode?.duration || '45m') : '2h 15m'}
+                </span>
+
+                {/* Last updated - desktop */}
+                {currentHeroItem.lastUpdated && (
+                  <span className="flex items-center gap-1 text-[10px] sm:text-xs text-green-400 bg-green-900/20 px-2 py-1 rounded-lg">
+                    <FaUpload className="text-[8px]" /> Updated {formatDate(currentHeroItem.lastUpdated)}
+                  </span>
+                )}
               </div>
 
-              <h1 className="text-xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold text-white mb-2 line-clamp-2">
+              {/* Mobile title - smaller */}
+              <h1 className="sm:hidden text-base font-bold text-white mb-1 line-clamp-1">
+                {currentHeroItem?.title}
+              </h1>
+
+              {/* Desktop title - full size */}
+              <h1 className="hidden sm:block text-xl sm:text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-bold text-white mb-2 line-clamp-2">
                 {currentHeroItem?.title}
                 {isSeriesWithNewEpisode && (
                   <span className="text-lg sm:text-xl ml-2 text-purple-400">
@@ -590,59 +677,68 @@ export default function Movies() {
                 )}
               </h1>
 
-              {/* Episode title for series */}
+              {/* Episode title for series - desktop only */}
               {isSeriesWithNewEpisode && currentHeroItem.latestEpisode && (
-                <h2 className="text-sm sm:text-lg text-purple-300 mb-2">
+                <h2 className="hidden sm:block text-sm sm:text-base text-purple-300 mb-2">
                   Latest: {currentHeroItem.latestEpisode.title}
                 </h2>
               )}
 
-              <div className="flex flex-wrap items-center gap-2 mb-3">
-                {currentHeroItem?.rating && (
-                  <span className="flex items-center gap-1 text-[10px] sm:text-xs text-yellow-400 bg-yellow-900/20 px-2 py-1 rounded-lg">
-                    <FaStar className="text-[8px] sm:text-xs" /> {currentHeroItem.rating}
-                  </span>
-                )}
-                {currentHeroItem?.year && (
-                  <span className="flex items-center gap-1 text-[10px] sm:text-xs text-gray-300 bg-gray-800/30 px-2 py-1 rounded-lg">
-                    <FaCalendarAlt className="text-[8px] sm:text-xs" /> {currentHeroItem.year}
-                  </span>
-                )}
+              {/* Mobile compact info row */}
+              <div className="flex sm:hidden flex-wrap items-center gap-1 mb-2">
                 {isSeriesWithNewEpisode && currentHeroItem.episodeCount && (
-                  <span className="flex items-center gap-1 text-[10px] sm:text-xs text-purple-300 bg-purple-900/20 px-2 py-1 rounded-lg">
-                    <FaTv className="text-[8px] sm:text-xs" /> {currentHeroItem.episodeCount} Episodes
+                  <span className="flex items-center gap-0.5 text-[8px] text-purple-300 bg-purple-900/20 px-1.5 py-0.5 rounded-lg">
+                    <FaTv className="text-[6px]" /> {currentHeroItem.episodeCount} eps
                   </span>
                 )}
-                <span className="flex items-center gap-1 text-[10px] sm:text-xs text-gray-300 bg-gray-800/30 px-2 py-1 rounded-lg">
-                  <FaClock className="text-[8px] sm:text-xs" />
-                  {isSeriesWithNewEpisode ? (currentHeroItem.latestEpisode?.duration || '45m') : (window.innerWidth <= 640 ? '2h' : '2h 15m')}
+                <span className="flex items-center gap-0.5 text-[8px] text-gray-300 bg-gray-800/30 px-1.5 py-0.5 rounded-lg">
+                  <FaClock className="text-[6px]" />
+                  {isSeriesWithNewEpisode ? (currentHeroItem.latestEpisode?.duration || '45m') : '2h'}
                 </span>
                 {currentHeroItem.lastUpdated && (
-                  <span className="flex items-center gap-1 text-[10px] sm:text-xs text-green-400 bg-green-900/20 px-2 py-1 rounded-lg">
-                    <FaUpload className="text-[8px]" /> Updated {formatDate(currentHeroItem.lastUpdated)}
+                  <span className="flex items-center gap-0.5 text-[8px] text-green-400 bg-green-900/20 px-1.5 py-0.5 rounded-lg">
+                    <FaUpload className="text-[6px]" /> {formatDate(currentHeroItem.lastUpdated)}
                   </span>
                 )}
               </div>
 
-              <p className="text-xs sm:text-sm text-gray-300 mb-4 line-clamp-2 max-w-2xl">
+              {/* Mobile description - hidden, desktop description - shown */}
+              <p className="hidden sm:block text-xs sm:text-sm text-gray-300 mb-3 line-clamp-2 max-w-2xl">
                 {isSeriesWithNewEpisode && currentHeroItem.latestEpisode?.description
                   ? currentHeroItem.latestEpisode.description
-                  : currentHeroItem?.description?.length > 100 && window.innerWidth <= 640
-                    ? currentHeroItem?.description.substring(0, 60) + '...'
-                    : currentHeroItem?.description || 'Experience this amazing content.'}
+                  : currentHeroItem?.description || 'Experience this amazing content.'}
               </p>
 
-              <div className="flex gap-3">
+              {/* Mobile action buttons - smaller */}
+              <div className="flex sm:hidden gap-2">
                 <button
                   onClick={handleHeroPlayClick}
-                  className="px-6 py-3 sm:px-8 sm:py-4 bg-gradient-to-r from-red-600 to-red-700 rounded-lg text-white text-xs sm:text-sm font-semibold flex items-center gap-2 min-w-[90px] sm:min-w-[100px] justify-center shadow-none sm:shadow-lg sm:shadow-red-600/30 hover:from-red-700 hover:to-red-800 transition-all duration-300"
+                  className="px-4 py-2 bg-gradient-to-r from-red-600 to-red-700 rounded-lg text-white text-xs font-semibold flex items-center gap-1 min-w-[70px] justify-center"
+                >
+                  <FaPlay className="text-[10px]" />
+                  <span className="text-[10px]">{isSeriesWithNewEpisode ? 'Latest' : 'Play'}</span>
+                </button>
+                <button
+                  onClick={handleHeroInfoClick}
+                  className="px-4 py-2 bg-gray-800/70 rounded-lg text-white text-xs font-semibold flex items-center gap-1 min-w-[70px] justify-center border border-gray-700"
+                >
+                  <FaInfoCircle className="text-[10px]" />
+                  <span className="text-[10px]">Info</span>
+                </button>
+              </div>
+
+              {/* Desktop action buttons - full size */}
+              <div className="hidden sm:flex gap-3">
+                <button
+                  onClick={handleHeroPlayClick}
+                  className="px-6 py-3 sm:px-8 sm:py-4 bg-gradient-to-r from-red-600 to-red-700 rounded-lg text-white text-xs sm:text-sm font-semibold flex items-center gap-2 min-w-[90px] sm:min-w-[100px] justify-center shadow-lg sm:shadow-lg sm:shadow-red-600/30 hover:from-red-700 hover:to-red-800 transition-all duration-300"
                 >
                   <FaPlay className="text-xs sm:text-sm" />
                   <span>{isSeriesWithNewEpisode ? 'Watch Latest' : 'Play'}</span>
                 </button>
                 <button
                   onClick={handleHeroInfoClick}
-                  className="px-6 py-3 sm:px-8 sm:py-4 bg-gray-800/70 sm:bg-gray-800/90 rounded-lg text-white text-xs sm:text-sm font-semibold flex items-center gap-2 min-w-[90px] sm:min-w-[100px] justify-center border border-gray-700 hover:bg-gray-700/90 transition-all duration-300"
+                  className="px-6 py-3 sm:px-8 sm:py-4 bg-gray-800/90 rounded-lg text-white text-xs sm:text-sm font-semibold flex items-center gap-2 min-w-[90px] sm:min-w-[100px] justify-center border border-gray-700 hover:bg-gray-700/90 transition-all duration-300"
                 >
                   <FaInfoCircle className="text-xs sm:text-sm" />
                   <span>Info</span>
@@ -651,11 +747,11 @@ export default function Movies() {
             </div>
           </div>
 
-          {/* Type Filter for Hero */}
-          <div className="absolute top-4 left-4 z-20 flex gap-2">
+          {/* Type Filter for Hero - responsive */}
+          <div className="absolute top-2 left-2 sm:top-4 sm:left-4 z-20 flex gap-1 sm:gap-2">
             <button
               onClick={() => setHeroContentType("all")}
-              className={`px-3 py-1.5 rounded-full text-xs font-medium ${heroContentType === "all"
+              className={`px-2 py-1 sm:px-3 sm:py-1.5 rounded-full text-[8px] sm:text-xs font-medium ${heroContentType === "all"
                 ? 'bg-red-600 text-white'
                 : 'bg-black/50 text-gray-300 hover:bg-black/70'
                 }`}
@@ -664,7 +760,7 @@ export default function Movies() {
             </button>
             <button
               onClick={() => setHeroContentType("movies")}
-              className={`px-3 py-1.5 rounded-full text-xs font-medium ${heroContentType === "movies"
+              className={`px-2 py-1 sm:px-3 sm:py-1.5 rounded-full text-[8px] sm:text-xs font-medium ${heroContentType === "movies"
                 ? 'bg-red-600 text-white'
                 : 'bg-black/50 text-gray-300 hover:bg-black/70'
                 }`}
@@ -673,7 +769,7 @@ export default function Movies() {
             </button>
             <button
               onClick={() => setHeroContentType("series")}
-              className={`px-3 py-1.5 rounded-full text-xs font-medium ${heroContentType === "series"
+              className={`px-2 py-1 sm:px-3 sm:py-1.5 rounded-full text-[8px] sm:text-xs font-medium ${heroContentType === "series"
                 ? 'bg-purple-600 text-white'
                 : 'bg-black/50 text-gray-300 hover:bg-black/70'
                 }`}
@@ -682,8 +778,8 @@ export default function Movies() {
             </button>
           </div>
 
-          {/* Navigation Dots */}
-          <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex gap-2 z-20">
+          {/* Navigation Dots - responsive */}
+          <div className="absolute bottom-1 sm:bottom-2 left-1/2 transform -translate-x-1/2 flex gap-1 sm:gap-2 z-20">
             {filteredHeroContent.map((_, index) => (
               <button
                 key={index}
@@ -692,23 +788,23 @@ export default function Movies() {
                   setIsAutoPlaying(false);
                   setTimeout(() => setIsAutoPlaying(true), 10000);
                 }}
-                className="p-2 -m-2 group/dot"
+                className="p-1 sm:p-2 -m-1 sm:-m-2 group/dot"
               >
                 <span className={`block transition-all duration-300 rounded-full ${index === currentHeroSlide
-                  ? 'w-4 sm:w-6 h-1 sm:h-1.5 bg-red-600'
-                  : 'w-1 sm:w-1.5 h-1 sm:h-1.5 bg-gray-500 group-hover/dot:bg-gray-300'
+                  ? 'w-3 sm:w-4 md:w-6 h-0.5 sm:h-1 md:h-1.5 bg-red-600'
+                  : 'w-0.5 sm:w-1 md:w-1.5 h-0.5 sm:h-1 md:h-1.5 bg-gray-500 group-hover/dot:bg-gray-300'
                   }`} />
               </button>
             ))}
           </div>
 
-          {/* Navigation Arrows */}
+          {/* Navigation Arrows - hide on mobile */}
           <button
             onClick={prevHeroSlide}
             className="hidden sm:block absolute left-2 sm:left-4 top-1/2 transform -translate-y-1/2 z-30 group/arrow"
           >
             <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-r from-red-600 to-red-700 rounded-full blur-md opacity-0 group-hover/arrow:opacity-50 transition-opacity duration-300 hidden md:block"></div>
+              <div className="absolute inset-0 bg-gradient-to-r from-red-600 to-red-700 rounded-full blur-md opacity-0 group-hover/arrow:opacity-50 transition-opacity duration-300"></div>
               <div className="relative w-10 h-10 sm:w-12 sm:h-12 bg-black/60 backdrop-blur-md rounded-full flex items-center justify-center border border-white/20 group-hover/arrow:border-red-500/50 transition-all duration-300 group-hover/arrow:scale-110">
                 <FaChevronLeft className="text-white text-sm sm:text-base group-hover/arrow:text-red-400 transition-colors duration-300" />
               </div>
@@ -720,15 +816,15 @@ export default function Movies() {
             className="hidden sm:block absolute right-2 sm:right-4 top-1/2 transform -translate-y-1/2 z-30 group/arrow"
           >
             <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-l from-red-600 to-red-700 rounded-full blur-md opacity-0 group-hover/arrow:opacity-50 transition-opacity duration-300 hidden md:block"></div>
+              <div className="absolute inset-0 bg-gradient-to-l from-red-600 to-red-700 rounded-full blur-md opacity-0 group-hover/arrow:opacity-50 transition-opacity duration-300"></div>
               <div className="relative w-10 h-10 sm:w-12 sm:h-12 bg-black/60 backdrop-blur-md rounded-full flex items-center justify-center border border-white/20 group-hover/arrow:border-red-500/50 transition-all duration-300 group-hover/arrow:scale-110">
                 <FaChevronRight className="text-white text-sm sm:text-base group-hover/arrow:text-red-400 transition-colors duration-300" />
               </div>
             </div>
           </button>
 
-          {/* Slide counter */}
-          <div className="absolute top-4 right-4 z-20 bg-black/40 px-2 py-1 rounded-full text-[8px] text-white border border-white/10">
+          {/* Slide counter - responsive */}
+          <div className="absolute top-2 right-2 sm:top-4 sm:right-4 z-20 bg-black/40 px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-full text-[8px] sm:text-xs text-white border border-white/10">
             <span className="text-red-400">{currentHeroSlide + 1}</span>/{filteredHeroContent.length}
           </div>
 
@@ -744,13 +840,14 @@ export default function Movies() {
 
       {/* ===== Recently Updated Series Section ===== */}
       {!globalSearchQuery && recentlyUpdatedSeries.length > 0 && (
-        <section className="container mx-auto px-4 py-8">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl md:text-2xl font-bold text-white flex items-center gap-2">
-              <FaPlayCircle className="text-purple-500" />
-              Recently Updated Series
-              <span className="text-xs text-purple-400 ml-2 bg-purple-900/30 px-2 py-0.5 rounded-full animate-pulse">
-                NEW EPISODES
+        <section className="container mx-auto px-4 py-6 sm:py-8">
+          <div className="flex items-center justify-between mb-3 sm:mb-4">
+            <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-white flex items-center gap-2">
+              <FaPlayCircle className="text-purple-500 text-sm sm:text-base" />
+              <span className="hidden xs:inline">Recently Updated Series</span>
+              <span className="xs:hidden">Updated Series</span>
+              <span className="text-[8px] sm:text-xs text-purple-400 ml-1 sm:ml-2 bg-purple-900/30 px-1.5 sm:px-2 py-0.5 rounded-full animate-pulse">
+                NEW
               </span>
             </h2>
           </div>
@@ -787,11 +884,11 @@ export default function Movies() {
             {recentlyUpdatedSeries.slice(0, 6).map(series => (
               <div
                 key={series?.id}
-                className="flex-none w-[120px] relative"
+                className="flex-none w-[100px] relative"
                 onClick={() => handleSeriesClick(series, series.latestEpisode)}
               >
                 <div className="absolute top-1 left-1 z-10">
-                  <span className="px-1 py-0.5 bg-purple-600 text-white text-[8px] rounded-full">
+                  <span className="px-1 py-0.5 bg-purple-600 text-white text-[6px] rounded-full">
                     S{series.latestEpisode.seasonNumber}:E{series.latestEpisode.episodeNumber}
                   </span>
                 </div>
@@ -802,20 +899,18 @@ export default function Movies() {
         </section>
       )}
 
-      {/* ===== Latest Uploads Section (includes movies and series with new episodes) ===== */}
+      {/* ===== Latest Uploads Section ===== */}
       {!globalSearchQuery && latestUploads.length > 0 && (
-        <section className="container mx-auto px-4 py-8">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl md:text-2xl font-bold text-white flex items-center gap-2">
-              <FaUpload className="text-green-500" />
-              Latest Updates
-              <span className="text-xs text-green-400 ml-2 bg-green-900/30 px-2 py-0.5 rounded-full animate-pulse">
+        <section className="container mx-auto px-4 py-6 sm:py-8">
+          <div className="flex items-center justify-between mb-3 sm:mb-4">
+            <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-white flex items-center gap-2">
+              <FaUpload className="text-green-500 text-sm sm:text-base" />
+              <span className="hidden xs:inline">Latest Updates</span>
+              <span className="xs:hidden">Updates</span>
+              <span className="text-[8px] sm:text-xs text-green-400 ml-1 sm:ml-2 bg-green-900/30 px-1.5 sm:px-2 py-0.5 rounded-full animate-pulse">
                 NEW
               </span>
             </h2>
-            <div className="text-xs text-gray-400">
-              Recently added or updated
-            </div>
           </div>
 
           {/* Desktop Grid */}
@@ -837,7 +932,7 @@ export default function Movies() {
                     <>
                       <span className="px-2 py-1 bg-purple-600 text-white text-xs rounded-full flex items-center gap-1 shadow-lg">
                         <FaTv className="text-[8px]" />
-                        New Ep
+                        New
                       </span>
                       <span className="px-2 py-1 bg-blue-600 text-white text-xs rounded-full">
                         S{item.latestEpisode.seasonNumber}:E{item.latestEpisode.episodeNumber}
@@ -863,7 +958,7 @@ export default function Movies() {
             {latestUploads.slice(0, 8).map(item => (
               <div
                 key={item?.id}
-                className="flex-none w-[120px] relative"
+                className="flex-none w-[100px] relative"
                 onClick={() => {
                   if (item.uploadType === 'series') {
                     handleSeriesClick(item, item.latestEpisode);
@@ -874,11 +969,11 @@ export default function Movies() {
               >
                 <div className="absolute top-1 left-1 z-10">
                   {item.uploadType === 'series' ? (
-                    <span className="px-1 py-0.5 bg-purple-600 text-white text-[8px] rounded-full">
-                      NEW EP
+                    <span className="px-1 py-0.5 bg-purple-600 text-white text-[6px] rounded-full">
+                      NEW
                     </span>
                   ) : (
-                    <span className="px-1 py-0.5 bg-green-600 text-white text-[8px] rounded-full">
+                    <span className="px-1 py-0.5 bg-green-600 text-white text-[6px] rounded-full">
                       NEW
                     </span>
                   )}
@@ -892,11 +987,11 @@ export default function Movies() {
 
       {/* Search and Filter Bar */}
       <div className="container mx-auto px-4 py-4">
-        <div className="bg-gray-900/80 rounded-xl border border-gray-800 p-4">
-          <div className="flex flex-col md:flex-row gap-3">
+        <div className="bg-gray-900/80 rounded-xl border border-gray-800 p-3 sm:p-4">
+          <div className="flex flex-col md:flex-row gap-2 sm:gap-3">
             {/* Search Input */}
             <div className="flex-1 relative">
-              <FaSearch className={`absolute left-3 top-1/2 transform -translate-y-1/2 text-sm ${isSearchFocused ? 'text-red-400' : 'text-gray-400'
+              <FaSearch className={`absolute left-3 top-1/2 transform -translate-y-1/2 text-xs sm:text-sm ${isSearchFocused ? 'text-red-400' : 'text-gray-400'
                 }`} />
               <input
                 type="text"
@@ -905,14 +1000,14 @@ export default function Movies() {
                 onFocus={() => setIsSearchFocused(true)}
                 onBlur={() => setIsSearchFocused(false)}
                 placeholder="Search movies..."
-                className="w-full pl-9 pr-8 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white text-sm focus:outline-none focus:border-red-500"
+                className="w-full pl-8 sm:pl-9 pr-8 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white text-xs sm:text-sm focus:outline-none focus:border-red-500"
               />
               {globalSearchQuery && (
                 <button
                   onClick={handleClearSearch}
                   className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white"
                 >
-                  <FaTimes />
+                  <FaTimes className="text-xs sm:text-sm" />
                 </button>
               )}
             </div>
@@ -920,7 +1015,7 @@ export default function Movies() {
             {/* Filter Button */}
             <button
               onClick={() => setShowFilters(!showFilters)}
-              className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-white text-sm"
+              className="flex items-center justify-center gap-2 px-3 sm:px-4 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-white text-xs sm:text-sm"
             >
               <FaFilter className={showFilters ? 'text-red-400' : ''} />
               Filters
@@ -930,7 +1025,7 @@ export default function Movies() {
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white text-sm focus:outline-none focus:border-red-500"
+              className="px-3 sm:px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white text-xs sm:text-sm focus:outline-none focus:border-red-500"
             >
               <option value="popular">Popular</option>
               <option value="rating">Top Rated</option>
@@ -943,30 +1038,30 @@ export default function Movies() {
               onClick={() => setSortOrder(sortOrder === "desc" ? "asc" : "desc")}
               className="p-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-white"
             >
-              {sortOrder === "desc" ? <FaSortAmountDown /> : <FaSortAmountUp />}
+              {sortOrder === "desc" ? <FaSortAmountDown className="text-xs sm:text-sm" /> : <FaSortAmountUp className="text-xs sm:text-sm" />}
             </button>
           </div>
 
           {/* Filter Panel */}
           {showFilters && (
-            <div className="mt-4 p-4 bg-gray-800/50 rounded-lg">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="mt-3 sm:mt-4 p-3 sm:p-4 bg-gray-800/50 rounded-lg">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-gray-300 mb-2">Categories</label>
+                  <label className="block text-[10px] sm:text-xs font-medium text-gray-300 mb-1 sm:mb-2">Categories</label>
                   <div className="space-y-1 max-h-32 overflow-y-auto">
                     <button
                       onClick={() => setSelectedCategory("all")}
-                      className={`w-full text-left px-2 py-1 rounded text-xs ${selectedCategory === "all" ? 'bg-red-600 text-white' : 'bg-gray-800 text-gray-300'
+                      className={`w-full text-left px-2 py-1 rounded text-[8px] sm:text-xs ${selectedCategory === "all" ? 'bg-red-600 text-white' : 'bg-gray-800 text-gray-300'
                         }`}
                     >
                       All
                     </button>
                     <button
                       onClick={() => setSelectedCategory("featured")}
-                      className={`w-full text-left px-2 py-1 rounded text-xs flex items-center gap-1 ${selectedCategory === "featured" ? 'bg-orange-600 text-white' : 'bg-gray-800 text-gray-300'
+                      className={`w-full text-left px-2 py-1 rounded text-[8px] sm:text-xs flex items-center gap-1 ${selectedCategory === "featured" ? 'bg-orange-600 text-white' : 'bg-gray-800 text-gray-300'
                         }`}
                     >
-                      <FaFire /> Featured
+                      <FaFire className="text-[6px] sm:text-xs" /> Featured
                     </button>
                     {allCategories
                       .filter(cat => cat !== 'all' && cat !== 'featured')
@@ -975,7 +1070,7 @@ export default function Movies() {
                         <button
                           key={category}
                           onClick={() => setSelectedCategory(category)}
-                          className={`w-full text-left px-2 py-1 rounded text-xs flex items-center gap-1 ${selectedCategory === category ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-300'
+                          className={`w-full text-left px-2 py-1 rounded text-[8px] sm:text-xs flex items-center gap-1 ${selectedCategory === category ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-300'
                             }`}
                         >
                           {getCategoryIcon(category)}
@@ -992,23 +1087,23 @@ export default function Movies() {
 
       {/* Search Results Indicator */}
       {globalSearchQuery && (
-        <div className="container mx-auto px-4 mb-4">
-          <div className="bg-blue-900/20 rounded-lg border border-blue-800/30 p-3">
+        <div className="container mx-auto px-4 mb-3 sm:mb-4">
+          <div className="bg-blue-900/20 rounded-lg border border-blue-800/30 p-2 sm:p-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <FaSearch className="text-blue-400" />
+                <FaSearch className="text-blue-400 text-xs sm:text-sm" />
                 <div>
-                  <h3 className="text-sm font-semibold text-white">
-                    Results for: <span className="text-blue-400">"{globalSearchQuery}"</span>
+                  <h3 className="text-xs sm:text-sm font-semibold text-white">
+                    Results: <span className="text-blue-400">"{globalSearchQuery}"</span>
                   </h3>
-                  <p className="text-xs text-gray-400">
+                  <p className="text-[8px] sm:text-xs text-gray-400">
                     Found {filteredMovies.length} movie{filteredMovies.length !== 1 ? 's' : ''}
                   </p>
                 </div>
               </div>
               <button
                 onClick={handleClearSearch}
-                className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 rounded-lg text-white text-xs flex items-center gap-1"
+                className="px-2 sm:px-3 py-1 sm:py-1.5 bg-gray-800 hover:bg-gray-700 rounded-lg text-white text-[8px] sm:text-xs flex items-center gap-1"
               >
                 <FaTimes /> Clear
               </button>
@@ -1019,13 +1114,14 @@ export default function Movies() {
 
       {/* Featured Movies Section */}
       {selectedCategory === "all" && featuredMovies.length > 0 && !globalSearchQuery && (
-        <section className="container mx-auto px-4 mb-6">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-xl md:text-2xl font-bold text-white flex items-center gap-2">
-              <FaFire className="text-red-500" />
-              Featured Movies
-              <span className="text-xs text-red-400 ml-2 bg-red-900/30 px-2 py-0.5 rounded-full">
-                TOP PICKS
+        <section className="container mx-auto px-4 mb-4 sm:mb-6">
+          <div className="flex items-center justify-between mb-2 sm:mb-3">
+            <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-white flex items-center gap-2">
+              <FaFire className="text-red-500 text-sm sm:text-base" />
+              <span className="hidden xs:inline">Featured Movies</span>
+              <span className="xs:hidden">Featured</span>
+              <span className="text-[8px] sm:text-xs text-red-400 ml-1 sm:ml-2 bg-red-900/30 px-1.5 sm:px-2 py-0.5 rounded-full">
+                TOP
               </span>
             </h2>
           </div>
@@ -1046,7 +1142,7 @@ export default function Movies() {
             {featuredMovies.slice(0, 8).map(movie => (
               <div
                 key={movie?.id}
-                className="flex-none w-[120px]"
+                className="flex-none w-[100px]"
                 onClick={() => handleMovieClick(movie)}
               >
                 <MovieCard movie={movie} />
@@ -1057,26 +1153,26 @@ export default function Movies() {
       )}
 
       {/* All Movies Section */}
-      <section className="container mx-auto px-4 pb-8">
+      <section className="container mx-auto px-4 pb-6 sm:pb-8">
         {/* Header */}
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-xl md:text-2xl font-bold text-white">
-            {globalSearchQuery ? "Search Results" :
+        <div className="flex items-center justify-between mb-2 sm:mb-3">
+          <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-white">
+            {globalSearchQuery ? "Results" :
               selectedCategory === "all" ? "All Movies" :
-                selectedCategory === "featured" ? "Featured Movies" :
-                  `${selectedCategory} Movies`}
+                selectedCategory === "featured" ? "Featured" :
+                  `${selectedCategory}`}
           </h2>
-          <span className="text-xs text-gray-400 bg-gray-800 px-2 py-1 rounded-full">
+          <span className="text-[8px] sm:text-xs text-gray-400 bg-gray-800 px-2 sm:px-3 py-1 rounded-full">
             {filteredMovies.length}
           </span>
         </div>
 
         {/* Category Chips - HIDE DURING SEARCH */}
         {!globalSearchQuery && (
-          <div className="flex gap-1 mb-4 overflow-x-auto pb-1">
+          <div className="flex gap-1 mb-3 sm:mb-4 overflow-x-auto pb-1">
             <button
               onClick={() => setSelectedCategory("all")}
-              className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap ${selectedCategory === "all"
+              className={`px-2 sm:px-3 py-1 sm:py-1.5 rounded-full text-[8px] sm:text-xs font-medium whitespace-nowrap ${selectedCategory === "all"
                 ? 'bg-red-600 text-white'
                 : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
                 }`}
@@ -1085,12 +1181,12 @@ export default function Movies() {
             </button>
             <button
               onClick={() => setSelectedCategory("featured")}
-              className={`px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-1 whitespace-nowrap ${selectedCategory === "featured"
+              className={`px-2 sm:px-3 py-1 sm:py-1.5 rounded-full text-[8px] sm:text-xs font-medium flex items-center gap-1 whitespace-nowrap ${selectedCategory === "featured"
                 ? 'bg-orange-600 text-white'
                 : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
                 }`}
             >
-              <FaFire /> Featured
+              <FaFire className="text-[6px] sm:text-xs" /> Featured
             </button>
             {allCategories
               .filter(cat => cat !== 'all' && cat !== 'featured')
@@ -1099,7 +1195,7 @@ export default function Movies() {
                 <button
                   key={category}
                   onClick={() => setSelectedCategory(category)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-1 whitespace-nowrap ${selectedCategory === category
+                  className={`px-2 sm:px-3 py-1 sm:py-1.5 rounded-full text-[8px] sm:text-xs font-medium flex items-center gap-1 whitespace-nowrap ${selectedCategory === category
                     ? 'bg-blue-600 text-white'
                     : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
                     }`}
@@ -1113,16 +1209,16 @@ export default function Movies() {
 
         {/* Movies Grid */}
         {filteredMovies.length === 0 ? (
-          <div className="text-center py-12 bg-gray-900/30 rounded-lg">
-            <div className="text-4xl mb-2">🎬</div>
-            <h3 className="text-base font-bold text-white mb-1">No movies found</h3>
-            <p className="text-xs text-gray-400 mb-3">
+          <div className="text-center py-8 sm:py-12 bg-gray-900/30 rounded-lg">
+            <div className="text-3xl sm:text-4xl mb-1 sm:mb-2">🎬</div>
+            <h3 className="text-sm sm:text-base font-bold text-white mb-1">No movies found</h3>
+            <p className="text-[8px] sm:text-xs text-gray-400 mb-2 sm:mb-3">
               {globalSearchQuery ? `No matches for "${globalSearchQuery}"` : "No movies available"}
             </p>
             {globalSearchQuery && (
               <button
                 onClick={handleClearSearch}
-                className="px-4 py-2 bg-red-600 rounded-lg text-white text-xs font-medium"
+                className="px-3 sm:px-4 py-1.5 sm:py-2 bg-red-600 rounded-lg text-white text-[8px] sm:text-xs font-medium"
               >
                 Clear Search
               </button>
@@ -1130,7 +1226,7 @@ export default function Movies() {
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 md:gap-4">
+            <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-1 sm:gap-2 md:gap-4">
               {paginatedMovies.map(movie => (
                 <div
                   key={movie?.id}
@@ -1144,23 +1240,23 @@ export default function Movies() {
 
             {/* Pagination */}
             {totalPages > 1 && (
-              <div className="flex items-center justify-center gap-2 mt-6">
+              <div className="flex items-center justify-center gap-2 mt-4 sm:mt-6">
                 <button
                   onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
                   disabled={currentPage === 1}
-                  className="w-8 h-8 rounded-lg bg-gray-800 disabled:opacity-50 text-white flex items-center justify-center"
+                  className="w-6 sm:w-8 h-6 sm:h-8 rounded-lg bg-gray-800 disabled:opacity-50 text-white flex items-center justify-center"
                 >
-                  <FaChevronLeft className="text-xs" />
+                  <FaChevronLeft className="text-[8px] sm:text-xs" />
                 </button>
-                <span className="text-xs text-white bg-gray-800 px-3 py-1.5 rounded-lg">
+                <span className="text-[8px] sm:text-xs text-white bg-gray-800 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg">
                   {currentPage} / {totalPages}
                 </span>
                 <button
                   onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
                   disabled={currentPage === totalPages}
-                  className="w-8 h-8 rounded-lg bg-gray-800 disabled:opacity-50 text-white flex items-center justify-center"
+                  className="w-6 sm:w-8 h-6 sm:h-8 rounded-lg bg-gray-800 disabled:opacity-50 text-white flex items-center justify-center"
                 >
-                  <FaChevronRight className="text-xs" />
+                  <FaChevronRight className="text-[8px] sm:text-xs" />
                 </button>
               </div>
             )}
@@ -1168,7 +1264,7 @@ export default function Movies() {
         )}
       </section>
 
-      {/* Quick View Modal - UPDATED for series navigation */}
+      {/* Quick View Modal */}
       {showQuickView && quickViewMovie && (
         <div
           className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/80"
@@ -1178,7 +1274,7 @@ export default function Movies() {
             className="w-full md:max-w-2xl bg-gray-900 rounded-t-2xl md:rounded-2xl border border-gray-800"
             onClick={e => e.stopPropagation()}
           >
-            <div className="relative h-40 md:h-56">
+            <div className="relative h-32 md:h-56">
               <img
                 src={quickViewMovie?.background || quickViewMovie?.poster}
                 alt={quickViewMovie?.title}
@@ -1187,70 +1283,68 @@ export default function Movies() {
               <div className="absolute inset-0 bg-gradient-to-t from-gray-900 via-transparent to-transparent" />
               <button
                 onClick={() => setShowQuickView(false)}
-                className="absolute top-2 right-2 w-7 h-7 bg-black/50 rounded-full flex items-center justify-center"
+                className="absolute top-2 right-2 w-6 sm:w-7 h-6 sm:h-7 bg-black/50 rounded-full flex items-center justify-center"
               >
-                <FaTimes className="text-white text-xs" />
+                <FaTimes className="text-white text-xs sm:text-sm" />
               </button>
 
               {/* Quick View Badges */}
               {quickViewMovie.latestEpisode && (
                 <div className="absolute top-2 left-2 flex gap-1">
-                  <span className="px-2 py-1 bg-purple-600 text-white text-xs rounded-full">
-                    Latest Episode
+                  <span className="px-1.5 sm:px-2 py-0.5 sm:py-1 bg-purple-600 text-white text-[8px] sm:text-xs rounded-full">
+                    Latest
                   </span>
-                  <span className="px-2 py-1 bg-blue-600 text-white text-xs rounded-full">
+                  <span className="px-1.5 sm:px-2 py-0.5 sm:py-1 bg-blue-600 text-white text-[8px] sm:text-xs rounded-full">
                     S{quickViewMovie.latestEpisode.seasonNumber}:E{quickViewMovie.latestEpisode.episodeNumber}
                   </span>
                 </div>
               )}
             </div>
-            <div className="p-4">
-              <h2 className="text-lg font-bold text-white mb-1">{quickViewMovie?.title}</h2>
+            <div className="p-3 sm:p-4">
+              <h2 className="text-sm sm:text-lg font-bold text-white mb-1">{quickViewMovie?.title}</h2>
               {quickViewMovie.latestEpisode && (
-                <h3 className="text-sm text-purple-400 mb-2">
-                  Latest: {quickViewMovie.latestEpisode.title}
+                <h3 className="text-[10px] sm:text-sm text-purple-400 mb-1 line-clamp-1">
+                  {quickViewMovie.latestEpisode.title}
                 </h3>
               )}
-              <div className="flex flex-wrap items-center gap-2 text-xs text-gray-400 mb-2">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-[8px] sm:text-xs text-gray-400 mb-2">
                 {quickViewMovie?.rating && (
                   <span className="flex items-center gap-1">
-                    <FaStar className="text-yellow-500" /> {quickViewMovie.rating}
+                    <FaStar className="text-yellow-500 text-[6px] sm:text-xs" /> {quickViewMovie.rating}
                   </span>
                 )}
                 {quickViewMovie?.year && <span>{quickViewMovie.year}</span>}
                 {quickViewMovie.lastUpdated && (
                   <span className="text-green-400">
-                    Updated: {formatDate(quickViewMovie.lastUpdated)}
+                    {formatDate(quickViewMovie.lastUpdated)}
                   </span>
                 )}
                 {quickViewMovie.episodeCount && (
                   <span className="text-purple-400">
-                    {quickViewMovie.episodeCount} Episodes
+                    {quickViewMovie.episodeCount} eps
                   </span>
                 )}
               </div>
-              <p className="text-xs text-gray-300 mb-3 line-clamp-3">
+              <p className="text-[8px] sm:text-xs text-gray-300 mb-2 sm:mb-3 line-clamp-2 sm:line-clamp-3">
                 {quickViewMovie.latestEpisode?.description || quickViewMovie?.description}
               </p>
               <div className="flex gap-2">
                 <button
                   onClick={() => {
                     if (quickViewMovie.latestEpisode) {
-                      // Series with latest episode
                       handleSeriesClick(quickViewMovie, quickViewMovie.latestEpisode);
                     } else {
-                      // Regular movie
                       handleMovieClick(quickViewMovie);
                     }
                     setShowQuickView(false);
                   }}
-                  className="flex-1 bg-red-600 py-2 rounded-lg text-white text-xs font-semibold flex items-center justify-center gap-1"
+                  className="flex-1 bg-red-600 py-1.5 sm:py-2 rounded-lg text-white text-[8px] sm:text-xs font-semibold flex items-center justify-center gap-1"
                 >
-                  <FaPlay /> {quickViewMovie.latestEpisode ? 'Watch Latest Episode' : 'Watch Now'}
+                  <FaPlay className="text-[6px] sm:text-xs" /> {quickViewMovie.latestEpisode ? 'Watch Latest' : 'Watch'}
                 </button>
                 <button
                   onClick={() => setShowQuickView(false)}
-                  className="flex-1 bg-gray-800 py-2 rounded-lg text-white text-xs font-semibold"
+                  className="flex-1 bg-gray-800 py-1.5 sm:py-2 rounded-lg text-white text-[8px] sm:text-xs font-semibold"
                 >
                   Close
                 </button>
