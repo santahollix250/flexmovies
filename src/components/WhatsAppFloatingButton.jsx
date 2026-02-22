@@ -15,8 +15,8 @@ const WhatsAppFloatingButton = () => {
     }, []);
 
     const whatsappLinks = {
-        group: "https://chat.whatsapp.com/0029Vb6gSfuFcowDBIM2rp2u",
-        direct: "250783948792",
+        group: "https://whatsapp.com/channel/0029Vb6gSfuFcowDBIM2rp2u", // Join Channel/Group
+        direct: "250783948792", // Direct chat number
     };
 
     const openLink = (type) => {
@@ -24,22 +24,16 @@ const WhatsAppFloatingButton = () => {
         if (!url) return;
 
         if (type === 'group') {
-            if (isMobile) {
-                window.location.href = url;
-                setTimeout(() => window.open(url, '_blank'), 500);
-            } else {
-                window.open(url, '_blank', 'noopener,noreferrer');
-            }
+            // For group/channel links, just open directly
+            window.open(url, '_blank');
         } else {
-            const whatsappUrl = isMobile
-                ? `https://wa.me/${url}`
-                : `https://web.whatsapp.com/send?phone=${url}`;
-
+            // For direct chat, use the appropriate format based on device
             if (isMobile) {
-                window.location.href = whatsappUrl;
-                setTimeout(() => window.open(whatsappUrl, '_blank'), 500);
+                // On mobile, open WhatsApp app directly
+                window.location.href = `https://wa.me/${url}`;
             } else {
-                window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
+                // On desktop, open WhatsApp Web
+                window.open(`https://web.whatsapp.com/send?phone=${url}`, '_blank');
             }
         }
         setIsExpanded(false);
@@ -51,16 +45,16 @@ const WhatsAppFloatingButton = () => {
                 <div className={`absolute ${isMobile ? 'bottom-14' : 'bottom-12'} right-0 mb-2 space-y-2`}>
                     <button
                         onClick={() => openLink('group')}
-                        className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-full shadow-lg text-xs w-full min-w-[130px] active:scale-95 transition-transform"
+                        className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-full shadow-lg text-sm w-full min-w-[140px] active:scale-95 transition-transform font-medium"
                     >
-                        <FaUsers className="text-white text-xs" />
-                        <span>Join Group</span>
+                        <FaUsers className="text-white text-sm" />
+                        <span>Join Channel</span>
                     </button>
                     <button
                         onClick={() => openLink('direct')}
-                        className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-full shadow-lg text-xs w-full min-w-[130px] active:scale-95 transition-transform"
+                        className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-full shadow-lg text-sm w-full min-w-[140px] active:scale-95 transition-transform font-medium"
                     >
-                        <FaComment className="text-white text-xs" />
+                        <FaComment className="text-white text-sm" />
                         <span>Direct Chat</span>
                     </button>
                 </div>
@@ -68,20 +62,28 @@ const WhatsAppFloatingButton = () => {
 
             <button
                 onClick={() => setIsExpanded(!isExpanded)}
-                className="relative w-12 h-12 bg-gradient-to-r from-green-600 to-green-500 hover:from-green-700 hover:to-green-600 rounded-full shadow-xl flex items-center justify-center transition-all duration-300 hover:scale-110 active:scale-95"
+                className="relative w-14 h-14 bg-gradient-to-r from-green-600 to-green-500 hover:from-green-700 hover:to-green-600 rounded-full shadow-xl flex items-center justify-center transition-all duration-300 hover:scale-110 active:scale-95"
             >
                 {isExpanded ? (
-                    <FaTimes className="text-white text-lg" />
+                    <FaTimes className="text-white text-xl" />
                 ) : (
                     <>
-                        <FaWhatsapp className="text-white text-xl" />
-                        <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
+                        <FaWhatsapp className="text-white text-2xl" />
+                        <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                        </span>
                     </>
                 )}
             </button>
 
+            {/* Backdrop for mobile */}
             {isExpanded && isMobile && (
-                <div className="fixed inset-0 z-40" onClick={() => setIsExpanded(false)} />
+                <div
+                    className="fixed inset-0 bg-black bg-opacity-20 z-40"
+                    onClick={() => setIsExpanded(false)}
+                    style={{ backdropFilter: 'blur(2px)' }}
+                />
             )}
         </div>
     );
