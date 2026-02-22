@@ -15,7 +15,7 @@ const WhatsAppFloatingButton = () => {
     }, []);
 
     const whatsappLinks = {
-        group: "https://chat.whatsapp.com/0029Vb6gSfuFcowDBIM2rp2u",
+        group: "https://whatsapp.com/channel/0029Vb6gSfuFcowDBIM2rp2u",
         direct: "250783948792",
     };
 
