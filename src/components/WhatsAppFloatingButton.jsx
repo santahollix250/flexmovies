@@ -15,33 +15,54 @@ const WhatsAppFloatingButton = () => {
     }, []);
 
     const whatsappLinks = {
-        // FIXED: This is the correct format for WhatsApp channels
-        group: "https://whatsapp.com/channel/0029Vb6gSfuFcowDBIM2rp2u",
+        // Your WhatsApp channel invite link
+        group: "https://chat.whatsapp.com/0029Vb6gSfuFcowDBIM2rp2u", // Changed to invite link format
         direct: "250783948792",
     };
 
     const openLink = (type) => {
-        const url = type === 'group' ? whatsappLinks.group : whatsappLinks.direct;
-        if (!url) return;
-
         if (type === 'group') {
-            // For WhatsApp channels, use direct URL
-            window.open(url, '_blank', 'noopener,noreferrer');
+            // For WhatsApp group/channel - use the direct invite link
+            const groupUrl = whatsappLinks.group;
+
+            if (isMobile) {
+                // On mobile, try to open in WhatsApp app first
+                window.location.href = groupUrl;
+            } else {
+                // On desktop, open in new tab
+                window.open(groupUrl, '_blank');
+            }
         } else {
             // For direct chat
-            const phoneNumber = url.replace(/\D/g, '');
-            // Try multiple formats for better mobile compatibility
-            const waUrl = `https://wa.me/${phoneNumber}`;
-            window.open(waUrl, '_blank', 'noopener,noreferrer');
+            const phoneNumber = whatsappLinks.direct.replace(/\D/g, '');
+
+            if (isMobile) {
+                // On mobile, use intent for Android or universal link for iOS
+                const userAgent = navigator.userAgent || navigator.vendor;
+                if (/android/i.test(userAgent)) {
+                    // Android intent
+                    window.location.href = `intent://send?phone=${phoneNumber}#Intent;scheme=whatsapp;package=com.whatsapp;end`;
+                } else if (/iPad|iPhone|iPod/i.test(userAgent)) {
+                    // iOS universal link
+                    window.location.href = `https://wa.me/${phoneNumber}`;
+                } else {
+                    // Fallback
+                    window.location.href = `https://wa.me/${phoneNumber}`;
+                }
+            } else {
+                // On desktop, open WhatsApp Web
+                window.open(`https://web.whatsapp.com/send?phone=${phoneNumber}`, '_blank');
+            }
         }
 
         // Close the menu
-        setTimeout(() => setIsExpanded(false), 100);
+        setIsExpanded(false);
     };
 
-    // Handle touch events properly on mobile
-    const handleTouchStart = (e) => {
-        e.stopPropagation();
+    // Test function to verify link works
+    const testLink = () => {
+        console.log('Group link:', whatsappLinks.group);
+        console.log('Is mobile:', isMobile);
     };
 
     return (
@@ -51,56 +72,40 @@ const WhatsAppFloatingButton = () => {
                     {/* Backdrop */}
                     <div
                         className="fixed inset-0 bg-black/30 z-[9997]"
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            setIsExpanded(false);
-                        }}
-                        onTouchStart={handleTouchStart}
+                        onClick={() => setIsExpanded(false)}
                     />
 
                     {/* Buttons */}
                     <div className={`absolute ${isMobile ? 'bottom-16' : 'bottom-14'} right-0 mb-2 space-y-2 z-[9998]`}>
-                        <a
-                            href={whatsappLinks.group}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                setIsExpanded(false);
-                            }}
-                            onTouchStart={handleTouchStart}
-                            className="flex items-center gap-2 bg-green-600 active:bg-green-700 text-white px-3 py-2.5 rounded-full shadow-xl text-xs w-full min-w-[140px] font-medium border border-green-400/30 cursor-pointer active:scale-95 transition-transform no-underline"
+                        <button
+                            onClick={() => openLink('group')}
+                            onTouchStart={() => openLink('group')}
+                            className="flex items-center gap-2 bg-green-600 active:bg-green-700 text-white px-3 py-2.5 rounded-full shadow-xl text-xs w-full min-w-[140px] font-medium border border-green-400/30 cursor-pointer active:scale-95 transition-transform"
                             style={{ WebkitTapHighlightColor: 'transparent' }}
                         >
                             <FaUsers className="text-white text-sm" />
                             <span>Join Channel</span>
-                        </a>
+                        </button>
 
-                        <a
-                            href={`https://wa.me/${whatsappLinks.direct.replace(/\D/g, '')}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                setIsExpanded(false);
-                            }}
-                            onTouchStart={handleTouchStart}
-                            className="flex items-center gap-2 bg-blue-600 active:bg-blue-700 text-white px-3 py-2.5 rounded-full shadow-xl text-xs w-full min-w-[140px] font-medium border border-blue-400/30 cursor-pointer active:scale-95 transition-transform no-underline"
+                        <button
+                            onClick={() => openLink('direct')}
+                            onTouchStart={() => openLink('direct')}
+                            className="flex items-center gap-2 bg-blue-600 active:bg-blue-700 text-white px-3 py-2.5 rounded-full shadow-xl text-xs w-full min-w-[140px] font-medium border border-blue-400/30 cursor-pointer active:scale-95 transition-transform"
                             style={{ WebkitTapHighlightColor: 'transparent' }}
                         >
                             <FaComment className="text-white text-sm" />
                             <span>Direct Chat</span>
-                        </a>
+                        </button>
                     </div>
                 </>
             )}
 
             <button
-                onClick={(e) => {
-                    e.stopPropagation();
+                onClick={() => {
                     setIsExpanded(!isExpanded);
+                    testLink(); // Remove this in production
                 }}
-                onTouchStart={handleTouchStart}
+                onTouchStart={() => setIsExpanded(!isExpanded)}
                 className="relative w-12 h-12 bg-gradient-to-r from-green-600 to-green-500 hover:from-green-700 hover:to-green-600 rounded-full shadow-2xl flex items-center justify-center transition-all duration-300 hover:scale-110 active:scale-95 cursor-pointer z-[9999]"
                 style={{ WebkitTapHighlightColor: 'transparent' }}
                 aria-label="WhatsApp options"
