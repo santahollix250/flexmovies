@@ -146,7 +146,7 @@ export default function Series() {
       default:
         return series;
     }
-  }, [allSeries, sortBy, getEpisodesForSeries]);
+  }, [allSeries, sortBy, getEpisodesForSeries, calculatePopularity]);
 
   // Filter series
   const filteredSeries = useMemo(() => {
@@ -176,7 +176,7 @@ export default function Series() {
     }
 
     return filtered;
-  }, [sortedSeries, category, query, activeTab]);
+  }, [sortedSeries, category, query, activeTab, calculatePopularity]);
 
   // Featured series
   const featuredSeries = useMemo(() => {
@@ -358,7 +358,7 @@ export default function Series() {
   // ========== RENDER ==========
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-950 via-black to-gray-900 pt-14 md:pt-20">
+    <div className="min-h-screen bg-gradient-to-br from-gray-950 via-black to-gray-900 pt-14 md:pt-20 pb-0">
       {/* Animated Background */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-20 -right-20 w-40 md:w-80 h-40 md:h-80 bg-purple-600/10 rounded-full blur-3xl"></div>
@@ -736,7 +736,7 @@ export default function Series() {
         </div>
 
         {/* Series Grid/List */}
-        <div className="mb-8 md:mb-12">
+        <div className="mb-0 md:mb-0">
           {/* Header - Hidden on Mobile */}
           <div className="hidden md:flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold text-white">
