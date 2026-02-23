@@ -16,7 +16,7 @@ const WhatsAppFloatingButton = () => {
 
     const whatsappLinks = {
         // Your WhatsApp channel invite link
-        group: "https://chat.whatsapp.com/0029Vb6gSfuFcowDBIM2rp2u", // Changed to invite link format
+        group: "https://whatsapp.com/channel/0029Vb6gSfuFcowDBIM2rp2u", // Changed to invite link format
         direct: "250783948792",
     };
 
