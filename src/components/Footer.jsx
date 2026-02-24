@@ -18,7 +18,7 @@ export default function Footer() {
   const contactInfo = {
     phone: "+250 783 948 792",
     whatsapp: "250783948792",
-    email: "@agasobanuyeflex.com",
+    email: "irakabahodjabiri@gmail.com",
     address: "Bugesera Heights, Kigali",
     website: "https://agasobanuyeflex.com"
   };
