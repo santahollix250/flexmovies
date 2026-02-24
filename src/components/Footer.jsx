@@ -10,7 +10,7 @@ export default function Footer() {
     instagram: "https://www.instagram.com/santa_lamaer",
     twitter: "#",
     facebook: "#",
-    tiktok: "#",
+    tiktok: "https://www.tiktok.com/@flxemov",
     whatsapp: "https://chat.whatsapp.com/0029Vb6gSfuFcowDBIM2rp2u"
   };
 

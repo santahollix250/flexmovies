@@ -33,6 +33,7 @@ export default function Series() {
   const [startX, setStartX] = useState(0);
   const [scrollLeft, setScrollLeft] = useState(0);
   const [isLandscape, setIsLandscape] = useState(false);
+  const [selectedSeason, setSelectedSeason] = useState(1);
 
   // Slideshow state
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
@@ -251,6 +252,30 @@ export default function Series() {
     }
   };
 
+  // ========== DOWNLOAD FUNCTION ==========
+
+  // Handle download episode
+  const handleDownloadEpisode = (episode) => {
+    // Create a download link
+    const downloadUrl = episode.videoUrl || episode.video || episode.url ||
+      `https://example.com/download/${episode.id}`;
+
+    // Create a temporary anchor element
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.download = `${episode.title || 'episode'}.mp4`;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+
+    // Trigger download
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    // Show download notification (you can replace with your preferred notification system)
+    alert(`Downloading: ${episode.title || 'Episode'}`);
+  };
+
   // ========== SLIDESHOW FUNCTIONS ==========
 
   const nextSlide = () => {
@@ -298,6 +323,16 @@ export default function Series() {
     window.addEventListener('resize', checkOrientation);
     return () => window.removeEventListener('resize', checkOrientation);
   }, []);
+
+  // Update selected season when series changes
+  useEffect(() => {
+    if (selectedSeries) {
+      const seasons = getSeasons(getEpisodesForSeries(selectedSeries.id));
+      if (seasons.length > 0) {
+        setSelectedSeason(seasons[0]);
+      }
+    }
+  }, [selectedSeries]);
 
   // Touch drag for tabs
   const handleTouchStart = (e) => {
@@ -1099,29 +1134,31 @@ export default function Series() {
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="text-base md:text-xl font-bold text-white">Episodes</h3>
                     <select
-                      value={1}
-                      onChange={(e) => { }}
+                      value={selectedSeason}
+                      onChange={(e) => setSelectedSeason(parseInt(e.target.value))}
                       className="px-2 md:px-4 py-1.5 md:py-2 bg-gray-800/50 border border-gray-700/50 rounded-lg md:rounded-xl text-xs md:text-sm text-white"
                     >
                       {getSeasons(getEpisodesForSeries(selectedSeries.id)).map(season => (
-                        <option key={season} value={season}>S{season}</option>
+                        <option key={season} value={season}>Season {season}</option>
                       ))}
                     </select>
                   </div>
 
                   <div className="space-y-2 max-h-64 md:max-h-96 overflow-y-auto pr-1">
                     {sortEpisodes(getEpisodesForSeries(selectedSeries.id))
-                      .filter(ep => (parseInt(ep.seasonNumber) || 1) === 1)
+                      .filter(ep => (parseInt(ep.seasonNumber) || 1) === selectedSeason)
                       .map(episode => (
                         <div
                           key={episode.id}
                           className="flex items-center justify-between p-2 md:p-4 bg-gray-800/30 hover:bg-gray-800/50 rounded-lg md:rounded-xl transition-colors cursor-pointer group"
-                          onClick={() => {
-                            handlePlayEpisode(selectedSeries, episode);
-                            setShowSeriesDetails(false);
-                          }}
                         >
-                          <div className="flex items-center gap-2 md:gap-4 flex-1 min-w-0">
+                          <div
+                            className="flex items-center gap-2 md:gap-4 flex-1 min-w-0"
+                            onClick={() => {
+                              handlePlayEpisode(selectedSeries, episode);
+                              setShowSeriesDetails(false);
+                            }}
+                          >
                             <div className="w-6 h-6 md:w-8 md:h-8 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg flex items-center justify-center flex-shrink-0">
                               <span className="text-[10px] md:text-xs font-bold">{episode.episodeNumber}</span>
                             </div>
@@ -1134,18 +1171,43 @@ export default function Series() {
                               )}
                             </div>
                           </div>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handlePlayEpisode(selectedSeries, episode);
-                              setShowSeriesDetails(false);
-                            }}
-                            className="p-1.5 md:p-2 bg-purple-600/20 hover:bg-purple-600/40 rounded-lg text-purple-400 flex-shrink-0"
-                          >
-                            <FaPlay size={10} className="md:text-sm" />
-                          </button>
+
+                          <div className="flex items-center gap-1 md:gap-2">
+                            {/* Play Button */}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handlePlayEpisode(selectedSeries, episode);
+                                setShowSeriesDetails(false);
+                              }}
+                              className="p-1.5 md:p-2 bg-purple-600/20 hover:bg-purple-600/40 rounded-lg text-purple-400 flex-shrink-0 transition-all"
+                              title="Play Episode"
+                            >
+                              <FaPlay size={10} className="md:text-sm" />
+                            </button>
+                          </div>
                         </div>
                       ))}
+                  </div>
+
+                  {/* Download Button at Bottom of Episodes Section */}
+                  <div className="mt-4 pt-4 border-t border-gray-700/50">
+                    <button
+                      onClick={() => {
+                        const episodes = sortEpisodes(getEpisodesForSeries(selectedSeries.id))
+                          .filter(ep => (parseInt(ep.seasonNumber) || 1) === selectedSeason);
+                        if (episodes.length > 0) {
+                          handleDownloadEpisode(episodes[0]);
+                        }
+                      }}
+                      className="w-full px-4 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 rounded-lg text-sm font-medium text-white flex items-center justify-center gap-2 transition-all"
+                    >
+                      <FaDownload size={14} />
+                      Download Season {selectedSeason} Episodes
+                    </button>
+                    <p className="text-[10px] text-gray-500 text-center mt-2">
+                      Click to download the first episode of this season
+                    </p>
                   </div>
                 </div>
               </div>

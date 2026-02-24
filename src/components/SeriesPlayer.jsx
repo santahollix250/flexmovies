@@ -6,7 +6,7 @@ import {
     FaVideo, FaComment, FaHeart, FaPaperPlane, FaTrash, FaEdit, FaCheck, FaTimes,
     FaSpinner, FaExclamationTriangle, FaCloudDownloadAlt, FaFileDownload,
     FaChevronDown, FaChevronUp, FaLink, FaHdd, FaFilm, FaList, FaChevronLeft, FaChevronRight,
-    FaBookmark
+    FaBookmark, FaEllipsisV
 } from 'react-icons/fa';
 import { supabase } from '../lib/supabaseClient';
 import { MoviesContext } from '../context/MoviesContext';
@@ -33,6 +33,8 @@ const SeriesPlayer = () => {
     const youtubeContainerRef = useRef(null);
     const controlsTimerRef = useRef(null);
     const iframeRef = useRef(null);
+    const progressBarRef = useRef(null);
+    const volumeBarRef = useRef(null);
 
     // YouTube specific states
     const [youTubePlayer, setYouTubePlayer] = useState(null);
@@ -59,10 +61,14 @@ const SeriesPlayer = () => {
     const [dailyMotionId, setDailyMotionId] = useState('');
     const [retryCount, setRetryCount] = useState(0);
     const [useEmbed, setUseEmbed] = useState(false);
-    const [showDownloadOptions, setShowDownloadOptions] = useState(false);
     const [downloading, setDownloading] = useState(false);
     const [youtubeId, setYoutubeId] = useState('');
     const [isYouTubeVideo, setIsYouTubeVideo] = useState(false);
+    const [showMobileMenu, setShowMobileMenu] = useState(false);
+
+    // Slider interaction states
+    const [isSeeking, setIsSeeking] = useState(false);
+    const [isVolumeChanging, setIsVolumeChanging] = useState(false);
 
     // Comments state
     const [comments, setComments] = useState([]);
@@ -179,7 +185,7 @@ const SeriesPlayer = () => {
             setVideoLoaded(false);
             setProgress(0);
             setCurrentTime(0);
-            setPlaying(false); // Don't auto-play
+            setPlaying(false);
             initializeVideo(currentEpisode);
         }
     }, [currentEpisode, retryCount]);
@@ -609,7 +615,7 @@ const SeriesPlayer = () => {
         }
     };
 
-    // Initialize YouTube player - EXACTLY like the movies player
+    // Initialize YouTube player
     useEffect(() => {
         if (!youTubeApiReady || videoType !== 'youtube' || !youtubeId || !youtubeContainerRef.current) return;
 
@@ -702,7 +708,7 @@ const SeriesPlayer = () => {
     // Track YouTube progress
     const startYouTubeProgressTracking = (player) => {
         const interval = setInterval(() => {
-            if (player && player.getCurrentTime && player.getDuration) {
+            if (player && player.getCurrentTime && player.getDuration && !isSeeking) {
                 const current = player.getCurrentTime();
                 const total = player.getDuration();
                 if (total > 0) {
@@ -833,7 +839,7 @@ const SeriesPlayer = () => {
     }, [isVimeoVideo, isDailyMotionVideo, videoType, useEmbed, youTubePlayer, playing]);
 
     const handleTimeUpdate = () => {
-        if (videoRef.current && !isVimeoVideo && !isDailyMotionVideo && videoType !== 'youtube' && !useEmbed) {
+        if (videoRef.current && !isVimeoVideo && !isDailyMotionVideo && videoType !== 'youtube' && !useEmbed && !isSeeking) {
             const current = videoRef.current.currentTime;
             const total = videoRef.current.duration || 0;
             setCurrentTime(current);
@@ -842,8 +848,51 @@ const SeriesPlayer = () => {
         }
     };
 
+    // FIXED: Slider control with proper event handling
+    const handleSeekStart = (e) => {
+        e.stopPropagation();
+        setIsSeeking(true);
+    };
+
+    const handleSeekChange = (e) => {
+        e.stopPropagation();
+        const seekTo = parseFloat(e.target.value);
+        setProgress(seekTo);
+
+        // Update preview time while seeking
+        if (videoType === 'youtube' && youTubePlayer) {
+            const newTime = seekTo * youTubePlayer.getDuration();
+            setCurrentTime(newTime);
+        } else if (videoRef.current && !isNaN(videoRef.current.duration)) {
+            const newTime = seekTo * videoRef.current.duration;
+            setCurrentTime(newTime);
+        }
+    };
+
+    const handleSeekEnd = (e) => {
+        e.stopPropagation();
+        const seekTo = parseFloat(e.target.value);
+
+        if (videoType === 'youtube' && youTubePlayer) {
+            const newTime = seekTo * youTubePlayer.getDuration();
+            youTubePlayer.seekTo(newTime, true);
+        } else if (videoRef.current && !isNaN(videoRef.current.duration)) {
+            const newTime = seekTo * videoRef.current.duration;
+            videoRef.current.currentTime = newTime;
+        }
+
+        setIsSeeking(false);
+        showControlsWithTimer();
+    };
+
+    // FIXED: Volume slider with proper event handling
+    const handleVolumeStart = (e) => {
+        e.stopPropagation();
+        setIsVolumeChanging(true);
+    };
+
     const handleVolumeChange = (e) => {
-        e?.stopPropagation();
+        e.stopPropagation();
         const newVolume = parseFloat(e.target.value);
         setVolume(newVolume);
 
@@ -854,6 +903,11 @@ const SeriesPlayer = () => {
         }
 
         setMuted(newVolume === 0);
+    };
+
+    const handleVolumeEnd = (e) => {
+        e.stopPropagation();
+        setIsVolumeChanging(false);
         showControlsWithTimer();
     };
 
@@ -875,23 +929,6 @@ const SeriesPlayer = () => {
         showControlsWithTimer();
     };
 
-    const handleSeek = (e) => {
-        e?.stopPropagation();
-        const seekTo = parseFloat(e.target.value);
-        setProgress(seekTo);
-
-        if (videoType === 'youtube' && youTubePlayer) {
-            const newTime = seekTo * youTubePlayer.getDuration();
-            youTubePlayer.seekTo(newTime, true);
-            setCurrentTime(newTime);
-        } else if (videoRef.current && !isNaN(videoRef.current.duration)) {
-            const newTime = seekTo * videoRef.current.duration;
-            videoRef.current.currentTime = newTime;
-            setCurrentTime(newTime);
-        }
-        showControlsWithTimer();
-    };
-
     const handleForward = (e, seconds = 10) => {
         e?.stopPropagation();
 
@@ -899,9 +936,11 @@ const SeriesPlayer = () => {
             const newTime = Math.min(youTubePlayer.getCurrentTime() + seconds, youTubePlayer.getDuration());
             youTubePlayer.seekTo(newTime, true);
             setCurrentTime(newTime);
+            setProgress(newTime / youTubePlayer.getDuration());
         } else if (videoRef.current) {
             videoRef.current.currentTime += seconds;
             setCurrentTime(videoRef.current.currentTime);
+            setProgress(videoRef.current.currentTime / videoRef.current.duration);
         }
         showControlsWithTimer();
     };
@@ -913,9 +952,11 @@ const SeriesPlayer = () => {
             const newTime = Math.max(0, youTubePlayer.getCurrentTime() - seconds);
             youTubePlayer.seekTo(newTime, true);
             setCurrentTime(newTime);
+            setProgress(newTime / youTubePlayer.getDuration());
         } else if (videoRef.current) {
             videoRef.current.currentTime = Math.max(0, videoRef.current.currentTime - seconds);
             setCurrentTime(videoRef.current.currentTime);
+            setProgress(videoRef.current.currentTime / videoRef.current.duration);
         }
         showControlsWithTimer();
     };
@@ -933,46 +974,24 @@ const SeriesPlayer = () => {
         showControlsWithTimer();
     };
 
-    const handleDownload = async (e, quality = 'original') => {
+    // Simplified download function - directly navigates to download link
+    const handleDownload = (e) => {
         e?.stopPropagation();
 
         const downloadUrl = currentEpisode?.download || currentEpisode?.download_link || currentEpisode?.videoUrl || currentEpisode?.streamLink;
 
         if (downloadUrl) {
             setDownloading(true);
-            setShowDownloadOptions(false);
+            setShowMobileMenu(false);
+
+            // Open the download link in a new tab/window
+            window.open(downloadUrl, '_blank');
 
             setTimeout(() => {
-                const link = document.createElement('a');
-                link.href = downloadUrl;
-                link.download = '';
-                link.target = '_blank';
-                link.rel = 'noopener noreferrer';
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-
                 setDownloading(false);
-                const fileName = downloadUrl.split('/').pop() || currentEpisode.title;
-                alert(`Download started: ${fileName}`);
-
-                showControlsWithTimer();
             }, 1000);
         } else {
             alert('Download link not available for this episode.');
-        }
-    };
-
-    const handleCopyLink = (e) => {
-        e?.stopPropagation();
-        const downloadUrl = currentEpisode?.download || currentEpisode?.download_link || currentEpisode?.videoUrl || currentEpisode?.streamLink;
-
-        if (downloadUrl) {
-            navigator.clipboard.writeText(downloadUrl).then(() => {
-                alert('Download link copied to clipboard!');
-            }).catch(() => {
-                alert('Failed to copy link');
-            });
         }
     };
 
@@ -1023,7 +1042,7 @@ const SeriesPlayer = () => {
     const resetControlsTimer = () => {
         if (controlsTimerRef.current) clearTimeout(controlsTimerRef.current);
         controlsTimerRef.current = setTimeout(() => {
-            if (playing && isFullscreen) setShowControls(false);
+            if (playing && isFullscreen && !isSeeking && !isVolumeChanging) setShowControls(false);
         }, 3000);
     };
 
@@ -1091,6 +1110,17 @@ const SeriesPlayer = () => {
                 : [...prev, currentEpisode.id]
         );
     };
+
+    // Close mobile menu when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (e) => {
+            if (showMobileMenu && !e.target.closest('.mobile-menu-container')) {
+                setShowMobileMenu(false);
+            }
+        };
+        document.addEventListener('click', handleClickOutside);
+        return () => document.removeEventListener('click', handleClickOutside);
+    }, [showMobileMenu]);
 
     // ========== RENDER FUNCTIONS ==========
 
@@ -1164,10 +1194,8 @@ const SeriesPlayer = () => {
                 </div>
             );
         } else if (videoType === 'youtube') {
-            // ULTRA-CLEAN YOUTUBE PLAYER - EXACTLY LIKE MOVIES PLAYER
             return (
                 <div className="relative w-full h-full bg-black">
-                    {/* YouTube Player Container */}
                     <div
                         ref={youtubeContainerRef}
                         className="w-full h-full"
@@ -1176,8 +1204,6 @@ const SeriesPlayer = () => {
                             zIndex: 1
                         }}
                     />
-
-                    {/* COMPLETE OVERLAY - Blocks ALL YouTube elements */}
                     <div
                         className="absolute inset-0 z-20"
                         style={{
@@ -1188,8 +1214,6 @@ const SeriesPlayer = () => {
                         onMouseEnter={() => showControlsWithTimer()}
                         onMouseLeave={() => setShowControls(false)}
                     />
-
-                    {/* Additional overlay to ensure nothing shows through */}
                     <div
                         className="absolute inset-0 z-10"
                         style={{
@@ -1197,8 +1221,6 @@ const SeriesPlayer = () => {
                             pointerEvents: 'none'
                         }}
                     />
-
-                    {/* When paused, show a simple black overlay to hide any YouTube elements */}
                     {!playing && (
                         <div
                             className="absolute inset-0 z-25"
@@ -1621,7 +1643,7 @@ const SeriesPlayer = () => {
                             <FaArrowLeft /> Back
                         </button>
 
-                        <div className="flex-1 text-center px-4">
+                        <div className="flex-1 text-center px-4 hidden md:block">
                             <h1 className="text-xl font-bold truncate max-w-2xl mx-auto">{series?.title || 'Series'}</h1>
                             <div className="flex items-center justify-center gap-2 mt-1">
                                 <FaVideo className={playerType.color} />
@@ -1638,14 +1660,14 @@ const SeriesPlayer = () => {
                             {/* Favorite & Watchlist Buttons */}
                             <button
                                 onClick={toggleFavorite}
-                                className={`p-2 rounded-lg transition-colors ${isFavorite ? 'text-red-500' : 'text-gray-400 hover:text-red-500'}`}
+                                className={`p-2 rounded-lg transition-colors hidden md:block ${isFavorite ? 'text-red-500' : 'text-gray-400 hover:text-red-500'}`}
                                 title={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
                             >
                                 <FaHeart size={20} />
                             </button>
                             <button
                                 onClick={toggleWatchlist}
-                                className={`p-2 rounded-lg transition-colors ${inWatchlist ? 'text-blue-500' : 'text-gray-400 hover:text-blue-500'}`}
+                                className={`p-2 rounded-lg transition-colors hidden md:block ${inWatchlist ? 'text-blue-500' : 'text-gray-400 hover:text-blue-500'}`}
                                 title={inWatchlist ? 'Remove from watchlist' : 'Add to watchlist'}
                             >
                                 <FaBookmark size={20} />
@@ -1655,7 +1677,7 @@ const SeriesPlayer = () => {
                             <button
                                 onClick={goToPreviousEpisode}
                                 disabled={currentEpisodeIndex === 0}
-                                className={`p-2 rounded-lg transition-colors ${currentEpisodeIndex === 0
+                                className={`p-2 rounded-lg transition-colors hidden md:block ${currentEpisodeIndex === 0
                                     ? 'bg-gray-800/50 text-gray-600 cursor-not-allowed'
                                     : 'bg-gray-800 hover:bg-gray-700 text-white'
                                     }`}
@@ -1663,13 +1685,13 @@ const SeriesPlayer = () => {
                             >
                                 <FaChevronLeft size={16} />
                             </button>
-                            <span className="text-sm text-gray-300">
+                            <span className="text-sm text-gray-300 hidden md:block">
                                 {currentEpisodeIndex + 1}/{episodesList.length}
                             </span>
                             <button
                                 onClick={goToNextEpisode}
                                 disabled={currentEpisodeIndex === episodesList.length - 1}
-                                className={`p-2 rounded-lg transition-colors ${currentEpisodeIndex === episodesList.length - 1
+                                className={`p-2 rounded-lg transition-colors hidden md:block ${currentEpisodeIndex === episodesList.length - 1
                                     ? 'bg-gray-800/50 text-gray-600 cursor-not-allowed'
                                     : 'bg-gray-800 hover:bg-gray-700 text-white'
                                     }`}
@@ -1681,72 +1703,105 @@ const SeriesPlayer = () => {
                             {/* Episode List Toggle */}
                             <button
                                 onClick={() => setShowEpisodeList(!showEpisodeList)}
-                                className="p-2 bg-gray-800 hover:bg-gray-700 rounded-lg text-white"
+                                className="p-2 bg-gray-800 hover:bg-gray-700 rounded-lg text-white hidden md:block"
                                 title={showEpisodeList ? 'Hide episodes' : 'Show episodes'}
                             >
                                 <FaList size={20} />
                             </button>
 
-                            {/* Download Button */}
-                            {hasDownload && (
-                                <div className="relative">
-                                    <button
-                                        onClick={() => setShowDownloadOptions(!showDownloadOptions)}
-                                        className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 rounded-xl text-white font-medium shadow-lg shadow-green-600/20 transition-all duration-200 transform hover:scale-105"
-                                        disabled={downloading}
-                                    >
-                                        {downloading ? (
+                            {/* Mobile Menu Button */}
+                            <button
+                                onClick={() => setShowMobileMenu(!showMobileMenu)}
+                                className="md:hidden p-2 bg-gray-800 hover:bg-gray-700 rounded-lg text-white"
+                            >
+                                <FaEllipsisV size={20} />
+                            </button>
+
+                            {/* Mobile Menu Dropdown */}
+                            {showMobileMenu && (
+                                <div className="absolute top-16 right-4 w-64 bg-gray-900 border border-gray-800 rounded-xl shadow-2xl z-50 mobile-menu-container md:hidden">
+                                    <div className="p-3 border-b border-gray-800">
+                                        <p className="text-sm font-medium text-gray-300">Menu Options</p>
+                                    </div>
+                                    <div className="p-2 space-y-1">
+                                        <button
+                                            onClick={toggleFavorite}
+                                            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${isFavorite ? 'text-red-500 bg-red-500/10' : 'text-gray-300 hover:bg-gray-800'
+                                                }`}
+                                        >
+                                            <FaHeart size={18} />
+                                            <span className="text-sm">{isFavorite ? 'Remove from favorites' : 'Add to favorites'}</span>
+                                        </button>
+
+                                        <button
+                                            onClick={toggleWatchlist}
+                                            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${inWatchlist ? 'text-blue-500 bg-blue-500/10' : 'text-gray-300 hover:bg-gray-800'
+                                                }`}
+                                        >
+                                            <FaBookmark size={18} />
+                                            <span className="text-sm">{inWatchlist ? 'Remove from watchlist' : 'Add to watchlist'}</span>
+                                        </button>
+
+                                        <div className="border-t border-gray-800 my-2"></div>
+
+                                        <button
+                                            onClick={goToPreviousEpisode}
+                                            disabled={currentEpisodeIndex === 0}
+                                            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${currentEpisodeIndex === 0
+                                                ? 'text-gray-600 cursor-not-allowed'
+                                                : 'text-gray-300 hover:bg-gray-800'
+                                                }`}
+                                        >
+                                            <FaChevronLeft size={18} />
+                                            <span className="text-sm">Previous Episode</span>
+                                        </button>
+
+                                        <button
+                                            onClick={goToNextEpisode}
+                                            disabled={currentEpisodeIndex === episodesList.length - 1}
+                                            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${currentEpisodeIndex === episodesList.length - 1
+                                                ? 'text-gray-600 cursor-not-allowed'
+                                                : 'text-gray-300 hover:bg-gray-800'
+                                                }`}
+                                        >
+                                            <FaChevronRight size={18} />
+                                            <span className="text-sm">Next Episode</span>
+                                        </button>
+
+                                        <button
+                                            onClick={() => setShowEpisodeList(!showEpisodeList)}
+                                            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-300 hover:bg-gray-800 transition-colors"
+                                        >
+                                            <FaList size={18} />
+                                            <span className="text-sm">{showEpisodeList ? 'Hide episodes' : 'Show episodes'}</span>
+                                        </button>
+
+                                        {/* Mobile Download Option */}
+                                        {hasDownload && (
                                             <>
-                                                <FaSpinner className="animate-spin" />
-                                                Preparing...
-                                            </>
-                                        ) : (
-                                            <>
-                                                <FaCloudDownloadAlt className="text-lg" />
-                                                Download
-                                                {showDownloadOptions ? <FaChevronUp className="ml-1 text-sm" /> : <FaChevronDown className="ml-1 text-sm" />}
+                                                <div className="border-t border-gray-800 my-2"></div>
+                                                <div className="px-3 py-2">
+                                                    <p className="text-xs text-gray-400 mb-2">Download</p>
+                                                    <button
+                                                        onClick={handleDownload}
+                                                        className="w-full flex items-center gap-3 px-3 py-2.5 bg-gradient-to-r from-green-600/20 to-emerald-600/20 hover:from-green-600/30 hover:to-emerald-600/30 rounded-lg transition-colors group"
+                                                        disabled={downloading}
+                                                    >
+                                                        <div className="w-8 h-8 bg-gradient-to-br from-green-500/20 to-emerald-500/20 rounded-lg flex items-center justify-center">
+                                                            <FaCloudDownloadAlt className="text-green-400 text-base" />
+                                                        </div>
+                                                        <div className="flex-1 text-left">
+                                                            <p className="text-sm font-medium text-white">
+                                                                {downloading ? 'Opening...' : 'Download Episode'}
+                                                            </p>
+                                                            <p className="text-xs text-gray-400">Click to download</p>
+                                                        </div>
+                                                        {downloading && <FaSpinner className="animate-spin text-green-400" />}
+                                                    </button>
+                                                </div>
                                             </>
                                         )}
-                                    </button>
-
-                                    {showDownloadOptions && !downloading && (
-                                        <div className="absolute right-0 mt-2 w-64 bg-gray-800/95 backdrop-blur-lg border border-gray-700 rounded-xl shadow-2xl overflow-hidden z-50">
-                                            <div className="p-3 border-b border-gray-700">
-                                                <p className="text-sm font-medium text-gray-300 flex items-center gap-2">
-                                                    <FaFileDownload className="text-green-400" />
-                                                    Download Options
-                                                </p>
-                                            </div>
-
-                                            <div className="p-2">
-                                                <button
-                                                    onClick={(e) => handleDownload(e, 'original')}
-                                                    className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-gray-700/70 rounded-lg transition-colors group"
-                                                >
-                                                    <div className="w-8 h-8 bg-gradient-to-br from-green-500/20 to-emerald-500/20 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
-                                                        <FaHdd className="text-green-400 text-sm" />
-                                                    </div>
-                                                    <div className="flex-1 text-left">
-                                                        <p className="text-sm font-medium text-white">Original Quality</p>
-                                                        <p className="text-xs text-gray-400">Best quality</p>
-                                                    </div>
-                                                </button>
-
-                                                <button
-                                                    onClick={handleCopyLink}
-                                                    className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-gray-700/70 rounded-lg transition-colors group mt-1 border-t border-gray-700/50 pt-3"
-                                                >
-                                                    <div className="w-8 h-8 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
-                                                        <FaLink className="text-purple-400 text-sm" />
-                                                    </div>
-                                                    <div className="flex-1 text-left">
-                                                        <p className="text-sm font-medium text-white">Copy Download Link</p>
-                                                        <p className="text-xs text-gray-400">Save for later</p>
-                                                    </div>
-                                                </button>
-                                            </div>
-                                        </div>
-                                    )}
+                                    </div>
                                 </div>
                             )}
                         </div>
@@ -1760,7 +1815,12 @@ const SeriesPlayer = () => {
                 onMouseMove={shouldShowCustomControls ? showControlsWithTimer : undefined}
                 onMouseLeave={() => shouldShowCustomControls && setShowControls(false)}
                 onClick={(e) => {
-                    if (shouldShowCustomControls && !e.target.closest('button') && !e.target.closest('input') && !e.target.closest('select')) {
+                    // Don't trigger play/pause if clicking on sliders
+                    if (shouldShowCustomControls &&
+                        !e.target.closest('button') &&
+                        !e.target.closest('input') &&
+                        !e.target.closest('select') &&
+                        !e.target.closest('.slider-container')) {
                         handlePlayPause(e);
                     }
                     if (shouldShowCustomControls) {
@@ -1823,7 +1883,8 @@ const SeriesPlayer = () => {
 
                 {shouldShowCustomControls && (
                     <div className={`absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/90 to-transparent transition-all duration-300 z-30 ${showControls ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-                        <div className="max-w-7xl mx-auto">
+                        <div className="max-w-7xl mx-auto slider-container">
+                            {/* FIXED: Progress slider with proper event handling */}
                             <div className="mb-4">
                                 <input
                                     type="range"
@@ -1831,8 +1892,13 @@ const SeriesPlayer = () => {
                                     max="1"
                                     step="0.001"
                                     value={progress}
-                                    onChange={handleSeek}
-                                    className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-red-600"
+                                    onMouseDown={handleSeekStart}
+                                    onTouchStart={handleSeekStart}
+                                    onChange={handleSeekChange}
+                                    onMouseUp={handleSeekEnd}
+                                    onTouchEnd={handleSeekEnd}
+                                    className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-red-600 [&::-webkit-slider-thumb]:cursor-pointer hover:[&::-webkit-slider-thumb]:bg-red-500"
+                                    onClick={(e) => e.stopPropagation()}
                                 />
                                 <div className="flex justify-between text-sm text-gray-300 mt-2">
                                     <span>{formatTime(currentTime)}</span>
@@ -1841,15 +1907,15 @@ const SeriesPlayer = () => {
                             </div>
 
                             <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-4">
+                                <div className="flex items-center gap-2 md:gap-4">
                                     <button
                                         onClick={handlePlayPause}
                                         className="hover:text-red-500 transition-colors p-2"
                                     >
                                         {playing ? (
-                                            <FaPause className={`${isMobile ? 'text-2xl' : 'text-3xl'}`} />
+                                            <FaPause className={`${isMobile ? 'text-xl' : 'text-3xl'}`} />
                                         ) : (
-                                            <FaPlay className={`${isMobile ? 'text-2xl ml-0.5' : 'text-3xl ml-1'}`} />
+                                            <FaPlay className={`${isMobile ? 'text-xl ml-0.5' : 'text-3xl ml-1'}`} />
                                         )}
                                     </button>
 
@@ -1878,20 +1944,26 @@ const SeriesPlayer = () => {
                                             >
                                                 {muted ? <FaVolumeMute className="text-2xl" /> : <FaVolumeUp className="text-2xl" />}
                                             </button>
+                                            {/* FIXED: Volume slider with proper event handling */}
                                             <input
                                                 type="range"
                                                 min="0"
                                                 max="1"
                                                 step="0.1"
                                                 value={volume}
+                                                onMouseDown={handleVolumeStart}
+                                                onTouchStart={handleVolumeStart}
                                                 onChange={handleVolumeChange}
-                                                className="w-32 h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-red-600"
+                                                onMouseUp={handleVolumeEnd}
+                                                onTouchEnd={handleVolumeEnd}
+                                                className="w-32 h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-red-600 hover:[&::-webkit-slider-thumb]:bg-red-500"
+                                                onClick={(e) => e.stopPropagation()}
                                             />
                                         </div>
                                     )}
                                 </div>
 
-                                <div className="flex items-center gap-4">
+                                <div className="flex items-center gap-2 md:gap-4">
                                     {!isMobile && (
                                         <div className="relative group">
                                             <button className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 rounded-lg text-sm">
@@ -1946,25 +2018,46 @@ const SeriesPlayer = () => {
                 <div className="max-w-7xl mx-auto px-4 py-8">
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                         <div className="lg:col-span-2">
-                            {/* Episode Info */}
+                            {/* Episode Info with Download Button Beside Rating */}
                             <div className="mb-6">
                                 <h1 className="text-4xl font-bold mb-2">{series?.title}</h1>
-                                <div className="flex items-center gap-4 mb-4">
-                                    <span className="px-4 py-2 bg-red-600 rounded-full">
+                                <div className="flex flex-wrap items-center gap-4 mb-4">
+                                    <span className="px-4 py-2 bg-red-600 rounded-full text-sm">
                                         Season {currentEpisode.seasonNumber || currentEpisode.season_number || 1}
                                     </span>
-                                    <span className="px-4 py-2 bg-purple-600 rounded-full">
+                                    <span className="px-4 py-2 bg-purple-600 rounded-full text-sm">
                                         Episode {currentEpisode.episodeNumber || currentEpisode.episode_number || 1}
                                     </span>
                                     {series?.year && (
-                                        <span className="px-4 py-2 bg-gray-700 rounded-full">
+                                        <span className="px-4 py-2 bg-gray-700 rounded-full text-sm">
                                             {series.year}
                                         </span>
                                     )}
                                     {series?.rating && (
-                                        <span className="px-4 py-2 bg-yellow-600 rounded-full flex items-center gap-2">
+                                        <span className="px-4 py-2 bg-yellow-600 rounded-full flex items-center gap-2 text-sm">
                                             <FaStar /> {series.rating}
                                         </span>
+                                    )}
+
+                                    {/* Download Button Beside Rating - Always shows text */}
+                                    {hasDownload && (
+                                        <button
+                                            onClick={handleDownload}
+                                            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 rounded-full text-white font-medium shadow-lg shadow-green-600/20 transition-all duration-200 transform hover:scale-105 text-sm"
+                                            disabled={downloading}
+                                        >
+                                            {downloading ? (
+                                                <>
+                                                    <FaSpinner className="animate-spin" />
+                                                    <span>Opening...</span>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <FaCloudDownloadAlt className="text-base" />
+                                                    <span>Download</span>
+                                                </>
+                                            )}
+                                        </button>
                                     )}
                                 </div>
                                 <h2 className="text-2xl font-bold mb-2">{currentEpisode.title}</h2>
@@ -1980,7 +2073,7 @@ const SeriesPlayer = () => {
                                             <button
                                                 key={season}
                                                 onClick={() => setSelectedSeason(season)}
-                                                className={`px-4 py-2 rounded-full whitespace-nowrap transition-colors ${selectedSeason === season
+                                                className={`px-4 py-2 rounded-full whitespace-nowrap transition-colors text-sm ${selectedSeason === season
                                                     ? 'bg-red-600 text-white'
                                                     : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
                                                     }`}
