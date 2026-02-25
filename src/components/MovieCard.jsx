@@ -1,4 +1,4 @@
-import { FaPlay, FaStar, FaLanguage, FaTv, FaHeart, FaRegHeart, FaCalendarAlt } from "react-icons/fa";
+import { FaPlay, FaStar, FaLanguage, FaTv, FaHeart, FaRegHeart, FaCalendarAlt, FaClock } from "react-icons/fa";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -14,6 +14,41 @@ export default function MovieCard({ movie }) {
   const rating = movie?.rating || (movie?.vote_average ? movie.vote_average.toFixed(1) : null);
   const translator = movie?.translator || '';
   const year = movie?.year || movie?.release_date?.split('-')[0] || '';
+
+  // Format uploaded time
+  const formatUploadedTime = (dateString) => {
+    if (!dateString) return null;
+
+    try {
+      const date = new Date(dateString);
+      const now = new Date();
+      const diffTime = Math.abs(now - date);
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      const diffHours = Math.ceil(diffTime / (1000 * 60 * 60));
+      const diffMinutes = Math.ceil(diffTime / (1000 * 60));
+
+      if (diffMinutes < 60) {
+        return `${diffMinutes}m ago`;
+      } else if (diffHours < 24) {
+        return `${diffHours}h ago`;
+      } else if (diffDays === 1) {
+        return 'Yesterday';
+      } else if (diffDays < 7) {
+        return `${diffDays}d ago`;
+      } else if (diffDays < 30) {
+        return `${Math.floor(diffDays / 7)}w ago`;
+      } else {
+        return date.toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric'
+        });
+      }
+    } catch (e) {
+      return null;
+    }
+  };
+
+  const uploadedTime = formatUploadedTime(movie?.created_at || movie?.uploaded_at || movie?.timestamp);
 
   // Handle Watch Now
   const handleWatchNow = (e) => {
@@ -92,7 +127,7 @@ export default function MovieCard({ movie }) {
           )}
 
           {/* Type Badge */}
-          <div className={`px-1 sm:px-2 py-0.5 sm:py-1 rounded-full text-[7px] xs:text-[8px] sm:text-[10px] text-white font-medium flex items-center gap-0.5 sm:gap-1 shadow-md sm:shadow-lg ml-auto ${movie?.type === 'series' ? 'bg-purple-600' : 'bg-red-600'
+          <div className={`px-1 sm:px-2 py-0.5 sm:py-1 rounded-full text-[7px] xs:text-[8px] sm:text-[10px] text-white font-medium flex items-center gap-0.5 sm:gap-1 shadow-md sm:shadow-lg ${movie?.type === 'series' ? 'bg-purple-600' : 'bg-red-600'
             }`}>
             {movie?.type === 'series' ? <FaTv className="text-[6px] xs:text-[7px] sm:text-[10px]" /> : <FaPlay className="text-[6px] xs:text-[7px] sm:text-[10px]" />}
             <span className="hidden xs:inline">{movie?.type === 'series' ? 'Series' : 'Movie'}</span>
@@ -140,16 +175,38 @@ export default function MovieCard({ movie }) {
         )}
       </div>
 
-      {/* Title Section */}
+      {/* Title Section - With category AND uploaded time */}
       <div className="p-1.5 xs:p-2 sm:p-3">
         <h3 className="text-white text-[10px] xs:text-xs sm:text-sm font-semibold line-clamp-1 text-center group-hover:text-red-400 transition-colors duration-300">
           {movie?.title || 'Untitled'}
         </h3>
 
-        {movie?.category && (
-          <p className="text-[7px] xs:text-[8px] sm:text-[10px] text-gray-400 text-center mt-0.5 xs:mt-1 line-clamp-1">
-            {movie.category.split(',')[0].trim()}
-          </p>
+        {/* Category and Upload Time Row */}
+        <div className="flex items-center justify-center gap-1 sm:gap-1.5 mt-0.5 xs:mt-1">
+          {movie?.category && (
+            <p className="text-[7px] xs:text-[8px] sm:text-[10px] text-gray-400 line-clamp-1">
+              {movie.category.split(',')[0].trim()}
+            </p>
+          )}
+
+          {/* Uploaded time next to category */}
+          {uploadedTime && (
+            <>
+              {movie?.category && <span className="text-[7px] xs:text-[8px] sm:text-[10px] text-gray-600">•</span>}
+              <div className="flex items-center gap-0.5 text-[7px] xs:text-[8px] sm:text-[10px] text-purple-400">
+                <FaClock className="text-[6px] xs:text-[7px] sm:text-[8px]" />
+                <span>{uploadedTime}</span>
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* If no category, show just upload time centered */}
+        {!movie?.category && uploadedTime && (
+          <div className="flex items-center justify-center gap-0.5 mt-0.5 xs:mt-1 text-[7px] xs:text-[8px] sm:text-[10px] text-purple-400">
+            <FaClock className="text-[6px] xs:text-[7px] sm:text-[8px]" />
+            <span>{uploadedTime}</span>
+          </div>
         )}
       </div>
 
@@ -158,6 +215,3 @@ export default function MovieCard({ movie }) {
     </div>
   );
 }
-
-// Add these to your global CSS or tailwind config
-// xs: '480px' - Add this to your tailwind.config.js

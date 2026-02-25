@@ -34,6 +34,7 @@ export default function Series() {
   const [scrollLeft, setScrollLeft] = useState(0);
   const [isLandscape, setIsLandscape] = useState(false);
   const [selectedSeason, setSelectedSeason] = useState(1);
+  const [showMobileSearch, setShowMobileSearch] = useState(false);
 
   // Slideshow state
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
@@ -42,6 +43,7 @@ export default function Series() {
 
   const tabsContainerRef = useRef(null);
   const slideshowRef = useRef(null);
+  const searchInputRef = useRef(null);
 
   // ========== SERIES DATA FUNCTIONS ==========
 
@@ -272,7 +274,7 @@ export default function Series() {
     link.click();
     document.body.removeChild(link);
 
-    // Show download notification (you can replace with your preferred notification system)
+    // Show download notification
     alert(`Downloading: ${episode.title || 'Episode'}`);
   };
 
@@ -313,6 +315,13 @@ export default function Series() {
   }, [autoPlay, latestSeasons.length]);
 
   // ========== UI FUNCTIONS ==========
+
+  // Focus search input when opened
+  useEffect(() => {
+    if (showMobileSearch && searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
+  }, [showMobileSearch]);
 
   // Check orientation
   useEffect(() => {
@@ -393,35 +402,68 @@ export default function Series() {
   // ========== RENDER ==========
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-950 via-black to-gray-900 pt-14 md:pt-20 pb-0">
+    <div className="min-h-screen bg-gradient-to-br from-gray-950 via-black to-gray-900 pt-0 pb-0">
       {/* Animated Background */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-20 -right-20 w-40 md:w-80 h-40 md:h-80 bg-purple-600/10 rounded-full blur-3xl"></div>
         <div className="absolute -bottom-20 -left-20 w-40 md:w-80 h-40 md:h-80 bg-blue-600/10 rounded-full blur-3xl"></div>
       </div>
 
-      {/* Simple Back Button */}
-      <button
-        onClick={() => navigate(-1)}
-        className="fixed top-16 left-4 z-40 flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg text-white text-sm font-medium shadow-lg hover:from-purple-700 hover:to-pink-700 transition-all md:top-20 md:left-6 md:px-4 md:py-2.5"
-      >
-        <FaChevronLeft size={12} className="md:text-sm" />
-        <span className="hidden sm:inline">Back</span>
-      </button>
+      {/* Mobile Header - Optimized */}
+      <div className="sticky top-0 z-40 bg-gradient-to-b from-gray-950 via-gray-950 to-transparent pt-2 pb-2 px-3 md:hidden">
+        <div className="flex items-center gap-2">
+          {/* Logo/Title */}
+          <div className="flex-1">
+            <h1 className="text-lg font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+              Series
+            </h1>
+          </div>
 
-      {/* Mobile Menu Button */}
-      <div className="fixed top-16 right-4 z-40 md:hidden">
-        <button
-          onClick={() => setShowMobileMenu(!showMobileMenu)}
-          className="p-3 bg-gradient-to-r from-purple-600 to-pink-600 rounded-full shadow-lg"
-        >
-          <FaBars className="text-white text-lg" />
-        </button>
+          {/* Search Toggle Button */}
+          <button
+            onClick={() => setShowMobileSearch(!showMobileSearch)}
+            className="p-2 bg-gray-800/80 rounded-full text-gray-300"
+          >
+            <FaSearch size={16} />
+          </button>
+
+          {/* Menu Button */}
+          <button
+            onClick={() => setShowMobileMenu(!showMobileMenu)}
+            className="p-2 bg-gray-800/80 rounded-full text-gray-300"
+          >
+            <FaBars size={16} />
+          </button>
+        </div>
+
+        {/* Mobile Search Bar - Expandable */}
+        {showMobileSearch && (
+          <div className="mt-2 animate-fadeIn">
+            <div className="relative">
+              <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm" />
+              <input
+                ref={searchInputRef}
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search series..."
+                className="w-full pl-9 pr-3 py-2.5 bg-gray-900/90 backdrop-blur-xl border border-gray-800 rounded-xl text-white text-sm placeholder-gray-500 focus:outline-none focus:border-purple-500"
+              />
+              {query && (
+                <button
+                  onClick={() => setQuery("")}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+                >
+                  <FaTimes size={14} />
+                </button>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Mobile Menu */}
       {showMobileMenu && (
-        <div className="fixed inset-0 bg-black/95 z-50 md:hidden">
+        <div className="fixed inset-0 bg-black/98 z-50 md:hidden animate-slideUp">
           <div className="p-4">
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-xl font-bold text-white">Menu</h3>
@@ -429,7 +471,7 @@ export default function Series() {
                 onClick={() => setShowMobileMenu(false)}
                 className="p-2 bg-gray-800 rounded-full"
               >
-                <FaTimes />
+                <FaTimes size={18} />
               </button>
             </div>
             <div className="space-y-4">
@@ -479,42 +521,9 @@ export default function Series() {
 
       {/* Main Content */}
       <div className="relative z-10 max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8">
-        {/* Mobile Search Bar */}
-        <div className="md:hidden mb-4">
-          <div className="relative">
-            <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm" />
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search series..."
-              className="w-full pl-9 pr-3 py-2.5 bg-gray-900/70 backdrop-blur-xl border border-gray-800/50 rounded-xl text-white text-sm placeholder-gray-500 focus:outline-none focus:border-purple-500/50"
-            />
-          </div>
-        </div>
-
-        {/* Mobile Filter Button */}
-        <div className="md:hidden flex items-center gap-3 mb-4">
-          <button
-            onClick={() => setShowMobileFilters(true)}
-            className="flex-1 px-4 py-2.5 bg-gray-900/70 backdrop-blur-xl rounded-xl text-white flex items-center justify-center gap-2 text-sm"
-          >
-            <FaFilter /> Filters
-          </button>
-          <select
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
-            className="flex-1 px-4 py-2.5 bg-gray-900/70 backdrop-blur-xl rounded-xl text-white text-sm"
-          >
-            <option value="all">All Genres</option>
-            {categories.filter(c => c !== "all").map(cat => (
-              <option key={cat} value={cat}>{cat}</option>
-            ))}
-          </select>
-        </div>
-
-        {/* Mobile Filters Panel */}
+        {/* Mobile Filter Panel */}
         {showMobileFilters && (
-          <div className="fixed inset-0 bg-black/95 z-50 md:hidden">
+          <div className="fixed inset-0 bg-black/98 z-50 md:hidden animate-slideUp">
             <div className="p-4">
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-xl font-bold text-white">Filters</h3>
@@ -522,14 +531,14 @@ export default function Series() {
                   onClick={() => setShowMobileFilters(false)}
                   className="p-2 bg-gray-800 rounded-full"
                 >
-                  <FaTimes />
+                  <FaTimes size={18} />
                 </button>
               </div>
               <div className="space-y-4">
                 <div className="bg-gray-900 rounded-2xl p-4">
                   <h4 className="text-sm font-medium text-gray-400 mb-3">Category</h4>
                   <div className="grid grid-cols-2 gap-2">
-                    {categories.slice(0, 8).map(cat => (
+                    {categories.map(cat => (
                       <button
                         key={cat}
                         onClick={() => {
@@ -565,22 +574,22 @@ export default function Series() {
           </div>
         )}
 
-        {/* Latest Seasons Slideshow */}
+        {/* Latest Seasons Slideshow - Adjusted for mobile */}
         {latestSeasons.length > 0 && (
-          <div className="mb-8 md:mb-12">
-            <h2 className="text-lg md:text-2xl font-bold text-white mb-4 flex items-center gap-2">
-              <FaFire className="text-orange-500" />
+          <div className="mb-4 md:mb-12">
+            <h2 className="text-base md:text-2xl font-bold text-white mb-2 md:mb-4 flex items-center gap-1 md:gap-2">
+              <FaFire className="text-orange-500 text-sm md:text-xl" />
               Latest Seasons
             </h2>
 
             <div
               ref={slideshowRef}
-              className="relative rounded-xl md:rounded-2xl overflow-hidden group"
+              className="relative rounded-lg md:rounded-2xl overflow-hidden group"
               onMouseEnter={handleSlideshowMouseEnter}
               onMouseLeave={handleSlideshowMouseLeave}
             >
               {/* Slides */}
-              <div className="relative h-48 sm:h-64 md:h-96">
+              <div className="relative h-40 sm:h-48 md:h-96">
                 {latestSeasons.map((series, index) => (
                   <div
                     key={`${series.id}-s${series.latestSeason}`}
@@ -591,121 +600,68 @@ export default function Series() {
                       alt={`${series.title} Season ${series.latestSeason}`}
                       className="w-full h-full object-cover"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent"></div>
+                    <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent"></div>
 
-                    {/* Slide Content */}
-                    <div className="absolute bottom-0 left-0 right-0 p-4 md:p-8">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="px-2 py-1 bg-gradient-to-r from-purple-600 to-pink-600 rounded-full text-xs font-bold">
-                          NEW SEASON
+                    {/* Slide Content - Mobile Optimized */}
+                    <div className="absolute bottom-0 left-0 right-0 p-2 md:p-8">
+                      <div className="flex items-center gap-1 md:gap-2 mb-1">
+                        <span className="px-1.5 py-0.5 bg-gradient-to-r from-purple-600 to-pink-600 rounded-full text-[8px] md:text-xs font-bold">
+                          NEW
                         </span>
-                        <span className="text-xs md:text-sm text-gray-300">
-                          Season {series.latestSeason}
+                        <span className="text-[8px] md:text-sm text-gray-300">
+                          S{series.latestSeason}
                         </span>
                       </div>
 
-                      <h3 className="text-lg md:text-3xl font-bold text-white mb-2">
+                      <h3 className="text-xs md:text-3xl font-bold text-white mb-1 line-clamp-1">
                         {series.title}
                       </h3>
 
-                      <div className="flex items-center gap-4 mb-3">
+                      <div className="flex items-center gap-2 mb-2">
                         {getRatingStars(series.rating)}
-                        <span className="text-xs md:text-sm text-gray-400">
-                          {series.episodeCount} Episodes
-                        </span>
                       </div>
 
                       <button
                         onClick={() => handlePlayLatestSeason(series)}
-                        className="px-4 md:px-6 py-2 md:py-3 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg text-sm md:text-base font-medium text-white flex items-center gap-2 hover:from-purple-700 hover:to-pink-700 transition-all"
+                        className="px-3 md:px-6 py-1.5 md:py-3 bg-gradient-to-r from-purple-600 to-pink-600 rounded-md md:rounded-lg text-[10px] md:text-base font-medium text-white flex items-center gap-1 md:gap-2 hover:from-purple-700 hover:to-pink-700 transition-all"
                       >
-                        <FaPlay size={12} /> Watch Latest Season
+                        <FaPlay size={8} className="md:text-sm" /> Watch
                       </button>
                     </div>
                   </div>
                 ))}
               </div>
 
-              {/* Navigation Arrows */}
+              {/* Navigation Arrows - Hidden on mobile */}
               <button
                 onClick={prevSlide}
-                className="absolute left-2 md:left-4 top-1/2 transform -translate-y-1/2 p-2 md:p-3 bg-black/50 hover:bg-black/70 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                className="hidden md:block absolute left-2 md:left-4 top-1/2 transform -translate-y-1/2 p-2 md:p-3 bg-black/50 hover:bg-black/70 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity"
               >
                 <FaChevronLeft size={16} className="md:text-xl" />
               </button>
 
               <button
                 onClick={nextSlide}
-                className="absolute right-2 md:right-4 top-1/2 transform -translate-y-1/2 p-2 md:p-3 bg-black/50 hover:bg-black/70 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                className="hidden md:block absolute right-2 md:right-4 top-1/2 transform -translate-y-1/2 p-2 md:p-3 bg-black/50 hover:bg-black/70 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity"
               >
                 <FaChevronRight size={16} className="md:text-xl" />
               </button>
 
               {/* Dots Indicator */}
-              <div className="absolute bottom-2 md:bottom-4 left-1/2 transform -translate-x-1/2 flex gap-1 md:gap-2">
+              <div className="absolute bottom-1 md:bottom-4 left-1/2 transform -translate-x-1/2 flex gap-1 md:gap-2">
                 {latestSeasons.map((_, index) => (
                   <button
                     key={index}
                     onClick={() => goToSlide(index)}
                     className={`transition-all ${index === currentSlideIndex
-                      ? 'w-4 md:w-6 h-1.5 md:h-2 bg-purple-600 rounded-full'
-                      : 'w-1.5 md:w-2 h-1.5 md:h-2 bg-gray-400 rounded-full hover:bg-white'}`}
+                      ? 'w-3 md:w-6 h-1 md:h-2 bg-purple-600 rounded-full'
+                      : 'w-1 h-1 md:w-2 md:h-2 bg-gray-400 rounded-full hover:bg-white'}`}
                   />
                 ))}
               </div>
             </div>
           </div>
         )}
-
-        {/* Stats Bar - Mobile Optimized */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 md:gap-6 mb-6 md:mb-12">
-          <div className="bg-gradient-to-br from-gray-900/50 to-black/50 backdrop-blur-xl rounded-xl md:rounded-2xl p-3 md:p-6 border border-gray-800/50">
-            <div className="flex items-center gap-2 md:gap-3">
-              <div className="p-2 md:p-3 bg-purple-600/20 rounded-lg md:rounded-xl">
-                <FaTv className="text-purple-400 text-sm md:text-xl" />
-              </div>
-              <div>
-                <div className="text-lg md:text-2xl font-bold text-white">{allSeries.length}</div>
-                <div className="text-[10px] md:text-sm text-gray-400">Series</div>
-              </div>
-            </div>
-          </div>
-          <div className="bg-gradient-to-br from-gray-900/50 to-black/50 backdrop-blur-xl rounded-xl md:rounded-2xl p-3 md:p-6 border border-gray-800/50">
-            <div className="flex items-center gap-2 md:gap-3">
-              <div className="p-2 md:p-3 bg-blue-600/20 rounded-lg md:rounded-xl">
-                <FaPlay className="text-blue-400 text-sm md:text-xl" />
-              </div>
-              <div>
-                <div className="text-lg md:text-2xl font-bold text-white">
-                  {allSeries.reduce((total, s) => total + getEpisodesForSeries(s.id).length, 0)}
-                </div>
-                <div className="text-[10px] md:text-sm text-gray-400">Episodes</div>
-              </div>
-            </div>
-          </div>
-          <div className="bg-gradient-to-br from-gray-900/50 to-black/50 backdrop-blur-xl rounded-xl md:rounded-2xl p-3 md:p-6 border border-gray-800/50">
-            <div className="flex items-center gap-2 md:gap-3">
-              <div className="p-2 md:p-3 bg-pink-600/20 rounded-lg md:rounded-xl">
-                <FaUsers className="text-pink-400 text-sm md:text-xl" />
-              </div>
-              <div>
-                <div className="text-lg md:text-2xl font-bold text-white">{categories.length - 1}</div>
-                <div className="text-[10px] md:text-sm text-gray-400">Genres</div>
-              </div>
-            </div>
-          </div>
-          <div className="bg-gradient-to-br from-gray-900/50 to-black/50 backdrop-blur-xl rounded-xl md:rounded-2xl p-3 md:p-6 border border-gray-800/50">
-            <div className="flex items-center gap-2 md:gap-3">
-              <div className="p-2 md:p-3 bg-emerald-600/20 rounded-lg md:rounded-xl">
-                <FaFire className="text-emerald-400 text-sm md:text-xl" />
-              </div>
-              <div>
-                <div className="text-lg md:text-2xl font-bold text-white">{allSeries.filter(s => calculatePopularity(s) > 100).length}</div>
-                <div className="text-[10px] md:text-sm text-gray-400">Trending</div>
-              </div>
-            </div>
-          </div>
-        </div>
 
         {/* Desktop Search and Filter - Hidden on Mobile */}
         <div className="hidden md:block mb-8">
@@ -747,10 +703,10 @@ export default function Series() {
         </div>
 
         {/* Quick Filter Tabs - Mobile Horizontal Scroll */}
-        <div className="mb-4 md:mb-6">
+        <div className="mb-3 md:mb-6">
           <div
             ref={tabsContainerRef}
-            className="flex gap-1.5 md:gap-2 overflow-x-auto pb-2 scrollbar-hide touch-pan-x"
+            className="flex gap-1 md:gap-2 overflow-x-auto pb-1 scrollbar-hide touch-pan-x"
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
@@ -760,7 +716,7 @@ export default function Series() {
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
-                className={`px-3 md:px-4 py-1.5 md:py-2 rounded-full whitespace-nowrap text-xs md:text-sm transition-all flex-shrink-0 ${activeTab === tab
+                className={`px-2.5 md:px-4 py-1 md:py-2 rounded-full whitespace-nowrap text-[10px] md:text-sm transition-all flex-shrink-0 ${activeTab === tab
                   ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white font-medium shadow-lg'
                   : 'bg-gray-900/50 text-gray-400 hover:text-white hover:bg-gray-800/50'}`}
               >
@@ -794,6 +750,23 @@ export default function Series() {
             </div>
           </div>
 
+          {/* Mobile Results Count */}
+          <div className="md:hidden mb-2">
+            <p className="text-xs text-gray-500">
+              {filteredSeries.length} series found
+            </p>
+          </div>
+
+          {/* Filter Button for Mobile - Always Visible */}
+          <div className="md:hidden mb-3">
+            <button
+              onClick={() => setShowMobileFilters(true)}
+              className="w-full px-3 py-2 bg-gray-900/80 backdrop-blur-xl rounded-lg text-white flex items-center justify-center gap-2 text-xs"
+            >
+              <FaFilter size={12} /> Filter & Sort Series
+            </button>
+          </div>
+
           {/* Grid View - Mobile Optimized */}
           {viewMode === "grid" ? (
             <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-3 md:gap-6">
@@ -821,66 +794,26 @@ export default function Series() {
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent"></div>
 
-                      {/* Mobile Action Buttons - Hidden initially */}
-                      <div className="absolute top-1 right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity md:flex hidden">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            toggleFavorite(series.id);
-                          }}
-                          className={`p-1.5 rounded-full backdrop-blur-sm transition-all ${isFavorite
-                            ? 'bg-red-500/20 text-red-400'
-                            : 'bg-black/40 text-white hover:bg-red-500/20 hover:text-red-400'}`}
-                        >
-                          <FaHeart size={12} className={isFavorite ? "fill-current" : ""} />
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            toggleWatchlist(series.id);
-                          }}
-                          className={`p-1.5 rounded-full backdrop-blur-sm transition-all ${inWatchlist
-                            ? 'bg-blue-500/20 text-blue-400'
-                            : 'bg-black/40 text-white hover:bg-blue-500/20 hover:text-blue-400'}`}
-                        >
-                          <FaBookmark size={12} className={inWatchlist ? "fill-current" : ""} />
-                        </button>
-                      </div>
-
                       {/* Episode Count Badge */}
                       <div className="absolute bottom-1 left-1 md:bottom-2 md:left-2">
-                        <span className="px-1.5 py-0.5 md:px-2 md:py-1 bg-black/60 backdrop-blur-sm rounded text-[10px] md:text-xs font-medium text-white">
+                        <span className="px-1.5 py-0.5 md:px-2 md:py-1 bg-black/60 backdrop-blur-sm rounded text-[8px] md:text-xs font-medium text-white">
                           {seriesEpisodes.length} EP
                         </span>
-                      </div>
-
-                      {/* Play Button Overlay - Mobile */}
-                      <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/30 md:hidden">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handlePlayFirstEpisode(series);
-                          }}
-                          className="w-8 h-8 bg-purple-600/90 rounded-full flex items-center justify-center"
-                        >
-                          <FaPlay size={12} className="text-white ml-0.5" />
-                        </button>
                       </div>
                     </div>
 
                     {/* Series Info */}
-                    <div className="p-2 md:p-3">
-                      <h3 className="text-xs sm:text-sm md:text-base font-bold text-white line-clamp-1 mb-1">
+                    <div className="p-1.5 md:p-3">
+                      <h3 className="text-[10px] sm:text-xs md:text-base font-bold text-white line-clamp-1 mb-0.5">
                         {series.title}
                       </h3>
 
                       <div className="flex items-center justify-between mb-1">
                         {getRatingStars(series.rating)}
-                        <span className="text-[10px] text-gray-500">{series.year || 'N/A'}</span>
                       </div>
 
                       {/* Mobile Action Buttons */}
-                      <div className="flex items-center justify-between mt-2 md:hidden">
+                      <div className="flex items-center justify-between mt-1">
                         <div className="flex gap-1">
                           <button
                             onClick={(e) => {
@@ -889,7 +822,7 @@ export default function Series() {
                             }}
                             className={`p-1 rounded ${isFavorite ? 'text-red-400' : 'text-gray-500'}`}
                           >
-                            <FaHeart size={12} className={isFavorite ? "fill-current" : ""} />
+                            <FaHeart size={8} className={isFavorite ? "fill-current" : ""} />
                           </button>
                           <button
                             onClick={(e) => {
@@ -898,7 +831,7 @@ export default function Series() {
                             }}
                             className={`p-1 rounded ${inWatchlist ? 'text-blue-400' : 'text-gray-500'}`}
                           >
-                            <FaBookmark size={12} className={inWatchlist ? "fill-current" : ""} />
+                            <FaBookmark size={8} className={inWatchlist ? "fill-current" : ""} />
                           </button>
                         </div>
                         <button
@@ -906,9 +839,9 @@ export default function Series() {
                             e.stopPropagation();
                             handlePlayFirstEpisode(series);
                           }}
-                          className="px-2 py-1 bg-gradient-to-r from-purple-600 to-pink-600 rounded text-[10px] font-medium text-white flex items-center gap-1"
+                          className="px-1.5 py-0.5 bg-gradient-to-r from-purple-600 to-pink-600 rounded text-[6px] font-medium text-white flex items-center gap-0.5"
                         >
-                          <FaPlay size={8} /> Play
+                          <FaPlay size={5} /> Play
                         </button>
                       </div>
 
@@ -937,14 +870,14 @@ export default function Series() {
                 return (
                   <div
                     key={series.id}
-                    className="group bg-gradient-to-r from-gray-900/50 to-black/50 backdrop-blur-xl rounded-xl md:rounded-2xl p-2 md:p-4 hover:bg-gray-900/70 transition-all border border-gray-800/50 hover:border-purple-500/30"
+                    className="group bg-gradient-to-r from-gray-900/50 to-black/50 backdrop-blur-xl rounded-lg md:rounded-2xl p-2 md:p-4 hover:bg-gray-900/70 transition-all border border-gray-800/50 hover:border-purple-500/30"
                     onClick={() => {
                       setSelectedSeries(series);
                       setShowSeriesDetails(true);
                     }}
                   >
                     <div className="flex items-center gap-2 md:gap-4">
-                      <div className="relative w-12 h-16 md:w-20 md:h-24 rounded-lg md:rounded-xl overflow-hidden flex-shrink-0">
+                      <div className="relative w-10 h-14 md:w-20 md:h-24 rounded-md md:rounded-xl overflow-hidden flex-shrink-0">
                         <img
                           src={series.poster || "https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=400"}
                           alt={series.title}
@@ -954,49 +887,37 @@ export default function Series() {
                       </div>
 
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between mb-1">
+                        <div className="flex items-start justify-between mb-0.5">
                           <div>
-                            <h3 className="text-sm md:text-base font-bold text-white mb-0.5 line-clamp-1">{series.title}</h3>
-                            <div className="flex items-center gap-1 text-[10px] md:text-xs text-gray-400 flex-wrap">
+                            <h3 className="text-xs md:text-base font-bold text-white mb-0.5 line-clamp-1">{series.title}</h3>
+                            <div className="flex items-center gap-1 text-[8px] md:text-xs text-gray-400 flex-wrap">
                               <span>{series.year || 'N/A'}</span>
                               <span>•</span>
                               <span>{seriesEpisodes.length} EP</span>
-                              <span>•</span>
-                              <span>{series.nation || 'Unknown'}</span>
                             </div>
                           </div>
-                          <div className="flex items-center gap-1 md:gap-2">
+                          <div className="flex items-center gap-1">
                             {getRatingStars(series.rating)}
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
                                 toggleFavorite(series.id);
                               }}
-                              className={`p-1 md:p-1.5 ${isFavorite ? 'text-red-400' : 'text-gray-500 hover:text-red-400'}`}
+                              className={`p-1 ${isFavorite ? 'text-red-400' : 'text-gray-500 hover:text-red-400'}`}
                             >
-                              <FaHeart size={10} className="md:text-sm" />
+                              <FaHeart size={8} className="md:text-sm" />
                             </button>
                           </div>
                         </div>
-
-                        {series.category && (
-                          <div className="flex items-center gap-1 mt-1 flex-wrap">
-                            {series.category.split(',').slice(0, 2).map((cat, i) => (
-                              <span key={i} className="px-1.5 py-0.5 bg-gray-800/50 rounded text-[8px] md:text-xs text-gray-400">
-                                {cat.trim()}
-                              </span>
-                            ))}
-                          </div>
-                        )}
 
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
                             handlePlayFirstEpisode(series);
                           }}
-                          className="mt-2 md:mt-3 px-2 md:px-3 py-1 md:py-1.5 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg text-[10px] md:text-xs font-medium text-white flex items-center gap-1 w-fit"
+                          className="mt-1 px-2 py-0.5 bg-gradient-to-r from-purple-600 to-pink-600 rounded text-[8px] font-medium text-white flex items-center gap-1 w-fit"
                         >
-                          <FaPlay size={8} /> Watch Now
+                          <FaPlay size={6} /> Watch
                         </button>
                       </div>
                     </div>
@@ -1011,7 +932,7 @@ export default function Series() {
             <div className="text-center mt-4 md:mt-8">
               <button
                 onClick={() => setVisible(v => v + (viewMode === "grid" ? 6 : 5))}
-                className="px-4 md:px-8 py-2 md:py-3 bg-gradient-to-r from-gray-800 to-black hover:from-gray-700 hover:to-gray-900 rounded-lg md:rounded-xl text-sm md:text-base font-medium text-white border border-gray-700/50 transition-all hover:scale-105"
+                className="px-4 md:px-8 py-2 md:py-3 bg-gradient-to-r from-gray-800 to-black hover:from-gray-700 hover:to-gray-900 rounded-lg md:rounded-xl text-xs md:text-base font-medium text-white border border-gray-700/50 transition-all hover:scale-105"
               >
                 Load More
               </button>
@@ -1022,7 +943,7 @@ export default function Series() {
 
       {/* Series Details Modal - Mobile Optimized */}
       {showSeriesDetails && selectedSeries && (
-        <div className="fixed inset-0 bg-black/98 z-50 flex items-center justify-center p-2 md:p-4 overflow-y-auto">
+        <div className="fixed inset-0 bg-black/98 z-50 flex items-start justify-center p-2 md:p-4 overflow-y-auto">
           <div className="bg-gradient-to-br from-gray-900 via-black to-gray-900 rounded-xl md:rounded-3xl max-w-6xl w-full border border-gray-800/50 my-2 md:my-8">
             <div className="relative">
               {/* Close Button */}
@@ -1033,13 +954,13 @@ export default function Series() {
                 }}
                 className="absolute top-2 right-2 md:top-4 md:right-4 z-10 p-2 md:p-3 bg-black/50 backdrop-blur-sm rounded-full text-gray-400 hover:text-white transition-colors"
               >
-                <FaTimes size={16} className="md:text-xl" />
+                <FaTimes size={14} className="md:text-xl" />
               </button>
 
               {/* Modal Content */}
               <div className="p-3 md:p-8">
                 {/* Header with Background Image */}
-                <div className="relative h-32 sm:h-48 md:h-64 -mx-3 -mt-3 md:-mx-8 md:-mt-8 mb-4 md:mb-8 rounded-t-xl md:rounded-t-3xl overflow-hidden">
+                <div className="relative h-28 sm:h-32 md:h-64 -mx-3 -mt-3 md:-mx-8 md:-mt-8 mb-3 md:mb-8 rounded-t-xl md:rounded-t-3xl overflow-hidden">
                   <img
                     src={selectedSeries.background || selectedSeries.poster}
                     alt={selectedSeries.title}
@@ -1047,28 +968,25 @@ export default function Series() {
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-gray-900 via-gray-900/80 to-transparent"></div>
 
-                  {/* Series Title Overlay */}
-                  <div className="absolute bottom-2 left-3 right-3 md:bottom-8 md:left-8">
-                    <h2 className="text-xl sm:text-2xl md:text-4xl font-bold text-white mb-1 md:mb-2 line-clamp-2">
+                  {/* Series Title Overlay - Mobile Optimized */}
+                  <div className="absolute bottom-1 left-2 right-2 md:bottom-8 md:left-8">
+                    <h2 className="text-base sm:text-lg md:text-4xl font-bold text-white mb-0.5 line-clamp-2">
                       {selectedSeries.title}
                     </h2>
-                    <div className="flex items-center flex-wrap gap-2 md:gap-4">
+                    <div className="flex items-center flex-wrap gap-1 md:gap-4">
                       {getRatingStars(selectedSeries.rating)}
-                      <span className="text-xs md:text-base text-gray-300">{selectedSeries.year}</span>
-                      <span className="px-2 md:px-3 py-0.5 md:py-1 bg-purple-600/20 text-purple-400 rounded-full text-xs">
-                        {selectedSeries.nation || 'International'}
-                      </span>
+                      <span className="text-[8px] md:text-base text-gray-300">{selectedSeries.year}</span>
                     </div>
                   </div>
                 </div>
 
                 {/* Action Buttons - Mobile Optimized */}
-                <div className="flex gap-2 md:gap-4 mb-4 md:mb-6">
+                <div className="flex gap-2 md:gap-4 mb-3 md:mb-6">
                   <button
                     onClick={() => handlePlayFirstEpisode(selectedSeries)}
-                    className="flex-1 md:flex-none px-4 md:px-8 py-2 md:py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 rounded-lg md:rounded-xl text-sm md:text-base font-semibold text-white flex items-center justify-center gap-2"
+                    className="flex-1 md:flex-none px-3 md:px-8 py-2 md:py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 rounded-lg md:rounded-xl text-xs md:text-base font-semibold text-white flex items-center justify-center gap-1 md:gap-2"
                   >
-                    <FaPlay size={12} className="md:text-base" /> Watch
+                    <FaPlay size={10} className="md:text-base" /> Watch
                   </button>
                   <button
                     onClick={() => toggleFavorite(selectedSeries.id)}
@@ -1076,7 +994,7 @@ export default function Series() {
                       ? 'bg-red-600/20 text-red-400 border border-red-600/30'
                       : 'bg-gray-800/50 text-gray-300 hover:text-red-400'}`}
                   >
-                    <FaHeart size={14} className="md:text-xl" />
+                    <FaHeart size={12} className="md:text-xl" />
                   </button>
                   <button
                     onClick={() => toggleWatchlist(selectedSeries.id)}
@@ -1084,67 +1002,56 @@ export default function Series() {
                       ? 'bg-blue-600/20 text-blue-400 border border-blue-600/30'
                       : 'bg-gray-800/50 text-gray-300 hover:text-blue-400'}`}
                   >
-                    <FaBookmark size={14} className="md:text-xl" />
+                    <FaBookmark size={12} className="md:text-xl" />
                   </button>
                 </div>
 
-                {/* Description */}
+                {/* Description - Mobile Optimized */}
                 {selectedSeries.description && (
-                  <div className="mb-4 md:mb-8">
-                    <h3 className="text-base md:text-lg font-semibold text-white mb-2">Synopsis</h3>
-                    <p className="text-xs md:text-sm text-gray-400 leading-relaxed line-clamp-3 md:line-clamp-none">
+                  <div className="mb-3 md:mb-8">
+                    <h3 className="text-sm md:text-lg font-semibold text-white mb-1">Synopsis</h3>
+                    <p className="text-[10px] md:text-sm text-gray-400 leading-relaxed line-clamp-2 md:line-clamp-none">
                       {selectedSeries.description}
                     </p>
                   </div>
                 )}
 
-                {/* Stats */}
-                <div className="grid grid-cols-3 gap-2 md:gap-4 mb-4 md:mb-8">
-                  <div className="bg-gray-800/30 rounded-lg md:rounded-xl p-2 md:p-4">
-                    <div className="text-[10px] md:text-sm text-gray-400">Seasons</div>
-                    <div className="text-base md:text-2xl font-bold text-white">
+                {/* Stats - Mobile Optimized */}
+                <div className="grid grid-cols-3 gap-1 md:gap-4 mb-3 md:mb-8">
+                  <div className="bg-gray-800/30 rounded-lg md:rounded-xl p-1.5 md:p-4">
+                    <div className="text-[8px] md:text-sm text-gray-400">Seasons</div>
+                    <div className="text-xs md:text-2xl font-bold text-white">
                       {getSeasons(getEpisodesForSeries(selectedSeries.id)).length}
                     </div>
                   </div>
-                  <div className="bg-gray-800/30 rounded-lg md:rounded-xl p-2 md:p-4">
-                    <div className="text-[10px] md:text-sm text-gray-400">Episodes</div>
-                    <div className="text-base md:text-2xl font-bold text-white">
+                  <div className="bg-gray-800/30 rounded-lg md:rounded-xl p-1.5 md:p-4">
+                    <div className="text-[8px] md:text-sm text-gray-400">Episodes</div>
+                    <div className="text-xs md:text-2xl font-bold text-white">
                       {getEpisodesForSeries(selectedSeries.id).length}
                     </div>
                   </div>
-                  <div className="bg-gray-800/30 rounded-lg md:rounded-xl p-2 md:p-4">
-                    <div className="text-[10px] md:text-sm text-gray-400">Status</div>
-                    <div className="text-xs md:text-lg font-bold text-emerald-400">Available</div>
+                  <div className="bg-gray-800/30 rounded-lg md:rounded-xl p-1.5 md:p-4">
+                    <div className="text-[8px] md:text-sm text-gray-400">Status</div>
+                    <div className="text-[10px] md:text-lg font-bold text-emerald-400">Available</div>
                   </div>
                 </div>
 
-                {/* Genres */}
-                {selectedSeries.category && (
-                  <div className="flex flex-wrap gap-1 md:gap-2 mb-4 md:mb-8">
-                    {selectedSeries.category.split(',').map((cat, i) => (
-                      <span key={i} className="px-2 md:px-4 py-1 md:py-2 bg-gray-800/50 rounded-lg md:rounded-xl text-[10px] md:text-sm text-gray-300">
-                        {cat.trim()}
-                      </span>
-                    ))}
-                  </div>
-                )}
-
-                {/* Episodes Section */}
-                <div className="bg-gray-900/30 backdrop-blur-sm rounded-xl md:rounded-2xl p-3 md:p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-base md:text-xl font-bold text-white">Episodes</h3>
+                {/* Episodes Section - Mobile Optimized */}
+                <div className="bg-gray-900/30 backdrop-blur-sm rounded-xl md:rounded-2xl p-2 md:p-6">
+                  <div className="flex items-center justify-between mb-2 md:mb-4">
+                    <h3 className="text-sm md:text-xl font-bold text-white">Episodes</h3>
                     <select
                       value={selectedSeason}
                       onChange={(e) => setSelectedSeason(parseInt(e.target.value))}
-                      className="px-2 md:px-4 py-1.5 md:py-2 bg-gray-800/50 border border-gray-700/50 rounded-lg md:rounded-xl text-xs md:text-sm text-white"
+                      className="px-2 md:px-4 py-1 md:py-2 bg-gray-800/50 border border-gray-700/50 rounded-lg md:rounded-xl text-[10px] md:text-sm text-white"
                     >
                       {getSeasons(getEpisodesForSeries(selectedSeries.id)).map(season => (
-                        <option key={season} value={season}>Season {season}</option>
+                        <option key={season} value={season}>S{season}</option>
                       ))}
                     </select>
                   </div>
 
-                  <div className="space-y-2 max-h-64 md:max-h-96 overflow-y-auto pr-1">
+                  <div className="space-y-1 max-h-48 md:max-h-96 overflow-y-auto pr-1">
                     {sortEpisodes(getEpisodesForSeries(selectedSeries.id))
                       .filter(ep => (parseInt(ep.seasonNumber) || 1) === selectedSeason)
                       .map(episode => (
@@ -1159,31 +1066,30 @@ export default function Series() {
                               setShowSeriesDetails(false);
                             }}
                           >
-                            <div className="w-6 h-6 md:w-8 md:h-8 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg flex items-center justify-center flex-shrink-0">
-                              <span className="text-[10px] md:text-xs font-bold">{episode.episodeNumber}</span>
+                            <div className="w-5 h-5 md:w-8 md:h-8 bg-gradient-to-r from-purple-600 to-pink-600 rounded-md md:rounded-lg flex items-center justify-center flex-shrink-0">
+                              <span className="text-[8px] md:text-xs font-bold">{episode.episodeNumber}</span>
                             </div>
                             <div className="flex-1 min-w-0">
-                              <h4 className="text-xs md:text-sm font-medium text-white group-hover:text-purple-300 transition-colors truncate">
+                              <h4 className="text-[10px] md:text-sm font-medium text-white group-hover:text-purple-300 transition-colors truncate">
                                 {episode.title}
                               </h4>
                               {episode.duration && (
-                                <p className="text-[10px] text-gray-500">{episode.duration}</p>
+                                <p className="text-[6px] md:text-xs text-gray-500">{episode.duration}</p>
                               )}
                             </div>
                           </div>
 
                           <div className="flex items-center gap-1 md:gap-2">
-                            {/* Play Button */}
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handlePlayEpisode(selectedSeries, episode);
                                 setShowSeriesDetails(false);
                               }}
-                              className="p-1.5 md:p-2 bg-purple-600/20 hover:bg-purple-600/40 rounded-lg text-purple-400 flex-shrink-0 transition-all"
+                              className="p-1 md:p-2 bg-purple-600/20 hover:bg-purple-600/40 rounded-md md:rounded-lg text-purple-400 flex-shrink-0 transition-all"
                               title="Play Episode"
                             >
-                              <FaPlay size={10} className="md:text-sm" />
+                              <FaPlay size={8} className="md:text-sm" />
                             </button>
                           </div>
                         </div>
@@ -1191,7 +1097,7 @@ export default function Series() {
                   </div>
 
                   {/* Download Button at Bottom of Episodes Section */}
-                  <div className="mt-4 pt-4 border-t border-gray-700/50">
+                  <div className="mt-3 pt-2 border-t border-gray-700/50">
                     <button
                       onClick={() => {
                         const episodes = sortEpisodes(getEpisodesForSeries(selectedSeries.id))
@@ -1200,14 +1106,11 @@ export default function Series() {
                           handleDownloadEpisode(episodes[0]);
                         }
                       }}
-                      className="w-full px-4 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 rounded-lg text-sm font-medium text-white flex items-center justify-center gap-2 transition-all"
+                      className="w-full px-3 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 rounded-lg text-[10px] md:text-sm font-medium text-white flex items-center justify-center gap-1 transition-all"
                     >
-                      <FaDownload size={14} />
-                      Download Season {selectedSeason} Episodes
+                      <FaDownload size={10} />
+                      Download S{selectedSeason}
                     </button>
-                    <p className="text-[10px] text-gray-500 text-center mt-2">
-                      Click to download the first episode of this season
-                    </p>
                   </div>
                 </div>
               </div>

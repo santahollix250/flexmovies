@@ -6,9 +6,10 @@ import {
   FaCheckCircle, FaExclamationTriangle, FaTimes, FaList,
   FaDownload, FaSignOutAlt, FaVideo, FaCode,
   FaSearch, FaUpload,
-  FaMountain, FaYoutube, FaPlayCircle, // Added FaPlayCircle for DailyMotion
+  FaMountain, FaYoutube, FaPlayCircle,
   FaServer, FaCopy, FaFileVideo, FaCalendar, FaStar,
-  FaClosedCaptioning, FaMicrophone, FaUser, FaTag
+  FaClosedCaptioning, FaMicrophone, FaUser, FaTag,
+  FaArrowLeft // Added for back button
 } from "react-icons/fa";
 
 function Admin({ onLogout }) {
@@ -45,17 +46,17 @@ function Admin({ onLogout }) {
     isOnline
   } = context;
 
-  // Supported video platforms - ADDED DAILYMOTION
+  // Supported video platforms
   const VIDEO_PLATFORMS = {
     VIMEO: 'vimeo',
     YOUTUBE: 'youtube',
     MUX: 'mux',
     DIRECT: 'direct',
     EMBED: 'embed',
-    DAILYMOTION: 'dailymotion' // ADDED DAILYMOTION
+    DAILYMOTION: 'dailymotion'
   };
 
-  // Platform configurations - ADDED DAILYMOTION CONFIG
+  // Platform configurations
   const platformConfig = {
     [VIDEO_PLATFORMS.VIMEO]: {
       name: 'Vimeo',
@@ -97,7 +98,7 @@ function Admin({ onLogout }) {
       placeholder: 'Paste embed iframe code',
       embedPattern: null
     },
-    [VIDEO_PLATFORMS.DAILYMOTION]: { // ADDED DAILYMOTION CONFIG
+    [VIDEO_PLATFORMS.DAILYMOTION]: {
       name: 'DailyMotion',
       color: '#0066DC',
       icon: FaPlayCircle,
@@ -107,19 +108,19 @@ function Admin({ onLogout }) {
     }
   };
 
-  // Empty movie/series form - SIMPLIFIED
+  // Empty movie/series form
   const emptyMovie = {
     title: "",
     description: "",
     poster: "",
-    background: "", // Added background field
+    background: "",
     category: "",
     type: "movie",
     videoUrl: "",
     streamLink: "",
     download_link: "",
     nation: "",
-    translator: "", // Added translator field
+    translator: "",
     totalSeasons: "",
     totalEpisodes: "",
     videoType: VIDEO_PLATFORMS.VIMEO,
@@ -128,18 +129,17 @@ function Admin({ onLogout }) {
     duration: "",
     quality: "HD",
     videoFile: null,
-    // Kept only essential fields
     year: "",
     director: "",
     imdbRating: "",
     status: "completed",
     views: "0",
-    // Added download field
-    download: "" // NEW: Download link field
+    download: ""
   };
 
   // Empty episode form
   const emptyEpisode = {
+    id: null,
     seasonNumber: "1",
     episodeNumber: "1",
     title: "",
@@ -173,15 +173,18 @@ function Admin({ onLogout }) {
   const [uploadingFile, setUploadingFile] = useState(false);
   const [videoPreviewUrl, setVideoPreviewUrl] = useState("");
 
+  // Episode editing states
+  const [editingEpisode, setEditingEpisode] = useState(null);
+  const [showEpisodeForm, setShowEpisodeForm] = useState(false);
+
   useEffect(() => {
     setSyncStatus(isOnline ? "Online" : "Offline");
   }, [isOnline]);
 
-  // Extract video ID based on platform - UPDATED FOR DAILYMOTION
+  // Extract video ID based on platform
   const extractVideoId = (url, platform) => {
     if (!url || typeof url !== 'string') return '';
 
-    // If it's just an ID
     if (platform === VIDEO_PLATFORMS.VIMEO && /^\d{5,}$/.test(url.trim())) {
       return url.trim();
     }
@@ -191,11 +194,10 @@ function Admin({ onLogout }) {
     if (platform === VIDEO_PLATFORMS.MUX && /^[a-zA-Z0-9]+$/.test(url.trim())) {
       return url.trim();
     }
-    if (platform === VIDEO_PLATFORMS.DAILYMOTION && /^[a-zA-Z0-9]+$/.test(url.trim())) { // ADDED DAILYMOTION ID CHECK
+    if (platform === VIDEO_PLATFORMS.DAILYMOTION && /^[a-zA-Z0-9]+$/.test(url.trim())) {
       return url.trim();
     }
 
-    // Extract from URL patterns
     let match;
 
     switch (platform) {
@@ -216,8 +218,7 @@ function Admin({ onLogout }) {
         if (match) return match[1];
         break;
 
-      case VIDEO_PLATFORMS.DAILYMOTION: // ADDED DAILYMOTION PATTERNS
-        // Remove query parameters and fragments
+      case VIDEO_PLATFORMS.DAILYMOTION:
         const cleanUrl = url.split('?')[0].split('#')[0];
         const patterns = [
           /dailymotion\.com\/video\/([a-zA-Z0-9]+)/,
@@ -237,7 +238,7 @@ function Admin({ onLogout }) {
     return '';
   };
 
-  // Generate embed URL - UPDATED FOR DAILYMOTION
+  // Generate embed URL
   const generateEmbedUrl = (videoId, platform) => {
     if (!videoId) return '';
 
@@ -248,14 +249,14 @@ function Admin({ onLogout }) {
         return `https://www.youtube.com/embed/${videoId}`;
       case VIDEO_PLATFORMS.MUX:
         return `https://stream.mux.com/${videoId}.m3u8`;
-      case VIDEO_PLATFORMS.DAILYMOTION: // ADDED DAILYMOTION
+      case VIDEO_PLATFORMS.DAILYMOTION:
         return `https://www.dailymotion.com/embed/video/${videoId}`;
       default:
         return '';
     }
   };
 
-  // Detect platform from URL - UPDATED FOR DAILYMOTION
+  // Detect platform from URL
   const detectPlatform = (url) => {
     if (!url || typeof url !== 'string') return VIDEO_PLATFORMS.VIMEO;
 
@@ -271,7 +272,7 @@ function Admin({ onLogout }) {
       return VIDEO_PLATFORMS.MUX;
     }
 
-    if (/dailymotion\.com/.test(url) || /dai\.ly/.test(url) || /^[a-zA-Z0-9]+$/.test(url.trim())) { // ADDED DAILYMOTION DETECTION
+    if (/dailymotion\.com/.test(url) || /dai\.ly/.test(url) || /^[a-zA-Z0-9]+$/.test(url.trim())) {
       return VIDEO_PLATFORMS.DAILYMOTION;
     }
 
@@ -286,7 +287,7 @@ function Admin({ onLogout }) {
     return VIDEO_PLATFORMS.VIMEO;
   };
 
-  // Validate video URL - UPDATED FOR DAILYMOTION
+  // Validate video URL
   const validateVideoUrl = (url, platform) => {
     if (!url) return { valid: false, message: 'URL is required' };
 
@@ -306,7 +307,7 @@ function Admin({ onLogout }) {
         if (!muxId) return { valid: false, message: 'Invalid Mux URL' };
         return { valid: true, id: muxId };
 
-      case VIDEO_PLATFORMS.DAILYMOTION: // ADDED DAILYMOTION VALIDATION
+      case VIDEO_PLATFORMS.DAILYMOTION:
         const dailymotionId = extractVideoId(url, platform);
         if (!dailymotionId) return { valid: false, message: 'Invalid DailyMotion URL' };
         return { valid: true, id: dailymotionId };
@@ -469,7 +470,7 @@ function Admin({ onLogout }) {
     setEpisodeForm((f) => ({ ...f, [name]: value }));
   }
 
-  // Start editing
+  // Start editing movie/series
   function startEdit(movie) {
     if (!movie) return;
 
@@ -484,6 +485,39 @@ function Admin({ onLogout }) {
     addNotification("info", `Editing: ${movie.title}`);
   }
 
+  // Start editing episode
+  function startEditEpisode(episode) {
+    if (!episode) return;
+
+    setEditingEpisode(episode);
+    setEpisodeForm({
+      id: episode.id,
+      seasonNumber: episode.seasonNumber?.toString() || "1",
+      episodeNumber: episode.episodeNumber?.toString() || "1",
+      title: episode.title || "",
+      description: episode.description || "",
+      duration: episode.duration || "",
+      videoUrl: episode.videoUrl || "",
+      download_link: episode.download_link || "",
+      thumbnail: episode.thumbnail || "",
+      airDate: episode.airDate || new Date().toISOString().split('T')[0],
+      videoType: episode.videoType || VIDEO_PLATFORMS.VIMEO,
+      videoId: episode.videoId || "",
+      embedCode: episode.embedCode || "",
+      videoFile: null
+    });
+    setShowEpisodeForm(true);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    addNotification("info", `Editing episode: ${episode.title}`);
+  }
+
+  // Cancel episode editing
+  function cancelEpisodeEdit() {
+    setEditingEpisode(null);
+    setEpisodeForm(emptyEpisode);
+    setShowEpisodeForm(false);
+  }
+
   // Reset all forms
   function resetForm() {
     setEditingId(null);
@@ -494,6 +528,8 @@ function Admin({ onLogout }) {
     setSeriesEpisodes([]);
     setActiveTab("series");
     setVideoPreviewUrl("");
+    setEditingEpisode(null);
+    setShowEpisodeForm(false);
     addNotification("info", "Form reset");
   }
 
@@ -532,14 +568,12 @@ function Admin({ onLogout }) {
       embedCode: form.embedCode || "",
       duration: form.duration || "",
       quality: form.quality || "HD",
-      // Kept only essential fields
       year: form.year || "",
       director: form.director || "",
       imdbRating: form.imdbRating || null,
       status: form.status || "completed",
       views: parseInt(form.views) || 0,
-      // Added download field
-      download: form.download || "" // NEW: Download link field
+      download: form.download || ""
     };
 
     if (form.type === "series") {
@@ -586,6 +620,9 @@ function Admin({ onLogout }) {
   function selectSeriesForEpisodes(series) {
     setSelectedSeries(series);
     setActiveTab("episodes");
+    setShowEpisodeForm(false);
+    setEditingEpisode(null);
+    setEpisodeForm(emptyEpisode);
 
     const loadedEpisodes = getEpisodesBySeries(series.id) || [];
     setSeriesEpisodes(sortEpisodes(loadedEpisodes));
@@ -607,8 +644,17 @@ function Admin({ onLogout }) {
     addNotification("info", `Managing episodes for: ${series.title}`);
   }
 
-  // Add new episode
-  async function handleAddEpisode() {
+  // Go back to series list in episodes tab
+  function backToSeriesList() {
+    setSelectedSeries(null);
+    setSeriesEpisodes([]);
+    setShowEpisodeForm(false);
+    setEditingEpisode(null);
+    setEpisodeForm(emptyEpisode);
+  }
+
+  // Add or update episode
+  async function handleAddOrUpdateEpisode() {
     if (!selectedSeries) {
       addNotification("error", "No series selected");
       return;
@@ -630,9 +676,17 @@ function Admin({ onLogout }) {
         thumbnail: episodeForm.thumbnail || selectedSeries.poster || ""
       };
 
-      await addEpisode(episodeData);
-      addNotification("success", `Episode "${episodeForm.title}" added`);
+      if (editingEpisode) {
+        // Update existing episode
+        await updateEpisode(editingEpisode.id, episodeData);
+        addNotification("success", `Episode "${episodeForm.title}" updated`);
+      } else {
+        // Add new episode
+        await addEpisode(episodeData);
+        addNotification("success", `Episode "${episodeForm.title}" added`);
+      }
 
+      // Reset episode form
       setEpisodeForm(prev => ({
         ...prev,
         episodeNumber: (parseInt(prev.episodeNumber || 1) + 1).toString(),
@@ -645,13 +699,36 @@ function Admin({ onLogout }) {
         airDate: new Date().toISOString().split('T')[0]
       }));
 
+      // Refresh episodes list
       const updatedEpisodes = getEpisodesBySeries(selectedSeries.id) || [];
       setSeriesEpisodes(sortEpisodes(updatedEpisodes));
 
+      // Clear editing state
+      setEditingEpisode(null);
+      setShowEpisodeForm(false);
+
     } catch (err) {
-      addNotification("error", "Error adding episode");
+      addNotification("error", editingEpisode ? "Error updating episode" : "Error adding episode");
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  // Delete episode
+  async function handleDeleteEpisode(episodeId, episodeTitle) {
+    if (!window.confirm(`Delete episode "${episodeTitle}"?`)) return;
+
+    try {
+      await deleteEpisode(episodeId);
+      addNotification("success", `Episode "${episodeTitle}" deleted`);
+
+      // Refresh episodes list
+      if (selectedSeries) {
+        const updatedEpisodes = getEpisodesBySeries(selectedSeries.id) || [];
+        setSeriesEpisodes(sortEpisodes(updatedEpisodes));
+      }
+    } catch (error) {
+      addNotification("error", "Error deleting episode");
     }
   }
 
@@ -788,7 +865,7 @@ function Admin({ onLogout }) {
           </div>
         </div>
 
-        {/* Platform Stats - UPDATED TO INCLUDE DAILYMOTION */}
+        {/* Platform Stats */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
           {Object.entries(platformConfig).map(([key, config]) => {
             const Icon = config.icon;
@@ -826,7 +903,7 @@ function Admin({ onLogout }) {
           </button>
         </div>
 
-        {/* Video Guide - UPDATED TO INCLUDE DAILYMOTION */}
+        {/* Video Guide */}
         {showVideoGuide && (
           <div className="bg-gradient-to-br from-blue-900/20 to-teal-900/10 backdrop-blur-lg rounded-2xl border border-blue-700/30 p-6 mb-8">
             <div className="flex items-center justify-between mb-6">
@@ -952,7 +1029,7 @@ function Admin({ onLogout }) {
                 </button>
               </div>
 
-              {/* Platform Selection - UPDATED FOR DAILYMOTION */}
+              {/* Platform Selection */}
               <div className="mb-6">
                 <label className="block text-sm font-medium text-gray-300 mb-3">Video Platform:</label>
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
@@ -1107,8 +1184,6 @@ function Admin({ onLogout }) {
                   />
                 </div>
 
-
-
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">
                     Poster URL
@@ -1156,7 +1231,6 @@ function Admin({ onLogout }) {
                   />
                 </div>
 
-
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-300 mb-2">
                     Description
@@ -1184,7 +1258,6 @@ function Admin({ onLogout }) {
                     className="w-full p-3 bg-gray-800/70 border border-gray-700 rounded-xl"
                   />
                 </div>
-
 
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">Nation</label>
@@ -1233,9 +1306,7 @@ function Admin({ onLogout }) {
                   />
                 </div>
 
-
-
-                {/* NEW: Download Field */}
+                {/* Download Field */}
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2 flex items-center gap-2">
                     <FaDownload /> Download Link
@@ -1248,8 +1319,6 @@ function Admin({ onLogout }) {
                     className="w-full p-3 bg-gray-800/70 border border-gray-700 rounded-xl"
                   />
                 </div>
-
-
 
                 {form.type === "series" && (
                   <>
@@ -1427,125 +1496,218 @@ function Admin({ onLogout }) {
         {activeTab === "episodes" && (
           <div className="space-y-8">
             <div className="bg-gradient-to-br from-gray-800/50 to-gray-900/50 backdrop-blur-lg rounded-2xl border border-gray-700/50 p-6">
+              {/* Back button if series selected */}
+              {selectedSeries && (
+                <div className="mb-6 flex items-center justify-between">
+                  <button
+                    onClick={backToSeriesList}
+                    className="flex items-center gap-2 px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg text-white"
+                  >
+                    <FaArrowLeft /> Back to Series List
+                  </button>
+                  <div className="text-right">
+                    <h3 className="text-lg font-bold text-purple-400">{selectedSeries.title}</h3>
+                    <p className="text-sm text-gray-400">Managing episodes</p>
+                  </div>
+                </div>
+              )}
+
               {!selectedSeries ? (
                 <div className="text-center py-12">
                   <h3 className="text-xl font-bold mb-3">Select a Series</h3>
                   <p className="text-gray-400 mb-6">Choose a series to manage episodes</p>
-                  <div className="flex flex-wrap gap-3 justify-center">
-                    {seriesOnly.map(series => (
-                      <button
-                        key={series.id}
-                        onClick={() => selectSeriesForEpisodes(series)}
-                        className="px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg flex items-center gap-2"
-                      >
-                        <FaTv />
-                        {series.title}
-                      </button>
-                    ))}
-                  </div>
+                  {seriesOnly.length === 0 ? (
+                    <p className="text-gray-500">No series available. Add a series first.</p>
+                  ) : (
+                    <div className="flex flex-wrap gap-3 justify-center">
+                      {seriesOnly.map(series => (
+                        <button
+                          key={series.id}
+                          onClick={() => selectSeriesForEpisodes(series)}
+                          className="px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg flex items-center gap-2"
+                        >
+                          <FaTv />
+                          {series.title}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               ) : (
                 <>
-                  <div className="mb-8">
-                    <h3 className="text-lg font-bold mb-4">Add Episode to: {selectedSeries.title}</h3>
-                    <div className="grid md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-2">Season</label>
-                        <input
-                          name="seasonNumber"
-                          value={episodeForm.seasonNumber}
-                          onChange={handleEpisodeChange}
-                          type="number"
-                          className="w-full p-3 bg-gray-800/70 border border-gray-700 rounded-xl"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-2">Episode</label>
-                        <input
-                          name="episodeNumber"
-                          value={episodeForm.episodeNumber}
-                          onChange={handleEpisodeChange}
-                          type="number"
-                          className="w-full p-3 bg-gray-800/70 border border-gray-700 rounded-xl"
-                        />
-                      </div>
-                      <div className="md:col-span-2">
-                        <label className="block text-sm font-medium text-gray-300 mb-2">Title</label>
-                        <input
-                          name="title"
-                          value={episodeForm.title}
-                          onChange={handleEpisodeChange}
-                          placeholder="Episode title"
-                          className="w-full p-3 bg-gray-800/70 border border-gray-700 rounded-xl"
-                        />
-                      </div>
-                      <div className="md:col-span-2">
-                        <label className="block text-sm font-medium text-gray-300 mb-2">
-                          Video URL *
-                        </label>
-                        <input
-                          name="videoUrl"
-                          value={episodeForm.videoUrl}
-                          onChange={handleEpisodeChange}
-                          placeholder="Enter video URL"
-                          className="w-full p-3 bg-gray-800/70 border border-gray-700 rounded-xl"
-                        />
-                      </div>
-                      {/* Episode Download Field */}
-                      <div className="md:col-span-2">
-                        <label className="block text-sm font-medium text-gray-300 mb-2 flex items-center gap-2">
-                          <FaDownload /> Episode Download Link
-                        </label>
-                        <input
-                          name="download_link"
-                          value={episodeForm.download_link}
-                          onChange={handleEpisodeChange}
-                          placeholder="https://example.com/download/episode.mp4"
-                          className="w-full p-3 bg-gray-800/70 border border-gray-700 rounded-xl"
-                        />
-                      </div>
-                      <div className="md:col-span-2">
-                        <button
-                          onClick={handleAddEpisode}
-                          disabled={submitting}
-                          className="w-full py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 rounded-xl font-semibold disabled:opacity-50"
-                        >
-                          {submitting ? 'Adding...' : 'Add Episode'}
-                        </button>
+                  {/* Episode Form - Show when adding or editing */}
+                  {(showEpisodeForm || editingEpisode) && (
+                    <div className="mb-8 p-6 bg-gray-800/50 rounded-xl">
+                      <h3 className="text-lg font-bold mb-4">
+                        {editingEpisode ? "Edit Episode" : "Add New Episode"}
+                      </h3>
+                      <div className="grid md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-300 mb-2">Season</label>
+                          <input
+                            name="seasonNumber"
+                            value={episodeForm.seasonNumber}
+                            onChange={handleEpisodeChange}
+                            type="number"
+                            className="w-full p-3 bg-gray-800/70 border border-gray-700 rounded-xl"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-300 mb-2">Episode</label>
+                          <input
+                            name="episodeNumber"
+                            value={episodeForm.episodeNumber}
+                            onChange={handleEpisodeChange}
+                            type="number"
+                            className="w-full p-3 bg-gray-800/70 border border-gray-700 rounded-xl"
+                          />
+                        </div>
+                        <div className="md:col-span-2">
+                          <label className="block text-sm font-medium text-gray-300 mb-2">Title *</label>
+                          <input
+                            name="title"
+                            value={episodeForm.title}
+                            onChange={handleEpisodeChange}
+                            placeholder="Episode title"
+                            className="w-full p-3 bg-gray-800/70 border border-gray-700 rounded-xl"
+                          />
+                        </div>
+                        <div className="md:col-span-2">
+                          <label className="block text-sm font-medium text-gray-300 mb-2">
+                            Description
+                          </label>
+                          <textarea
+                            name="description"
+                            value={episodeForm.description}
+                            onChange={handleEpisodeChange}
+                            placeholder="Episode description"
+                            rows="2"
+                            className="w-full p-3 bg-gray-800/70 border border-gray-700 rounded-xl"
+                          />
+                        </div>
+                        <div className="md:col-span-2">
+                          <label className="block text-sm font-medium text-gray-300 mb-2">
+                            Video URL *
+                          </label>
+                          <input
+                            name="videoUrl"
+                            value={episodeForm.videoUrl}
+                            onChange={handleEpisodeChange}
+                            placeholder="Enter video URL"
+                            className="w-full p-3 bg-gray-800/70 border border-gray-700 rounded-xl"
+                          />
+                        </div>
+                        {/* Episode Download Field */}
+                        <div className="md:col-span-2">
+                          <label className="block text-sm font-medium text-gray-300 mb-2 flex items-center gap-2">
+                            <FaDownload /> Episode Download Link
+                          </label>
+                          <input
+                            name="download_link"
+                            value={episodeForm.download_link}
+                            onChange={handleEpisodeChange}
+                            placeholder="https://example.com/download/episode.mp4"
+                            className="w-full p-3 bg-gray-800/70 border border-gray-700 rounded-xl"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-300 mb-2">Duration</label>
+                          <input
+                            name="duration"
+                            value={episodeForm.duration}
+                            onChange={handleEpisodeChange}
+                            placeholder="e.g., 45:00"
+                            className="w-full p-3 bg-gray-800/70 border border-gray-700 rounded-xl"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-300 mb-2">Air Date</label>
+                          <input
+                            name="airDate"
+                            value={episodeForm.airDate}
+                            onChange={handleEpisodeChange}
+                            type="date"
+                            className="w-full p-3 bg-gray-800/70 border border-gray-700 rounded-xl"
+                          />
+                        </div>
+                        <div className="md:col-span-2 flex gap-3">
+                          <button
+                            onClick={handleAddOrUpdateEpisode}
+                            disabled={submitting}
+                            className="flex-1 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 rounded-xl font-semibold disabled:opacity-50"
+                          >
+                            {submitting ? 'Processing...' : (editingEpisode ? 'Update Episode' : 'Add Episode')}
+                          </button>
+                          <button
+                            onClick={cancelEpisodeEdit}
+                            className="px-6 py-3 bg-gray-700 hover:bg-gray-600 rounded-xl font-semibold"
+                          >
+                            Cancel
+                          </button>
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  )}
 
+                  {/* Add Episode Button - Only show when not editing */}
+                  {!editingEpisode && !showEpisodeForm && (
+                    <div className="mb-6">
+                      <button
+                        onClick={() => setShowEpisodeForm(true)}
+                        className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 rounded-xl font-semibold flex items-center gap-2"
+                      >
+                        <FaPlus /> Add New Episode
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Episodes List */}
                   <div>
                     <h3 className="text-lg font-bold mb-4">Episodes ({seriesEpisodes.length})</h3>
                     {seriesEpisodes.length === 0 ? (
                       <div className="text-center py-8 text-gray-400">
-                        No episodes yet.
+                        No episodes yet. Click "Add New Episode" to create one.
                       </div>
                     ) : (
                       <div className="space-y-3">
                         {sortEpisodes(seriesEpisodes).map((episode, index) => (
-                          <div key={episode.id || index} className="bg-gray-800/30 rounded-xl p-4">
+                          <div key={episode.id || index} className="bg-gray-800/30 rounded-xl p-4 hover:bg-gray-800/50 transition-colors">
                             <div className="flex items-center justify-between">
                               <div>
-                                <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-3 mb-2">
                                   <span className="px-3 py-1 bg-purple-600/20 text-purple-400 rounded-full text-sm">
                                     S{episode.seasonNumber}E{episode.episodeNumber}
                                   </span>
                                   <h4 className="font-medium">{episode.title}</h4>
                                   {episode.download_link && (
                                     <span className="px-2 py-0.5 bg-green-500/20 text-green-400 rounded-full text-xs flex items-center gap-1">
-                                      <FaDownload className="text-xs" />
+                                      <FaDownload className="text-xs" /> DL
                                     </span>
                                   )}
                                 </div>
+                                {episode.description && (
+                                  <p className="text-sm text-gray-400 truncate max-w-md">
+                                    {episode.description}
+                                  </p>
+                                )}
+                                {episode.duration && (
+                                  <p className="text-xs text-gray-500 mt-1">Duration: {episode.duration}</p>
+                                )}
                               </div>
                               <div className="flex gap-2">
                                 <button
-                                  onClick={() => deleteEpisode(episode.id)}
-                                  className="p-1 bg-red-600/20 hover:bg-red-600/30 rounded-lg"
+                                  onClick={() => startEditEpisode(episode)}
+                                  className="p-2 bg-blue-600/20 hover:bg-blue-600/30 rounded-lg"
+                                  title="Edit episode"
                                 >
-                                  <FaTrash className="text-red-400 text-sm" />
+                                  <FaEdit className="text-blue-400" />
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteEpisode(episode.id, episode.title)}
+                                  className="p-2 bg-red-600/20 hover:bg-red-600/30 rounded-lg"
+                                  title="Delete episode"
+                                >
+                                  <FaTrash className="text-red-400" />
                                 </button>
                               </div>
                             </div>
@@ -1566,7 +1728,7 @@ function Admin({ onLogout }) {
           <div className="flex flex-col md:flex-row gap-4">
             <button
               onClick={() => {
-                if (window.confirm("Clear ALL content?")) {
+                if (window.confirm("Clear ALL content? This will delete all movies, series, and episodes!")) {
                   clearAllMovies();
                   clearAllEpisodes();
                   addNotification("success", "All content cleared");
@@ -1578,7 +1740,7 @@ function Admin({ onLogout }) {
               Clear All Content
             </button>
             <p className="text-sm text-gray-400 md:ml-4">
-              This will delete all movies, series, and episodes.
+              This will delete all movies, series, and episodes. This action cannot be undone.
             </p>
           </div>
         </div>

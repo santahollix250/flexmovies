@@ -753,7 +753,7 @@ export default function Movies() {
     }
   }, [navigate, handleSeriesClick]);
 
-  // Format date helper
+  // Format date helper (keep for other uses but not displayed on cards)
   const formatDate = useCallback((dateString) => {
     if (!dateString) return 'Recently';
     try {
@@ -1057,18 +1057,15 @@ export default function Movies() {
               <FaPlayCircle className="text-purple-500 text-sm sm:text-base" />
               <span className="hidden xs:inline">Recently Updated Series</span>
               <span className="xs:hidden">Updated Series</span>
-              <span className="text-[8px] sm:text-xs text-purple-400 ml-1 sm:ml-2 bg-purple-900/30 px-1.5 sm:px-2 py-0.5 rounded-full animate-pulse">
-                NEW
-              </span>
             </h2>
           </div>
 
-          {/* Desktop Grid */}
-          <div className="hidden md:grid md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+          {/* Desktop Grid - with proper gap between cards */}
+          <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 md:gap-5 lg:gap-6">
             {recentlyUpdatedSeries.map(series => (
               <div
                 key={series?.id}
-                className="cursor-pointer group relative"
+                className="cursor-pointer group relative transform transition-transform duration-300 hover:scale-105"
                 onClick={() => handleSeriesClick(series, series.latestEpisode)}
               >
                 <div className="absolute top-2 left-2 z-10">
@@ -1077,34 +1074,42 @@ export default function Movies() {
                     S{series.latestEpisode.seasonNumber}:E{series.latestEpisode.episodeNumber}
                   </span>
                 </div>
-                <div className="absolute top-2 right-2 z-10">
-                  <span className="px-2 py-1 bg-green-600 text-white text-xs rounded-full">
-                    New
-                  </span>
-                </div>
                 <MovieCard movie={series} />
-                <div className="absolute bottom-2 right-2 bg-black/70 text-[8px] text-gray-300 px-1 py-0.5 rounded">
-                  {formatDate(series.lastUpdated)}
-                </div>
               </div>
             ))}
           </div>
 
-          {/* Mobile Horizontal Scroll */}
-          <div className="flex md:hidden gap-2 overflow-x-auto pb-2">
-            {recentlyUpdatedSeries.slice(0, 6).map(series => (
+          {/* Mobile Horizontal Scroll - with proper gap between cards */}
+          <div className="flex md:hidden gap-3 overflow-x-auto pb-4 px-1 scrollbar-hide"
+            style={{
+              scrollbarWidth: 'none',
+              msOverflowStyle: 'none',
+              WebkitOverflowScrolling: 'touch'
+            }}>
+            {recentlyUpdatedSeries.slice(0, 8).map(series => (
               <div
                 key={series?.id}
-                className="flex-none w-[100px] relative"
+                className="flex-none w-[120px] sm:w-[140px] relative transform transition-transform duration-300 active:scale-95"
                 onClick={() => handleSeriesClick(series, series.latestEpisode)}
               >
                 <div className="absolute top-1 left-1 z-10">
-                  <span className="px-1 py-0.5 bg-purple-600 text-white text-[6px] rounded-full">
+                  <span className="px-1.5 py-0.5 bg-purple-600 text-white text-[8px] rounded-full shadow-lg">
                     S{series.latestEpisode.seasonNumber}:E{series.latestEpisode.episodeNumber}
                   </span>
                 </div>
                 <MovieCard movie={series} />
               </div>
+            ))}
+          </div>
+
+          {/* Scroll indicator for mobile */}
+          <div className="flex md:hidden justify-center gap-1 mt-2">
+            {[...Array(Math.min(5, recentlyUpdatedSeries.length))].map((_, i) => (
+              <div
+                key={i}
+                className={`w-1 h-1 rounded-full transition-all duration-300 ${i === 0 ? 'w-3 bg-purple-500' : 'w-1 bg-gray-600'
+                  }`}
+              />
             ))}
           </div>
         </section>
@@ -1118,18 +1123,15 @@ export default function Movies() {
               <FaUpload className="text-green-500 text-sm sm:text-base" />
               <span className="hidden xs:inline">Latest Updates</span>
               <span className="xs:hidden">Updates</span>
-              <span className="text-[8px] sm:text-xs text-green-400 ml-1 sm:ml-2 bg-green-900/30 px-1.5 sm:px-2 py-0.5 rounded-full animate-pulse">
-                NEW
-              </span>
             </h2>
           </div>
 
           {/* Desktop Grid */}
-          <div className="hidden md:grid md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+          <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 md:gap-5 lg:gap-6">
             {latestUploads.map(item => (
               <div
                 key={item?.id}
-                className="cursor-pointer group relative"
+                className="cursor-pointer group relative transform transition-transform duration-300 hover:scale-105"
                 onClick={() => {
                   if (item.uploadType === 'series') {
                     handleSeriesClick(item, item.latestEpisode);
@@ -1157,19 +1159,21 @@ export default function Movies() {
                   )}
                 </div>
                 <MovieCard movie={item} />
-                <div className="absolute bottom-2 right-2 bg-black/70 text-[8px] text-gray-300 px-1 py-0.5 rounded">
-                  {formatDate(item.displayDate)}
-                </div>
               </div>
             ))}
           </div>
 
           {/* Mobile Horizontal Scroll */}
-          <div className="flex md:hidden gap-2 overflow-x-auto pb-2">
+          <div className="flex md:hidden gap-3 overflow-x-auto pb-4 px-1 scrollbar-hide"
+            style={{
+              scrollbarWidth: 'none',
+              msOverflowStyle: 'none',
+              WebkitOverflowScrolling: 'touch'
+            }}>
             {latestUploads.slice(0, 8).map(item => (
               <div
                 key={item?.id}
-                className="flex-none w-[100px] relative"
+                className="flex-none w-[120px] sm:w-[140px] relative transform transition-transform duration-300 active:scale-95"
                 onClick={() => {
                   if (item.uploadType === 'series') {
                     handleSeriesClick(item, item.latestEpisode);
@@ -1180,17 +1184,28 @@ export default function Movies() {
               >
                 <div className="absolute top-1 left-1 z-10">
                   {item.uploadType === 'series' ? (
-                    <span className="px-1 py-0.5 bg-purple-600 text-white text-[6px] rounded-full">
+                    <span className="px-1.5 py-0.5 bg-purple-600 text-white text-[8px] rounded-full shadow-lg">
                       NEW
                     </span>
                   ) : (
-                    <span className="px-1 py-0.5 bg-green-600 text-white text-[6px] rounded-full">
+                    <span className="px-1.5 py-0.5 bg-green-600 text-white text-[8px] rounded-full shadow-lg">
                       NEW
                     </span>
                   )}
                 </div>
                 <MovieCard movie={item} />
               </div>
+            ))}
+          </div>
+
+          {/* Scroll indicator for mobile */}
+          <div className="flex md:hidden justify-center gap-1 mt-2">
+            {[...Array(Math.min(5, latestUploads.length))].map((_, i) => (
+              <div
+                key={i}
+                className={`w-1 h-1 rounded-full transition-all duration-300 ${i === 0 ? 'w-3 bg-green-500' : 'w-1 bg-gray-600'
+                  }`}
+              />
             ))}
           </div>
         </section>
@@ -1337,11 +1352,12 @@ export default function Movies() {
             </h2>
           </div>
 
-          <div className="hidden md:grid md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
-            {featuredMovies.slice(0, 12).map(movie => (
+          {/* Desktop Grid */}
+          <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 md:gap-5 lg:gap-6">
+            {featuredMovies.slice(0, 10).map(movie => (
               <div
                 key={movie?.id}
-                className="cursor-pointer"
+                className="cursor-pointer transform transition-transform duration-300 hover:scale-105"
                 onClick={() => handleMovieClick(movie)}
               >
                 <MovieCard movie={movie} />
@@ -1349,11 +1365,17 @@ export default function Movies() {
             ))}
           </div>
 
-          <div className="flex md:hidden gap-2 overflow-x-auto pb-2">
+          {/* Mobile Horizontal Scroll */}
+          <div className="flex md:hidden gap-3 overflow-x-auto pb-4 px-1 scrollbar-hide"
+            style={{
+              scrollbarWidth: 'none',
+              msOverflowStyle: 'none',
+              WebkitOverflowScrolling: 'touch'
+            }}>
             {featuredMovies.slice(0, 8).map(movie => (
               <div
                 key={movie?.id}
-                className="flex-none w-[100px]"
+                className="flex-none w-[120px] sm:w-[140px] transform transition-transform duration-300 active:scale-95"
                 onClick={() => handleMovieClick(movie)}
               >
                 <MovieCard movie={movie} />
