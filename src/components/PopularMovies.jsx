@@ -38,7 +38,8 @@ import {
   FaSpinner,
   FaUpload,
   FaPlusCircle,
-  FaPlayCircle
+  FaPlayCircle,
+  FaLanguage // Added for translator icon
 } from "react-icons/fa";
 
 // ===== CINEMATIC LOADING ANIMATION =====
@@ -841,6 +842,14 @@ export default function Movies() {
                   </>
                 )}
 
+                {/* Mobile Translator Badge - Now functional */}
+                {currentHeroItem?.translator && (
+                  <div className="px-1.5 py-0.5 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-[8px] font-semibold flex items-center gap-0.5 shadow-lg">
+                    <FaLanguage className="text-[6px]" />
+                    <span className="max-w-[40px] truncate">{currentHeroItem.translator}</span>
+                  </div>
+                )}
+
                 {currentHeroItem?.rating && (
                   <span className="flex items-center gap-0.5 text-[8px] text-yellow-400 bg-yellow-900/20 px-1.5 py-0.5 rounded-lg">
                     <FaStar className="text-[6px]" /> {currentHeroItem.rating}
@@ -877,9 +886,14 @@ export default function Movies() {
                   </>
                 )}
 
-                <span className="px-2 py-1 rounded-full bg-black/40 text-[8px] sm:text-xs text-white border border-white/10">
-                  4K ULTRA HD
-                </span>
+                {/* Translator Badge - Now functional and matches MovieCard styling */}
+                {currentHeroItem?.translator && (
+                  <div className="px-2 py-1 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-[8px] sm:text-xs font-semibold flex items-center gap-1 shadow-lg border border-blue-400/30 hover:from-blue-700 hover:to-indigo-700 transition-all duration-300">
+                    <FaLanguage className="text-[10px] sm:text-xs" />
+                    <span className="hidden lg:inline">Translator: {currentHeroItem.translator}</span>
+                    <span className="inline lg:hidden max-w-[60px] truncate">{currentHeroItem.translator}</span>
+                  </div>
+                )}
 
                 {currentHeroItem?.rating && (
                   <span className="flex items-center gap-1 text-[10px] sm:text-xs text-yellow-400 bg-yellow-900/20 px-2 py-1 rounded-lg">
@@ -1535,6 +1549,15 @@ export default function Movies() {
             </div>
             <div className="p-3 sm:p-4">
               <h2 className="text-sm sm:text-lg font-bold text-white mb-1">{quickViewMovie?.title}</h2>
+
+              {/* Translator in Quick View */}
+              {quickViewMovie?.translator && (
+                <div className="flex items-center gap-1 text-[8px] sm:text-xs text-blue-400 bg-blue-900/20 px-2 py-1 rounded-lg mb-2 inline-block">
+                  <FaLanguage className="text-[10px]" />
+                  <span>Translator: {quickViewMovie.translator}</span>
+                </div>
+              )}
+
               {quickViewMovie.latestEpisode && (
                 <h3 className="text-[10px] sm:text-sm text-purple-400 mb-1 line-clamp-1">
                   {quickViewMovie.latestEpisode.title}

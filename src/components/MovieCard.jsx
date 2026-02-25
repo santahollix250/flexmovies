@@ -134,7 +134,7 @@ export default function MovieCard({ movie }) {
           </div>
         </div>
 
-        {/* Year Badge */}
+        {/* Year Badge - Moved to bottom left */}
         {year && (
           <div className="absolute bottom-1 sm:bottom-2 left-1 sm:left-2 px-1 sm:px-2 py-0.5 sm:py-1 bg-black/70 rounded-full text-[7px] xs:text-[8px] sm:text-[10px] text-white flex items-center gap-0.5 sm:gap-1 z-10">
             <FaCalendarAlt className="text-[6px] xs:text-[7px] sm:text-[10px] text-gray-400" />
@@ -153,6 +153,14 @@ export default function MovieCard({ movie }) {
             <FaRegHeart className="text-white text-[10px] xs:text-xs sm:text-sm hover:text-red-400 transition-colors" />
           )}
         </button>
+
+        {/* Uploaded Time Badge - New addition */}
+        {uploadedTime && (
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 px-1.5 sm:px-2.5 py-0.5 sm:py-1 bg-gradient-to-r from-purple-600/90 to-pink-600/90 backdrop-blur-sm rounded-full text-[6px] xs:text-[7px] sm:text-[9px] text-white font-medium flex items-center gap-0.5 sm:gap-1 z-10 shadow-lg border border-white/10 animate-pulse-slow">
+            <FaClock className="text-[5px] xs:text-[6px] sm:text-[8px]" />
+            <span>{uploadedTime}</span>
+          </div>
+        )}
 
         {/* Play Overlay on Hover */}
         {isHovered && safeStreamUrl && (
@@ -175,7 +183,7 @@ export default function MovieCard({ movie }) {
         )}
       </div>
 
-      {/* Title Section - With category AND uploaded time */}
+      {/* Title Section - Now with category AND uploaded time */}
       <div className="p-1.5 xs:p-2 sm:p-3">
         <h3 className="text-white text-[10px] xs:text-xs sm:text-sm font-semibold line-clamp-1 text-center group-hover:text-red-400 transition-colors duration-300">
           {movie?.title || 'Untitled'}
@@ -189,7 +197,7 @@ export default function MovieCard({ movie }) {
             </p>
           )}
 
-          {/* Uploaded time next to category */}
+          {/* Uploaded time in title section (alternative position) */}
           {uploadedTime && (
             <>
               {movie?.category && <span className="text-[7px] xs:text-[8px] sm:text-[10px] text-gray-600">•</span>}
