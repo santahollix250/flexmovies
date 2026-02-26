@@ -154,14 +154,6 @@ export default function MovieCard({ movie }) {
           )}
         </button>
 
-        {/* Uploaded Time Badge - New addition */}
-        {uploadedTime && (
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 px-1.5 sm:px-2.5 py-0.5 sm:py-1 bg-gradient-to-r from-purple-600/90 to-pink-600/90 backdrop-blur-sm rounded-full text-[6px] xs:text-[7px] sm:text-[9px] text-white font-medium flex items-center gap-0.5 sm:gap-1 z-10 shadow-lg border border-white/10 animate-pulse-slow">
-            <FaClock className="text-[5px] xs:text-[6px] sm:text-[8px]" />
-            <span>{uploadedTime}</span>
-          </div>
-        )}
-
         {/* Play Overlay on Hover */}
         {isHovered && safeStreamUrl && (
           <div className="absolute inset-0 bg-black/50 sm:bg-black/60 flex items-center justify-center z-20 backdrop-blur-[1px] sm:backdrop-blur-none">
@@ -197,7 +189,7 @@ export default function MovieCard({ movie }) {
             </p>
           )}
 
-          {/* Uploaded time in title section (alternative position) */}
+          {/* Uploaded time in title section */}
           {uploadedTime && (
             <>
               {movie?.category && <span className="text-[7px] xs:text-[8px] sm:text-[10px] text-gray-600">•</span>}
