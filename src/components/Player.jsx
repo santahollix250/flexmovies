@@ -2,11 +2,12 @@ import React, { useState, useRef, useEffect, useCallback, useContext } from 'rea
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import {
     FaPlay, FaPause, FaVolumeUp, FaVolumeMute, FaExpand, FaCompress,
-    FaArrowLeft, FaDownload, FaHome, FaStar, FaForward, FaBackward,
+    FaArrowLeft, FaHome, FaStar, FaForward, FaBackward,
     FaVideo, FaComment, FaHeart, FaPaperPlane, FaTrash, FaEdit, FaCheck, FaTimes,
-    FaSpinner, FaExclamationTriangle, FaCloudDownloadAlt, FaFileDownload,
-    FaChevronDown, FaChevronUp, FaLink, FaHdd, FaFilm, FaTv, FaFire, FaClock,
-    FaCalendarAlt, FaPlayCircle, FaChevronRight, FaChevronLeft
+    FaSpinner, FaExclamationTriangle, FaCloudDownloadAlt,
+    FaHdd, FaFilm, FaTv, FaFire, FaClock,
+    FaCalendarAlt, FaPlayCircle, FaChevronRight, FaChevronLeft,
+    FaYoutube, FaVimeo, FaDailymotion
 } from 'react-icons/fa';
 import { supabase } from '../lib/supabaseClient';
 import { MoviesContext } from '../context/MoviesContext';
@@ -15,7 +16,7 @@ const Player = () => {
     const location = useLocation();
     const navigate = useNavigate();
     const { id } = useParams();
-    const { movies, episodes } = useContext(MoviesContext);
+    const { movies } = useContext(MoviesContext);
 
     const videoRef = useRef(null);
     const playerContainerRef = useRef(null);
@@ -48,7 +49,6 @@ const Player = () => {
     const [dailyMotionId, setDailyMotionId] = useState('');
     const [retryCount, setRetryCount] = useState(0);
     const [useEmbed, setUseEmbed] = useState(false);
-    const [showDownloadOptions, setShowDownloadOptions] = useState(false);
     const [downloading, setDownloading] = useState(false);
     const [youtubeId, setYoutubeId] = useState('');
 
@@ -65,7 +65,6 @@ const Player = () => {
     // Related movies state
     const [relatedMovies, setRelatedMovies] = useState([]);
     const [relatedLoading, setRelatedLoading] = useState(false);
-    const [scrollPosition, setScrollPosition] = useState(0);
     const scrollContainerRef = useRef(null);
 
     // Try to find movie from context if not in state
@@ -123,7 +122,7 @@ const Player = () => {
 
         // Score each movie for relevance
         const scoredMovies = movies
-            .filter(m => m.id !== currentMovieId && m.type === "movie") // Exclude current movie and only movies
+            .filter(m => m.id !== currentMovieId && m.type === "movie")
             .map(otherMovie => {
                 let score = 0;
 
@@ -158,10 +157,10 @@ const Player = () => {
                     score
                 };
             })
-            .filter(item => item.score > 0) // Only keep relevant movies
-            .sort((a, b) => b.score - a.score) // Sort by score descending
-            .slice(0, 8) // Take top 8 only (enough for display)
-            .map(item => item.movie); // Extract just the movie objects
+            .filter(item => item.score > 0)
+            .sort((a, b) => b.score - a.score)
+            .slice(0, 8)
+            .map(item => item.movie);
 
         // If we don't have enough related movies by scoring, add some popular ones
         if (scoredMovies.length < 6) {
@@ -169,8 +168,8 @@ const Player = () => {
                 .filter(m =>
                     m.id !== currentMovieId &&
                     m.type === "movie" &&
-                    !scoredMovies.some(sm => sm.id === m.id) && // Not already in scored list
-                    (m.background || (m.rating && parseFloat(m.rating) >= 7.5)) // Popular criteria
+                    !scoredMovies.some(sm => sm.id === m.id) &&
+                    (m.background || (m.rating && parseFloat(m.rating) >= 7.5))
                 )
                 .sort((a, b) => (parseFloat(b.rating) || 0) - (parseFloat(a.rating) || 0))
                 .slice(0, 6 - scoredMovies.length);
@@ -184,11 +183,9 @@ const Player = () => {
     };
 
     const handleRelatedMovieClick = (relatedMovie) => {
-        // Save current progress/state if needed
-        // Navigate to the new movie player
         navigate(`/player/${relatedMovie.id}`, {
             state: { movie: relatedMovie },
-            replace: false // Allow going back to previous movie
+            replace: false
         });
     };
 
@@ -415,41 +412,34 @@ const Player = () => {
         localStorage.setItem('videoCommenter', JSON.stringify(userData));
     };
 
-    // Improved video type detection
+    // Video type detection functions
     const detectVideoType = (url) => {
         if (!url || typeof url !== 'string') return 'direct';
 
-        // Check if it's a DailyMotion URL
         if (url.includes('dailymotion.com') || url.includes('dai.ly')) {
             return 'dailymotion';
         }
 
-        // Check if it's a Vimeo URL
         if (url.includes('vimeo.com') || url.includes('player.vimeo.com') || /^\d+$/.test(url.trim())) {
             return 'vimeo';
         }
 
-        // Check for YouTube
         if (url.includes('youtube.com') || url.includes('youtu.be') || url.includes('youtube-nocookie.com')) {
             return 'youtube';
         }
 
-        // Check if it's a direct video file - expanded formats
         if (url.match(/\.(mp4|webm|mkv|avi|mov|m3u8|mpd|ogg|ogv|wmv|flv|m4v|3gp|ts)$/i)) {
             return 'direct';
         }
 
-        // Check if it's a streaming URL (like from a CDN)
         if (url.includes('/stream/') || url.includes('/video/') || url.includes('/watch/')) {
             return 'direct';
         }
 
-        // Check for Mux
         if (url.includes('mux.com') || url.includes('.mpd')) {
             return 'mux';
         }
 
-        // Check if it's an embed code or iframe
         if (url.includes('<iframe') || url.includes('embed')) {
             return 'embed';
         }
@@ -521,7 +511,6 @@ const Player = () => {
     useEffect(() => {
         if (videoType !== 'youtube') return;
 
-        // Load YouTube API if not already loaded
         if (!window.YT) {
             const tag = document.createElement('script');
             tag.src = 'https://www.youtube.com/iframe_api';
@@ -540,163 +529,44 @@ const Player = () => {
         };
     }, [videoType]);
 
-    // Function to inject CSS into YouTube iframe to hide all branding and recommended videos
-    const hideYouTubeBranding = (iframe) => {
-        try {
-            // Wait for iframe to load
-            setTimeout(() => {
-                if (!iframe || !iframe.contentDocument) return;
-
-                const style = document.createElement('style');
-                style.textContent = `
-                    /* Hide YouTube logo and all branding */
-                    .ytp-watermark, .ytp-youtube-button, .ytp-title, .ytp-title-link,
-                    .ytp-chrome-top, .ytp-chrome-bottom, .ytp-gradient-top, .ytp-gradient-bottom,
-                    .ytp-pause-overlay, .ytp-endscreen-content, .ytp-share-panel, 
-                    .ytp-watch-later-button, .ytp-iv-video-content, .ytp-iv-overlay,
-                    .html5-endscreen, .ytp-endscreen-previous, .ytp-chrome-top-buttons,
-                    .ytp-cards-button, .ytp-chapter-title, .ytp-paid-content-overlay,
-                    .ytp-ce-element, .ytp-spinner, .ytp-spinner-container,
-                    .ytp-popup, .ytp-tooltip, .ytp-tooltip-text,
-                    .ytp-upnext, .ytp-upnext-top, .ytp-upnext-bottom,
-                    .ytp-videowall-still, .ytp-videowall-still-info,
-                    .ytp-videowall-still-image, .ytp-videowall-still-info-content,
-                    .ytp-cued-thumbnail-overlay, .ytp-cued-thumbnail-overlay-image {
-                        display: none !important;
-                        opacity: 0 !important;
-                        visibility: hidden !important;
-                        pointer-events: none !important;
-                        width: 0 !important;
-                        height: 0 !important;
-                    }
-                    
-                    /* Specifically hide the recommended videos overlay when paused */
-                    .ytp-pause-overlay, .ytp-endscreen-content, .html5-endscreen,
-                    .ytp-upnext, .ytp-videowall-still, .ytp-ce-element {
-                        display: none !important;
-                        opacity: 0 !important;
-                        visibility: hidden !important;
-                    }
-                    
-                    /* Make sure the video fills the entire player */
-                    .html5-video-player, .video-stream, .html5-main-video {
-                        width: 100% !important;
-                        height: 100% !important;
-                    }
-                    
-                    /* Remove any background */
-                    .html5-video-player {
-                        background: black !important;
-                    }
-                    
-                    /* Hide any text that might appear */
-                    .ytp-text, .ytp-button, .ytp-title-text {
-                        display: none !important;
-                    }
-                    
-                    /* Force video to cover full area */
-                    .video-stream.html5-main-video {
-                        object-fit: cover !important;
-                    }
-
-                    /* Hide the YouTube logo that appears on pause */
-                    .ytp-chrome-top, .ytp-gradient-top {
-                        display: none !important;
-                    }
-                `;
-
-                iframe.contentDocument.head.appendChild(style);
-
-                // Also try to inject into shadow DOM if present
-                const videoPlayer = iframe.contentDocument.querySelector('.html5-video-player');
-                if (videoPlayer && videoPlayer.shadowRoot) {
-                    const shadowStyle = document.createElement('style');
-                    shadowStyle.textContent = style.textContent;
-                    videoPlayer.shadowRoot.appendChild(shadowStyle);
-                }
-
-                // Remove any overlay elements that might appear dynamically
-                const observer = new MutationObserver((mutations) => {
-                    mutations.forEach(() => {
-                        const pauseOverlay = iframe.contentDocument.querySelector('.ytp-pause-overlay');
-                        if (pauseOverlay) pauseOverlay.style.display = 'none';
-
-                        const endscreen = iframe.contentDocument.querySelector('.html5-endscreen');
-                        if (endscreen) endscreen.style.display = 'none';
-
-                        const upnext = iframe.contentDocument.querySelector('.ytp-upnext');
-                        if (upnext) upnext.style.display = 'none';
-                    });
-                });
-
-                observer.observe(iframe.contentDocument.body, {
-                    childList: true,
-                    subtree: true,
-                    attributes: true
-                });
-
-            }, 500);
-        } catch (error) {
-            console.log('Could not inject CSS into YouTube iframe:', error);
-        }
-    };
-
     // Initialize YouTube player
     useEffect(() => {
         if (!youTubeApiReady || videoType !== 'youtube' || !youtubeId || !youtubeContainerRef.current) return;
 
-        // Create YouTube player
         const player = new window.YT.Player(youtubeContainerRef.current, {
             videoId: youtubeId,
             height: '100%',
             width: '100%',
             playerVars: {
                 autoplay: 1,
-                controls: 0,
-                modestbranding: 1,
-                rel: 0,
-                showinfo: 0,
-                iv_load_policy: 3,
-                fs: 0,
-                disablekb: 1,
-                cc_load_policy: 0,
-                color: 'white',
+                controls: 1, // Enable YouTube controls
+                modestbranding: 0, // Allow YouTube branding
+                rel: 1, // Show related videos
+                showinfo: 1, // Show video info
+                iv_load_policy: 1, // Show annotations
+                fs: 1, // Allow fullscreen
+                disablekb: 0,
+                cc_load_policy: 1, // Show captions
+                color: 'red',
                 playsinline: 1,
                 origin: window.location.origin,
                 widget_referrer: window.location.origin,
                 enablejsapi: 1,
-                loop: 1,
+                loop: 0, // Don't loop
                 mute: muted ? 1 : 0,
-                playlist: youtubeId,
                 hl: 'en',
-                autohide: 1,
-                theme: 'dark',
-                vq: 'hd1080'
+                autohide: 0,
+                theme: 'dark'
             },
             events: {
                 onReady: (event) => {
-                    console.log("✅ YouTube player ready");
+                    console.log("✅ YouTube player ready with controls");
                     setYouTubePlayer(event.target);
                     setVideoLoaded(true);
                     setPlaying(true);
                     setDuration(event.target.getDuration());
-
-                    // Set initial volume
                     event.target.setVolume(volume * 100);
-
-                    // Start progress tracking
                     startYouTubeProgressTracking(event.target);
-
-                    // Hide YouTube branding and recommended videos
-                    const iframe = event.target.getIframe();
-                    if (iframe) {
-                        hideYouTubeBranding(iframe);
-
-                        // Also try to hide by setting attributes
-                        iframe.setAttribute('style', 'border: none; margin: 0; padding: 0;');
-                        iframe.setAttribute('allowfullscreen', 'false');
-                        iframe.setAttribute('allow', 'autoplay; encrypted-media');
-                    }
                 },
                 onStateChange: (event) => {
                     setPlaying(event.data === window.YT.PlayerState.PLAYING);
@@ -705,25 +575,9 @@ const Player = () => {
                         setDuration(event.target.getDuration());
                     }
 
-                    // When paused, immediately hide any overlays
-                    if (event.data === window.YT.PlayerState.PAUSED) {
-                        const iframe = event.target.getIframe();
-                        if (iframe) {
-                            setTimeout(() => hideYouTubeBranding(iframe), 50);
-                        }
-                    }
-
-                    // Handle ended - restart video instead of showing end screen
                     if (event.data === window.YT.PlayerState.ENDED) {
-                        event.target.playVideo();
                         setProgress(0);
                         setCurrentTime(0);
-
-                        // Re-hide branding when video restarts
-                        const iframe = event.target.getIframe();
-                        if (iframe) {
-                            setTimeout(() => hideYouTubeBranding(iframe), 500);
-                        }
                     }
                 },
                 onError: (event) => {
@@ -739,7 +593,7 @@ const Player = () => {
                 player.destroy();
             }
         };
-    }, [youTubeApiReady, videoType, youtubeId, muted]);
+    }, [youTubeApiReady, videoType, youtubeId, muted, volume]);
 
     // Track YouTube progress
     const startYouTubeProgressTracking = (player) => {
@@ -764,22 +618,14 @@ const Player = () => {
             return;
         }
 
-        // YouTube player
         if (videoType === 'youtube' && youTubePlayer) {
             if (playing) {
                 youTubePlayer.pauseVideo();
             } else {
                 youTubePlayer.playVideo();
-
-                // Re-hide branding when playing
-                setTimeout(() => {
-                    const iframe = youTubePlayer.getIframe();
-                    if (iframe) hideYouTubeBranding(iframe);
-                }, 100);
             }
             setPlaying(!playing);
         }
-        // HTML5 player
         else {
             if (!videoRef.current) return;
 
@@ -791,7 +637,6 @@ const Player = () => {
                         setPlaying(true);
                     })
                     .catch(err => {
-                        console.error("Play error:", err);
                         video.muted = true;
                         setMuted(true);
                         video.play().then(() => setPlaying(true)).catch(e => {
@@ -822,11 +667,9 @@ const Player = () => {
         const newVolume = parseFloat(e.target.value);
         setVolume(newVolume);
 
-        // YouTube volume control
         if (videoType === 'youtube' && youTubePlayer) {
             youTubePlayer.setVolume(newVolume * 100);
         }
-        // HTML5 volume control
         else if (videoRef.current) {
             videoRef.current.volume = newVolume;
         }
@@ -838,7 +681,6 @@ const Player = () => {
     const handleToggleMute = (e) => {
         e?.stopPropagation();
 
-        // YouTube mute toggle
         if (videoType === 'youtube' && youTubePlayer) {
             if (muted) {
                 youTubePlayer.unMute();
@@ -847,7 +689,6 @@ const Player = () => {
                 youTubePlayer.mute();
             }
         }
-        // HTML5 mute toggle
         else if (videoRef.current) {
             videoRef.current.muted = !videoRef.current.muted;
         }
@@ -861,13 +702,11 @@ const Player = () => {
         const seekTo = parseFloat(e.target.value);
         setProgress(seekTo);
 
-        // YouTube seek
         if (videoType === 'youtube' && youTubePlayer) {
             const newTime = seekTo * youTubePlayer.getDuration();
             youTubePlayer.seekTo(newTime, true);
             setCurrentTime(newTime);
         }
-        // HTML5 seek
         else if (videoRef.current && !isNaN(videoRef.current.duration)) {
             const newTime = seekTo * videoRef.current.duration;
             videoRef.current.currentTime = newTime;
@@ -879,13 +718,11 @@ const Player = () => {
     const handleForward = (e, seconds = 10) => {
         e?.stopPropagation();
 
-        // YouTube forward
         if (videoType === 'youtube' && youTubePlayer) {
             const newTime = Math.min(youTubePlayer.getCurrentTime() + seconds, youTubePlayer.getDuration());
             youTubePlayer.seekTo(newTime, true);
             setCurrentTime(newTime);
         }
-        // HTML5 forward
         else if (videoRef.current) {
             videoRef.current.currentTime += seconds;
             setCurrentTime(videoRef.current.currentTime);
@@ -896,13 +733,11 @@ const Player = () => {
     const handleRewind = (e, seconds = 10) => {
         e?.stopPropagation();
 
-        // YouTube rewind
         if (videoType === 'youtube' && youTubePlayer) {
             const newTime = Math.max(0, youTubePlayer.getCurrentTime() - seconds);
             youTubePlayer.seekTo(newTime, true);
             setCurrentTime(newTime);
         }
-        // HTML5 rewind
         else if (videoRef.current) {
             videoRef.current.currentTime = Math.max(0, videoRef.current.currentTime - seconds);
             setCurrentTime(videoRef.current.currentTime);
@@ -913,11 +748,9 @@ const Player = () => {
     const handlePlaybackRate = (rate, e) => {
         e?.stopPropagation();
 
-        // YouTube playback rate
         if (videoType === 'youtube' && youTubePlayer) {
             youTubePlayer.setPlaybackRate(rate);
         }
-        // HTML5 playback rate
         else if (videoRef.current) {
             videoRef.current.playbackRate = rate;
         }
@@ -926,57 +759,53 @@ const Player = () => {
         showControlsWithTimer();
     };
 
-    // UPDATED: Enhanced download handler with quality options and progress simulation
-    const handleDownload = async (e, quality = 'original') => {
+    // FIXED DOWNLOAD HANDLER - Works on both PC and mobile
+    const handleDownload = (e) => {
         e?.stopPropagation();
+        e?.preventDefault();
 
-        // Check for download link in priority order:
-        // 1. download field (from admin form)
-        // 2. download_link field
-        // 3. videoUrl as fallback
-        // 4. streamLink as last resort
+        // Check for download link in priority order
         const downloadUrl = movie?.download || movie?.download_link || movie?.videoUrl || movie?.streamLink;
 
         if (downloadUrl) {
             setDownloading(true);
-            setShowDownloadOptions(false);
 
-            // Simulate download preparation (for better UX)
+            // Show loading state briefly
             setTimeout(() => {
-                // Create an invisible anchor element to trigger download
-                const link = document.createElement('a');
-                link.href = downloadUrl;
-                link.download = ''; // Let the browser determine filename or use URL
-                link.target = '_blank'; // Open in new tab for cross-origin URLs
-                link.rel = 'noopener noreferrer';
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
+                try {
+                    // Create anchor element for download
+                    const link = document.createElement('a');
+                    link.href = downloadUrl;
+                    link.download = ''; // Let browser determine filename
+                    link.target = '_blank'; // Open in new tab for safety
+                    link.rel = 'noopener noreferrer';
+
+                    // Append to body, click, and remove
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+
+                    // Also try opening in new window as fallback
+                    window.open(downloadUrl, '_blank');
+
+                } catch (error) {
+                    console.error('Download error:', error);
+                    // Fallback: open in new window
+                    window.open(downloadUrl, '_blank');
+                }
 
                 setDownloading(false);
 
-                // Show success message (optional)
-                const fileName = downloadUrl.split('/').pop() || movie.title;
-                alert(`Download started: ${fileName}`);
+                // Show success message
+                setTimeout(() => {
+                    const fileName = downloadUrl.split('/').pop() || movie.title;
+                    alert(`Download started: ${fileName}`);
+                }, 100);
 
                 showControlsWithTimer();
-            }, 1000);
+            }, 500);
         } else {
             alert('Download link not available for this movie.');
-        }
-    };
-
-    // Copy download link to clipboard
-    const handleCopyLink = (e) => {
-        e?.stopPropagation();
-        const downloadUrl = movie?.download || movie?.download_link || movie?.videoUrl || movie?.streamLink;
-
-        if (downloadUrl) {
-            navigator.clipboard.writeText(downloadUrl).then(() => {
-                alert('Download link copied to clipboard!');
-            }).catch(() => {
-                alert('Failed to copy link');
-            });
         }
     };
 
@@ -1027,7 +856,7 @@ const Player = () => {
     const resetControlsTimer = () => {
         if (controlsTimerRef.current) clearTimeout(controlsTimerRef.current);
         controlsTimerRef.current = setTimeout(() => {
-            if (playing && isFullscreen) setShowControls(false);
+            if (playing) setShowControls(false);
         }, 3000);
     };
 
@@ -1066,10 +895,8 @@ const Player = () => {
             const dailymotionId = extractDailyMotionId(url);
             if (dailymotionId) {
                 setDailyMotionId(dailymotionId);
-                // Clean DailyMotion embed - no logo, no branding
-                const embedUrl = `https://www.dailymotion.com/embed/video/${dailymotionId}?autoplay=1&queue-autoplay-next=0&queue-enable=0&sharing-enable=0&ui-logo=0&ui-start-screen-info=0&controls=true&ui-theme=dark&ui-advance=0&ui-chapters=0&ui-description=0&ui-mute=0&ui-endscreen=0&logo=0&info=0`;
+                const embedUrl = `https://www.dailymotion.com/embed/video/${dailymotionId}?autoplay=1&queue-autoplay-next=0&queue-enable=0&sharing-enable=0&ui-logo=1&ui-start-screen-info=1&controls=1&ui-theme=dark&ui-advance=1&ui-chapters=1&ui-description=1&ui-mute=1&ui-endscreen=1&logo=1&info=1`;
                 setVideoUrl(embedUrl);
-                console.log("🎬 Using DailyMotion embedded player (clean mode)");
             } else {
                 setError("Invalid DailyMotion URL");
             }
@@ -1078,10 +905,8 @@ const Player = () => {
             setIsDailyMotionVideo(false);
             const vimeoId = extractVimeoId(url);
             if (vimeoId) {
-                // Clean Vimeo embed - no logos, no text
-                const embedUrl = `https://player.vimeo.com/video/${vimeoId}?autoplay=1&title=0&byline=0&portrait=0&controls=true&badge=0&transparent=1&color=ffffff&autopause=0&player_id=0&app_id=0`;
+                const embedUrl = `https://player.vimeo.com/video/${vimeoId}?autoplay=1&title=1&byline=1&portrait=1&controls=1&badge=1&transparent=1&color=00adef&autopause=1&player_id=1&app_id=1`;
                 setVideoUrl(embedUrl);
-                console.log("🎬 Using Vimeo embedded player (clean mode)");
             } else {
                 setError("Invalid Vimeo URL");
             }
@@ -1091,28 +916,24 @@ const Player = () => {
             const youtubeId = extractYouTubeId(url);
             if (youtubeId) {
                 setYoutubeId(youtubeId);
-                // We'll use the YouTube API player instead of iframe
-                setVideoUrl(''); // Not needed for API player
-                console.log("🎬 Using YouTube API player with custom controls (professional mode)");
+                setVideoUrl('');
+                console.log("🎬 YouTube player initialized with controls");
             } else {
                 setError("Invalid YouTube URL");
             }
         } else if (detectedType === 'embed') {
             setIsVimeoVideo(false);
             setIsDailyMotionVideo(false);
-            // Try to extract iframe src
             const srcMatch = url.match(/src=["']([^"']+)["']/);
             if (srcMatch) {
                 setVideoUrl(srcMatch[1]);
             } else {
                 setVideoUrl(url);
             }
-            console.log("🎬 Using embed player");
         } else {
             setIsVimeoVideo(false);
             setIsDailyMotionVideo(false);
             setVideoUrl(url);
-            console.log("🎬 Using custom HTML5 player");
         }
         setLoading(false);
     };
@@ -1151,7 +972,6 @@ const Player = () => {
                         allowFullScreen
                         title={movie?.title || 'Video Player'}
                         onLoad={() => {
-                            console.log("✅ Embed iframe loaded");
                             setVideoLoaded(true);
                             setPlaying(true);
                         }}
@@ -1167,6 +987,10 @@ const Player = () => {
         if (isDailyMotionVideo && dailyMotionId) {
             return (
                 <div className="relative w-full h-full">
+                    <div className="absolute top-2 left-2 z-10 bg-black/70 text-white px-3 py-1 rounded-full flex items-center gap-2">
+                        <FaDailymotion className="text-blue-400" />
+                        <span className="text-sm">DailyMotion</span>
+                    </div>
                     <iframe
                         src={videoUrl}
                         className="w-full h-full"
@@ -1175,7 +999,6 @@ const Player = () => {
                         allowFullScreen
                         title={movie?.title || 'Video Player'}
                         onLoad={() => {
-                            console.log("✅ DailyMotion iframe loaded");
                             setVideoLoaded(true);
                             setPlaying(true);
                         }}
@@ -1189,6 +1012,10 @@ const Player = () => {
         } else if (isVimeoVideo) {
             return (
                 <div className="relative w-full h-full">
+                    <div className="absolute top-2 left-2 z-10 bg-black/70 text-white px-3 py-1 rounded-full flex items-center gap-2">
+                        <FaVimeo className="text-blue-400" />
+                        <span className="text-sm">Vimeo</span>
+                    </div>
                     <iframe
                         src={videoUrl}
                         className="w-full h-full"
@@ -1197,7 +1024,6 @@ const Player = () => {
                         allowFullScreen
                         title={movie?.title || 'Video Player'}
                         onLoad={() => {
-                            console.log("✅ Vimeo iframe loaded");
                             setVideoLoaded(true);
                             setPlaying(true);
                         }}
@@ -1209,9 +1035,14 @@ const Player = () => {
                 </div>
             );
         } else if (videoType === 'youtube') {
-            // ULTRA-CLEAN YOUTUBE PLAYER - NO BRANDING OR RECOMMENDED VIDEOS
             return (
                 <div className="relative w-full h-full bg-black">
+                    {/* YouTube branding */}
+                    <div className="absolute top-2 left-2 z-10 bg-black/70 text-white px-3 py-1 rounded-full flex items-center gap-2">
+                        <FaYoutube className="text-red-500" />
+                        <span className="text-sm">YouTube</span>
+                    </div>
+
                     {/* YouTube Player Container */}
                     <div
                         ref={youtubeContainerRef}
@@ -1222,37 +1053,7 @@ const Player = () => {
                         }}
                     />
 
-                    {/* COMPLETE OVERLAY - Blocks ALL YouTube elements including recommended videos */}
-                    <div
-                        className="absolute inset-0 z-20"
-                        style={{
-                            background: 'transparent',
-                            cursor: 'pointer'
-                        }}
-                        onClick={handlePlayPause}
-                        onMouseEnter={() => showControlsWithTimer()}
-                        onMouseLeave={() => setShowControls(false)}
-                    />
-
-                    {/* Additional overlay to ensure nothing shows through */}
-                    <div
-                        className="absolute inset-0 z-10"
-                        style={{
-                            background: 'rgba(0,0,0,0.001)',
-                            pointerEvents: 'none'
-                        }}
-                    />
-
-                    {/* When paused, show a simple black overlay to hide any YouTube elements */}
-                    {!playing && (
-                        <div
-                            className="absolute inset-0 z-25"
-                            style={{
-                                background: 'black',
-                                pointerEvents: 'none'
-                            }}
-                        />
-                    )}
+                    {/* YouTube controls are now enabled */}
                 </div>
             );
         } else {
@@ -1263,11 +1064,9 @@ const Player = () => {
                     src={videoUrl}
                     onTimeUpdate={handleTimeUpdate}
                     onLoadedMetadata={() => {
-                        console.log("✅ HTML5 video metadata loaded");
                         setVideoLoaded(true);
                         if (videoRef.current) {
                             setDuration(videoRef.current.duration);
-                            // Try auto-play
                             const playPromise = videoRef.current.play();
                             if (playPromise !== undefined) {
                                 playPromise
@@ -1275,23 +1074,19 @@ const Player = () => {
                                         setPlaying(true);
                                     })
                                     .catch(err => {
-                                        console.log("Auto-play prevented:", err);
                                         setPlaying(false);
                                     });
                             }
                         }
                     }}
                     onPlay={() => {
-                        console.log("▶️ HTML5 video playing");
                         setPlaying(true);
                         setError('');
                     }}
                     onPause={() => {
-                        console.log("⏸️ HTML5 video paused");
                         setPlaying(false);
                     }}
                     onError={(e) => {
-                        console.error("❌ Video error:", e);
                         const video = videoRef.current;
                         let errorMessage = "Failed to load video. ";
 
@@ -1558,7 +1353,6 @@ const Player = () => {
         </div>
     );
 
-    // ===== RENDER RELATED MOVIES SECTION (OPTIMIZED WITH 5 CARDS) =====
     const renderRelatedMovies = () => {
         if (relatedLoading) {
             return (
@@ -1578,7 +1372,6 @@ const Player = () => {
             return null;
         }
 
-        // LIMIT CARDS TO 5 FOR ALL DEVICES
         const DISPLAY_LIMIT = 5;
 
         return (
@@ -1593,7 +1386,6 @@ const Player = () => {
                     </span>
                 </div>
 
-                {/* Desktop Grid - Show exactly 5 cards */}
                 <div className="hidden md:grid md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                     {relatedMovies.slice(0, DISPLAY_LIMIT).map(relatedMovie => (
                         <div
@@ -1610,18 +1402,12 @@ const Player = () => {
                                         e.target.src = 'https://via.placeholder.com/300x450?text=No+Image';
                                     }}
                                 />
-
-                                {/* Overlay gradient */}
                                 <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-
-                                {/* Play button overlay */}
                                 <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                                     <div className="w-12 h-12 bg-red-600 rounded-full flex items-center justify-center transform group-hover:scale-110 transition-transform">
                                         <FaPlay className="text-white ml-1" />
                                     </div>
                                 </div>
-
-                                {/* Top badges */}
                                 <div className="absolute top-2 left-2 flex flex-wrap gap-1">
                                     {relatedMovie.rating && (
                                         <span className="bg-yellow-600 text-white text-xs px-2 py-1 rounded-full flex items-center gap-1">
@@ -1634,8 +1420,6 @@ const Player = () => {
                                         </span>
                                     )}
                                 </div>
-
-                                {/* Category badge */}
                                 {relatedMovie.category && (
                                     <div className="absolute top-2 right-2">
                                         <span className="bg-purple-600 text-white text-xs px-2 py-1 rounded-full flex items-center gap-1">
@@ -1646,8 +1430,6 @@ const Player = () => {
                                         </span>
                                     </div>
                                 )}
-
-                                {/* Bottom info */}
                                 <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black to-transparent">
                                     <h4 className="text-white font-semibold text-sm line-clamp-1">
                                         {relatedMovie.title}
@@ -1661,9 +1443,7 @@ const Player = () => {
                     ))}
                 </div>
 
-                {/* Mobile Horizontal Scroll - Show exactly 5 cards */}
                 <div className="relative md:hidden">
-                    {/* Left scroll button - only show if more than 5 cards */}
                     {relatedMovies.length > DISPLAY_LIMIT && (
                         <button
                             onClick={scrollLeft}
@@ -1673,7 +1453,6 @@ const Player = () => {
                         </button>
                     )}
 
-                    {/* Scrollable container */}
                     <div
                         ref={scrollContainerRef}
                         className="flex gap-3 overflow-x-auto scrollbar-hide pb-4 px-2"
@@ -1699,15 +1478,11 @@ const Player = () => {
                                             e.target.src = 'https://via.placeholder.com/300x450?text=No+Image';
                                         }}
                                     />
-
-                                    {/* Play button overlay */}
                                     <div className="absolute inset-0 bg-black/50 opacity-0 group-active:opacity-100 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                                         <div className="w-8 h-8 sm:w-10 sm:h-10 bg-red-600 rounded-full flex items-center justify-center">
                                             <FaPlay className="text-white ml-0.5 text-xs sm:text-sm" />
                                         </div>
                                     </div>
-
-                                    {/* Badges */}
                                     <div className="absolute top-1 left-1 flex gap-1">
                                         {relatedMovie.rating && (
                                             <span className="bg-yellow-600 text-white text-[8px] sm:text-xs px-1 sm:px-2 py-0.5 rounded-full flex items-center gap-0.5">
@@ -1716,8 +1491,6 @@ const Player = () => {
                                             </span>
                                         )}
                                     </div>
-
-                                    {/* Category icon */}
                                     {relatedMovie.category && (
                                         <div className="absolute top-1 right-1">
                                             <span className="bg-purple-600/80 text-white text-[8px] sm:text-xs p-1 rounded-full">
@@ -1725,8 +1498,6 @@ const Player = () => {
                                             </span>
                                         </div>
                                     )}
-
-                                    {/* Bottom gradient with title */}
                                     <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black to-transparent">
                                         <h4 className="text-white font-medium text-[10px] sm:text-xs line-clamp-1">
                                             {relatedMovie.title}
@@ -1742,7 +1513,6 @@ const Player = () => {
                         ))}
                     </div>
 
-                    {/* Right scroll button - only show if more than 5 cards */}
                     {relatedMovies.length > DISPLAY_LIMIT && (
                         <button
                             onClick={scrollRight}
@@ -1753,7 +1523,6 @@ const Player = () => {
                     )}
                 </div>
 
-                {/* View more link - only show if there are more than 5 movies */}
                 {relatedMovies.length > DISPLAY_LIMIT && (
                     <div className="text-center mt-4 sm:mt-6">
                         <button
@@ -1771,7 +1540,7 @@ const Player = () => {
         );
     };
 
-    const shouldShowCustomControls = !isVimeoVideo && !isDailyMotionVideo && !useEmbed;
+    const shouldShowCustomControls = !isVimeoVideo && !isDailyMotionVideo && !useEmbed && videoType !== 'youtube';
 
     if (loading) {
         return (
@@ -1847,88 +1616,7 @@ const Player = () => {
                         </div>
 
                         <div className="flex items-center gap-2 sm:gap-4">
-                            {/* BEAUTIFUL DOWNLOAD BUTTON WITH DROPDOWN */}
-                            {hasDownload && (
-                                <div className="relative">
-                                    <button
-                                        onClick={() => setShowDownloadOptions(!showDownloadOptions)}
-                                        className="flex items-center gap-1 sm:gap-2 px-3 sm:px-5 py-1.5 sm:py-2.5 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 rounded-lg sm:rounded-xl text-white font-medium text-xs sm:text-base shadow-lg shadow-green-600/20 transition-all duration-200 transform hover:scale-105"
-                                        disabled={downloading}
-                                    >
-                                        {downloading ? (
-                                            <>
-                                                <FaSpinner className="animate-spin text-xs sm:text-sm" />
-                                                <span className="hidden sm:inline">Preparing...</span>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <FaCloudDownloadAlt className="text-sm sm:text-lg" />
-                                                <span className="hidden sm:inline">Download</span>
-                                                {showDownloadOptions ?
-                                                    <FaChevronUp className="ml-1 text-xs" /> :
-                                                    <FaChevronDown className="ml-1 text-xs" />
-                                                }
-                                            </>
-                                        )}
-                                    </button>
-
-                                    {/* DOWNLOAD DROPDOWN MENU - Mobile optimized */}
-                                    {showDownloadOptions && !downloading && (
-                                        <div className="absolute right-0 mt-2 w-48 sm:w-64 bg-gray-800/95 backdrop-blur-lg border border-gray-700 rounded-lg sm:rounded-xl shadow-2xl overflow-hidden z-50">
-                                            <div className="p-2 sm:p-3 border-b border-gray-700">
-                                                <p className="text-xs sm:text-sm font-medium text-gray-300 flex items-center gap-2">
-                                                    <FaFileDownload className="text-green-400 text-xs sm:text-sm" />
-                                                    Download Options
-                                                </p>
-                                            </div>
-
-                                            <div className="p-2">
-                                                {/* Original Quality */}
-                                                <button
-                                                    onClick={(e) => handleDownload(e, 'original')}
-                                                    className="w-full flex items-center gap-2 sm:gap-3 px-2 sm:px-3 py-2 sm:py-2.5 hover:bg-gray-700/70 rounded-lg transition-colors group"
-                                                >
-                                                    <div className="w-6 h-6 sm:w-8 sm:h-8 bg-gradient-to-br from-green-500/20 to-emerald-500/20 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
-                                                        <FaHdd className="text-green-400 text-xs sm:text-sm" />
-                                                    </div>
-                                                    <div className="flex-1 text-left">
-                                                        <p className="text-xs sm:text-sm font-medium text-white">Original</p>
-                                                        <p className="text-[10px] sm:text-xs text-gray-400 hidden sm:block">Best quality</p>
-                                                    </div>
-                                                </button>
-
-                                                {/* HD Quality */}
-                                                <button
-                                                    onClick={(e) => handleDownload(e, 'hd')}
-                                                    className="w-full flex items-center gap-2 sm:gap-3 px-2 sm:px-3 py-2 sm:py-2.5 hover:bg-gray-700/70 rounded-lg transition-colors group"
-                                                >
-                                                    <div className="w-6 h-6 sm:w-8 sm:h-8 bg-gradient-to-br from-blue-500/20 to-cyan-500/20 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
-                                                        <FaFilm className="text-blue-400 text-xs sm:text-sm" />
-                                                    </div>
-                                                    <div className="flex-1 text-left">
-                                                        <p className="text-xs sm:text-sm font-medium text-white">HD (720p)</p>
-                                                        <p className="text-[10px] sm:text-xs text-gray-400 hidden sm:block">Good quality</p>
-                                                    </div>
-                                                </button>
-
-                                                {/* Copy Link */}
-                                                <button
-                                                    onClick={handleCopyLink}
-                                                    className="w-full flex items-center gap-2 sm:gap-3 px-2 sm:px-3 py-2 sm:py-2.5 hover:bg-gray-700/70 rounded-lg transition-colors group mt-1 border-t border-gray-700/50 pt-2 sm:pt-3"
-                                                >
-                                                    <div className="w-6 h-6 sm:w-8 sm:h-8 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
-                                                        <FaLink className="text-purple-400 text-xs sm:text-sm" />
-                                                    </div>
-                                                    <div className="flex-1 text-left">
-                                                        <p className="text-xs sm:text-sm font-medium text-white">Copy Link</p>
-                                                        <p className="text-[10px] sm:text-xs text-gray-400 hidden sm:block">Save for later</p>
-                                                    </div>
-                                                </button>
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                            )}
+                            {/* No download button here - moved under description */}
                         </div>
                     </div>
                 </div>
@@ -2110,7 +1798,7 @@ const Player = () => {
                     </div>
                 )}
 
-                {!shouldShowCustomControls && showControls && (
+                {!shouldShowCustomControls && showControls && videoType !== 'youtube' && (
                     <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black/80 backdrop-blur-sm rounded-lg px-3 sm:px-4 py-1 sm:py-2 border border-red-500/30 z-30">
                         <div className="flex items-center gap-1 sm:gap-2">
                             <FaVideo className="text-red-400 text-xs sm:text-sm" />
@@ -2128,17 +1816,6 @@ const Player = () => {
                         <div className="lg:col-span-2">
                             <div className="flex items-center justify-between mb-3 sm:mb-4">
                                 <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold">{movie.title}</h1>
-
-                                {/* BEAUTIFUL DOWNLOAD CARD FOR MOBILE/LATER */}
-                                {hasDownload && !showDownloadOptions && (
-                                    <button
-                                        onClick={() => setShowDownloadOptions(true)}
-                                        className="lg:hidden flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-gradient-to-r from-green-600 to-emerald-600 rounded-lg sm:rounded-xl text-white text-xs sm:text-sm font-medium"
-                                    >
-                                        <FaDownload className="text-xs sm:text-sm" />
-                                        <span className="hidden xs:inline">Download</span>
-                                    </button>
-                                )}
                             </div>
 
                             <div className="flex flex-wrap gap-2 sm:gap-3 mb-4 sm:mb-6">
@@ -2149,7 +1826,7 @@ const Player = () => {
                                         {movie.category.split(',')[0]}
                                     </span>
                                 )}
-                                {/* Download badge */}
+                                {/* Download badge - shows that download is available */}
                                 {hasDownload && (
                                     <span className="px-2 sm:px-4 py-1 sm:py-2 bg-gradient-to-r from-green-600 to-emerald-600 rounded-full flex items-center gap-1 sm:gap-2 shadow-lg text-xs sm:text-sm">
                                         <FaCloudDownloadAlt className="text-[10px] sm:text-sm" />
@@ -2160,7 +1837,34 @@ const Player = () => {
 
                             <p className="text-sm sm:text-base text-gray-300 mb-6 whitespace-pre-wrap">{movie.description || 'No description available'}</p>
 
-                            {/* RELATED MOVIES SECTION - Now showing only 5 cards */}
+                            {/* DOWNLOAD BUTTON - Placed under description for all devices */}
+                            {hasDownload && (
+                                <div className="mb-8">
+                                    <button
+                                        onClick={handleDownload}
+                                        className="w-full sm:w-auto flex items-center justify-center gap-2 sm:gap-3 px-6 sm:px-8 py-3 sm:py-4 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 rounded-xl sm:rounded-2xl text-white font-semibold text-base sm:text-lg shadow-lg shadow-green-600/30 transition-all duration-200 transform hover:scale-105 border border-green-400/30"
+                                        disabled={downloading}
+                                    >
+                                        {downloading ? (
+                                            <>
+                                                <FaSpinner className="animate-spin text-lg sm:text-xl" />
+                                                <span>Preparing Download...</span>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <FaCloudDownloadAlt className="text-xl sm:text-2xl" />
+                                                <span>Download Movie</span>
+                                                <span className="text-xs sm:text-sm opacity-75 ml-2">({movie.quality || 'HD'})</span>
+                                            </>
+                                        )}
+                                    </button>
+                                    <p className="text-xs text-gray-400 mt-2 text-center sm:text-left">
+                                        Click to download this movie. The file will open in a new tab or start downloading automatically.
+                                    </p>
+                                </div>
+                            )}
+
+                            {/* RELATED MOVIES SECTION */}
                             {renderRelatedMovies()}
 
                             {renderCommentsSection()}
