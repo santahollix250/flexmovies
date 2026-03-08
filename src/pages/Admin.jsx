@@ -1,5 +1,6 @@
 import { useContext, useState, useEffect } from "react";
 import { MoviesContext } from "../context/MoviesContext";
+import { supabase } from '../lib/supabase'; // Add this import
 import {
   FaEdit, FaTrash, FaFilm, FaTv, FaSave, FaUndo, FaPlus,
   FaLink, FaImage, FaGlobe, FaLanguage, FaSync, FaDatabase,
@@ -9,7 +10,7 @@ import {
   FaMountain, FaYoutube, FaPlayCircle,
   FaServer, FaCopy, FaFileVideo, FaCalendar, FaStar,
   FaClosedCaptioning, FaMicrophone, FaUser, FaTag,
-  FaArrowLeft, FaLayerGroup, FaPlusCircle
+  FaArrowLeft, FaLayerGroup, FaPlusCircle, FaCloudUploadAlt
 } from "react-icons/fa";
 
 function Admin({ onLogout }) {
@@ -134,11 +135,11 @@ function Admin({ onLogout }) {
     imdbRating: "",
     status: "completed",
     views: "0",
-    download: "", // This will store JSON string of parts
-    parts: [] // Array of movie parts
+    download: "",
+    parts: []
   };
 
-  // Empty part form - FIXED: Added all required fields
+  // Empty part form
   const emptyPart = {
     partNumber: 1,
     title: "",
@@ -148,7 +149,7 @@ function Admin({ onLogout }) {
     videoType: VIDEO_PLATFORMS.VIMEO,
     videoId: "",
     embedCode: "",
-    streamLink: "" // CRITICAL: This must be saved!
+    streamLink: ""
   };
 
   // Empty episode form
@@ -186,6 +187,18 @@ function Admin({ onLogout }) {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadingFile, setUploadingFile] = useState(false);
   const [videoPreviewUrl, setVideoPreviewUrl] = useState("");
+
+  // Image upload states
+  const [uploadingPoster, setUploadingPoster] = useState(false);
+  const [uploadingBackground, setUploadingBackground] = useState(false);
+  const [posterPreview, setPosterPreview] = useState("");
+  const [backgroundPreview, setBackgroundPreview] = useState("");
+  const [posterProgress, setPosterProgress] = useState(0);
+  const [backgroundProgress, setBackgroundProgress] = useState(0);
+  const [imageUploadMethod, setImageUploadMethod] = useState({
+    poster: 'link',
+    background: 'link'
+  });
 
   // Parts management states
   const [selectedMovieForParts, setSelectedMovieForParts] = useState(null);
@@ -347,7 +360,118 @@ function Admin({ onLogout }) {
     }
   };
 
-  // Handle file upload
+  // Handle image upload to Supabase
+  const handleImageUpload = async (file, type) => {
+    if (!file) return;
+
+    // Validate file type
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
+    if (!validTypes.includes(file.type)) {
+      addNotification("error", "Invalid image type. Please upload JPEG, PNG, WebP, or GIF");
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      addNotification("error", "Image too large (max 5MB)");
+      return;
+    }
+
+    if (!isOnline) {
+      addNotification("error", "You are offline. Cannot upload images.");
+      return;
+    }
+
+    if (type === 'poster') {
+      setUploadingPoster(true);
+      setPosterProgress(0);
+    } else {
+      setUploadingBackground(true);
+      setBackgroundProgress(0);
+    }
+
+    try {
+      // Create a local preview URL
+      const previewUrl = URL.createObjectURL(file);
+      if (type === 'poster') {
+        setPosterPreview(previewUrl);
+      } else {
+        setBackgroundPreview(previewUrl);
+      }
+
+      // Determine the bucket based on image type
+      const bucket = type === 'poster' ? 'posters' : 'backgrounds';
+
+      // Create a unique filename
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${type}_${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+      const filePath = fileName;
+
+      console.log(`📤 Uploading ${type} to Supabase bucket: ${bucket}`);
+
+      // Simulate progress
+      const progressInterval = setInterval(() => {
+        if (type === 'poster') {
+          setPosterProgress(prev => Math.min(prev + 10, 90));
+        } else {
+          setBackgroundProgress(prev => Math.min(prev + 10, 90));
+        }
+      }, 200);
+
+      // Upload to Supabase Storage
+      const { data, error } = await supabase.storage
+        .from(bucket)
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
+
+      clearInterval(progressInterval);
+
+      if (error) throw error;
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from(bucket)
+        .getPublicUrl(filePath);
+
+      console.log(`✅ Image uploaded successfully: ${publicUrl}`);
+
+      // Update form with the public URL
+      if (type === 'poster') {
+        setForm(prev => ({ ...prev, poster: publicUrl }));
+        setUploadingPoster(false);
+        setPosterProgress(100);
+        setImageUploadMethod(prev => ({ ...prev, poster: 'upload' }));
+        addNotification("success", `Poster "${file.name}" uploaded to Supabase`);
+      } else {
+        setForm(prev => ({ ...prev, background: publicUrl }));
+        setUploadingBackground(false);
+        setBackgroundProgress(100);
+        setImageUploadMethod(prev => ({ ...prev, background: 'upload' }));
+        addNotification("success", `Background "${file.name}" uploaded to Supabase`);
+      }
+
+    } catch (error) {
+      console.error('❌ Upload error:', error);
+      addNotification("error", `Failed to upload ${type}: ${error.message}`);
+
+      // Clean up preview on error
+      if (type === 'poster') {
+        if (posterPreview) URL.revokeObjectURL(posterPreview);
+        setPosterPreview('');
+        setUploadingPoster(false);
+        setPosterProgress(0);
+      } else {
+        if (backgroundPreview) URL.revokeObjectURL(backgroundPreview);
+        setBackgroundPreview('');
+        setUploadingBackground(false);
+        setBackgroundProgress(0);
+      }
+    }
+  };
+
+  // Handle file upload for video
   const handleFileUpload = async (file) => {
     if (!file) return;
 
@@ -474,6 +598,15 @@ function Admin({ onLogout }) {
     }
   }, [notifications]);
 
+  // Clean up object URLs when component unmounts
+  useEffect(() => {
+    return () => {
+      if (posterPreview) URL.revokeObjectURL(posterPreview);
+      if (backgroundPreview) URL.revokeObjectURL(backgroundPreview);
+      if (videoPreviewUrl) URL.revokeObjectURL(videoPreviewUrl);
+    };
+  }, [posterPreview, backgroundPreview, videoPreviewUrl]);
+
   // Sort episodes
   const sortEpisodes = (episodesArray) => {
     if (!episodesArray || !Array.isArray(episodesArray)) return [];
@@ -515,6 +648,12 @@ function Admin({ onLogout }) {
       if (name === 'videoFile') {
         const file = files[0];
         handleFileUpload(file);
+      } else if (name === 'posterFile') {
+        const file = files[0];
+        handleImageUpload(file, 'poster');
+      } else if (name === 'backgroundFile') {
+        const file = files[0];
+        handleImageUpload(file, 'background');
       }
     } else if (name === "videoUrl") {
       const detectedPlatform = detectPlatform(value);
@@ -549,6 +688,29 @@ function Admin({ onLogout }) {
   function handlePartChange(e) {
     const { name, value } = e.target;
     setPartForm((f) => ({ ...f, [name]: value }));
+  }
+
+  // Toggle image upload method
+  function toggleImageMethod(type) {
+    setImageUploadMethod(prev => ({
+      ...prev,
+      [type]: prev[type] === 'link' ? 'upload' : 'link'
+    }));
+
+    // Clear the field when switching
+    if (type === 'poster') {
+      setForm(prev => ({ ...prev, poster: '' }));
+      if (posterPreview) {
+        URL.revokeObjectURL(posterPreview);
+        setPosterPreview('');
+      }
+    } else {
+      setForm(prev => ({ ...prev, background: '' }));
+      if (backgroundPreview) {
+        URL.revokeObjectURL(backgroundPreview);
+        setBackgroundPreview('');
+      }
+    }
   }
 
   // Start editing movie/series
@@ -632,6 +794,19 @@ function Admin({ onLogout }) {
     setMovieParts([]);
     setEditingPart(null);
     setShowPartForm(false);
+
+    // Clean up image previews
+    if (posterPreview) {
+      URL.revokeObjectURL(posterPreview);
+      setPosterPreview('');
+    }
+    if (backgroundPreview) {
+      URL.revokeObjectURL(backgroundPreview);
+      setBackgroundPreview('');
+    }
+
+    setImageUploadMethod({ poster: 'link', background: 'link' });
+
     addNotification("info", "Form reset");
   }
 
@@ -679,7 +854,7 @@ function Admin({ onLogout }) {
       imdbRating: form.imdbRating || null,
       status: form.status || "completed",
       views: parseInt(form.views) || 0,
-      download: form.download || "" // Keep existing download data
+      download: form.download || ""
     };
 
     if (form.type === "series") {
@@ -837,7 +1012,7 @@ function Admin({ onLogout }) {
     setShowPartForm(false);
   }
 
-  // ========== FIXED: Add or update part with proper streamLink ==========
+  // Add or update part with proper streamLink
   async function handleAddOrUpdatePart() {
     if (!selectedMovieForParts) {
       addNotification("error", "No movie selected");
@@ -879,7 +1054,7 @@ function Admin({ onLogout }) {
         videoUrl: partForm.videoUrl,
         videoType: partForm.videoType,
         videoId: videoId,
-        streamLink: streamLink, // CRITICAL - this must be saved!
+        streamLink: streamLink,
         download_link: partForm.download_link || "",
         duration: partForm.duration || "",
         embedCode: embedCode
@@ -902,10 +1077,9 @@ function Admin({ onLogout }) {
       // Sort by part number to maintain order
       updatedParts.sort((a, b) => a.partNumber - b.partNumber);
 
-      // CRITICAL FIX: Ensure ALL parts have streamLink
+      // Ensure ALL parts have streamLink
       updatedParts = updatedParts.map(part => {
         if (!part.streamLink && part.videoId) {
-          // Regenerate streamLink if missing
           return {
             ...part,
             streamLink: generateEmbedUrl(part.videoId, part.videoType)
@@ -1521,7 +1695,7 @@ function Admin({ onLogout }) {
                 )}
               </div>
 
-              {/* Basic Fields */}
+              {/* Basic Fields with Image Upload */}
               <div className="grid md:grid-cols-2 gap-4 mb-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">
@@ -1536,38 +1710,180 @@ function Admin({ onLogout }) {
                   />
                 </div>
 
+                {/* POSTER UPLOAD */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Poster URL
-                    <span className="text-xs text-gray-400 ml-2">(Recommended: 300x450)</span>
-                  </label>
-                  <div className="relative">
-                    <FaImage className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                    <input
-                      name="poster"
-                      value={form.poster}
-                      onChange={handleChange}
-                      placeholder="https://example.com/poster.jpg"
-                      className="w-full pl-10 p-3 bg-gray-800/70 border border-gray-700 rounded-xl"
-                    />
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="block text-sm font-medium text-gray-300">
+                      Poster Image
+                      <span className="text-xs text-gray-400 ml-2">(Recommended: 300x450)</span>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => toggleImageMethod('poster')}
+                      className="text-xs px-2 py-1 rounded bg-gray-700 hover:bg-gray-600 flex items-center gap-1"
+                    >
+                      {imageUploadMethod.poster === 'link' ? (
+                        <>
+                          <FaUpload className="text-xs" /> Switch to Upload
+                        </>
+                      ) : (
+                        <>
+                          <FaLink className="text-xs" /> Switch to Link
+                        </>
+                      )}
+                    </button>
                   </div>
+
+                  {imageUploadMethod.poster === 'link' ? (
+                    <div className="relative">
+                      <FaImage className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                      <input
+                        name="poster"
+                        value={form.poster}
+                        onChange={handleChange}
+                        placeholder="https://example.com/poster.jpg"
+                        className="w-full pl-10 p-3 bg-gray-800/70 border border-gray-700 rounded-xl"
+                      />
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="border-2 border-dashed border-gray-700 rounded-xl p-4 text-center">
+                        <input
+                          type="file"
+                          name="posterFile"
+                          id="posterFile"
+                          accept="image/*"
+                          onChange={handleChange}
+                          className="hidden"
+                        />
+                        <label htmlFor="posterFile" className="cursor-pointer block">
+                          <FaCloudUploadAlt className="text-3xl text-gray-400 mx-auto mb-2" />
+                          <div className="text-sm text-gray-300 mb-1">Click to upload poster</div>
+                          <div className="text-xs text-gray-400">JPEG, PNG, WebP, GIF (max 5MB)</div>
+
+                          {uploadingPoster && (
+                            <div className="mt-3">
+                              <div className="w-full bg-gray-700 rounded-full h-1.5">
+                                <div
+                                  className="bg-blue-600 h-1.5 rounded-full"
+                                  style={{ width: `${posterProgress}%` }}
+                                ></div>
+                              </div>
+                              <span className="text-xs text-gray-400 mt-1">Uploading... {posterProgress}%</span>
+                            </div>
+                          )}
+                        </label>
+                      </div>
+
+                      {/* Preview */}
+                      {(posterPreview || form.poster) && (
+                        <div className="flex items-center gap-3 p-2 bg-gray-800/50 rounded-lg">
+                          <img
+                            src={posterPreview || form.poster}
+                            alt="Poster preview"
+                            className="w-12 h-16 object-cover rounded"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs text-gray-400 truncate">Poster ready</p>
+                            {posterPreview && (
+                              <p className="text-xs text-green-400">✓ Uploaded from device</p>
+                            )}
+                            {form.poster && !posterPreview && (
+                              <p className="text-xs text-blue-400 truncate">{form.poster}</p>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
+                {/* BACKGROUND UPLOAD */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Background Image URL
-                    <span className="text-xs text-gray-400 ml-2">(Recommended: 1920x1080)</span>
-                  </label>
-                  <div className="relative">
-                    <FaMountain className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                    <input
-                      name="background"
-                      value={form.background}
-                      onChange={handleChange}
-                      placeholder="https://example.com/background.jpg"
-                      className="w-full pl-10 p-3 bg-gray-800/70 border border-gray-700 rounded-xl"
-                    />
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="block text-sm font-medium text-gray-300">
+                      Background Image
+                      <span className="text-xs text-gray-400 ml-2">(Recommended: 1920x1080)</span>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => toggleImageMethod('background')}
+                      className="text-xs px-2 py-1 rounded bg-gray-700 hover:bg-gray-600 flex items-center gap-1"
+                    >
+                      {imageUploadMethod.background === 'link' ? (
+                        <>
+                          <FaUpload className="text-xs" /> Switch to Upload
+                        </>
+                      ) : (
+                        <>
+                          <FaLink className="text-xs" /> Switch to Link
+                        </>
+                      )}
+                    </button>
                   </div>
+
+                  {imageUploadMethod.background === 'link' ? (
+                    <div className="relative">
+                      <FaMountain className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                      <input
+                        name="background"
+                        value={form.background}
+                        onChange={handleChange}
+                        placeholder="https://example.com/background.jpg"
+                        className="w-full pl-10 p-3 bg-gray-800/70 border border-gray-700 rounded-xl"
+                      />
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="border-2 border-dashed border-gray-700 rounded-xl p-4 text-center">
+                        <input
+                          type="file"
+                          name="backgroundFile"
+                          id="backgroundFile"
+                          accept="image/*"
+                          onChange={handleChange}
+                          className="hidden"
+                        />
+                        <label htmlFor="backgroundFile" className="cursor-pointer block">
+                          <FaCloudUploadAlt className="text-3xl text-gray-400 mx-auto mb-2" />
+                          <div className="text-sm text-gray-300 mb-1">Click to upload background</div>
+                          <div className="text-xs text-gray-400">JPEG, PNG, WebP, GIF (max 5MB)</div>
+
+                          {uploadingBackground && (
+                            <div className="mt-3">
+                              <div className="w-full bg-gray-700 rounded-full h-1.5">
+                                <div
+                                  className="bg-blue-600 h-1.5 rounded-full"
+                                  style={{ width: `${backgroundProgress}%` }}
+                                ></div>
+                              </div>
+                              <span className="text-xs text-gray-400 mt-1">Uploading... {backgroundProgress}%</span>
+                            </div>
+                          )}
+                        </label>
+                      </div>
+
+                      {/* Preview */}
+                      {(backgroundPreview || form.background) && (
+                        <div className="flex items-center gap-3 p-2 bg-gray-800/50 rounded-lg">
+                          <img
+                            src={backgroundPreview || form.background}
+                            alt="Background preview"
+                            className="w-16 h-10 object-cover rounded"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs text-gray-400 truncate">Background ready</p>
+                            {backgroundPreview && (
+                              <p className="text-xs text-green-400">✓ Uploaded from device</p>
+                            )}
+                            {form.background && !backgroundPreview && (
+                              <p className="text-xs text-blue-400 truncate">{form.background}</p>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 <div>
@@ -1707,7 +2023,7 @@ function Admin({ onLogout }) {
               <div className="flex flex-wrap gap-3 mt-6">
                 <button
                   onClick={handleAddOrUpdate}
-                  disabled={submitting || uploadingFile}
+                  disabled={submitting || uploadingFile || uploadingPoster || uploadingBackground}
                   className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-teal-600 hover:from-blue-700 hover:to-teal-700 rounded-xl font-semibold disabled:opacity-50"
                 >
                   <FaSave />

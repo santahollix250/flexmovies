@@ -1,21 +1,31 @@
 import { createContext, useEffect, useState, useCallback, useMemo } from "react";
 import { supabase } from '../lib/supabase';
 
-// Supported video platforms - ADDED DAILYMOTION
+// Supported video platforms
 const VIDEO_PLATFORMS = {
   VIMEO: 'vimeo',
   YOUTUBE: 'youtube',
   MUX: 'mux',
   DIRECT: 'direct',
   EMBED: 'embed',
-  DAILYMOTION: 'dailymotion' // ADDED
+  DAILYMOTION: 'dailymotion'
 };
 
-// Helper functions for all platforms - UPDATED FOR DAILYMOTION
+// Image upload configurations
+const IMAGE_CONFIG = {
+  MAX_SIZE: 5 * 1024 * 1024, // 5MB
+  ALLOWED_TYPES: ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'],
+  BUCKETS: {
+    POSTERS: 'posters',
+    BACKGROUNDS: 'backgrounds',
+    THUMBNAILS: 'thumbnails'
+  }
+};
+
+// Helper functions for all platforms
 const extractVideoId = (url, platform) => {
   if (!url || typeof url !== 'string') return '';
 
-  // If it's just an ID (no URL)
   if (platform === VIDEO_PLATFORMS.VIMEO && /^\d{5,}$/.test(url.trim())) {
     return url.trim();
   }
@@ -25,43 +35,33 @@ const extractVideoId = (url, platform) => {
   if (platform === VIDEO_PLATFORMS.MUX && /^[a-zA-Z0-9]+$/.test(url.trim())) {
     return url.trim();
   }
-  if (platform === VIDEO_PLATFORMS.DAILYMOTION && /^[a-zA-Z0-9]+$/.test(url.trim())) { // ADDED
+  if (platform === VIDEO_PLATFORMS.DAILYMOTION && /^[a-zA-Z0-9]+$/.test(url.trim())) {
     return url.trim();
   }
 
-  // Extract from URL patterns
   let match;
 
   switch (platform) {
     case VIDEO_PLATFORMS.VIMEO:
-      // https://vimeo.com/123456789
       match = url.match(/vimeo\.com\/(\d+)/);
       if (match) return match[1];
-      // https://player.vimeo.com/video/123456789
       match = url.match(/player\.vimeo\.com\/video\/(\d+)/);
       if (match) return match[1];
-      // https://vimeo.com/channels/xxx/123456789
       match = url.match(/vimeo\.com\/channels\/[^\/]+\/(\d+)/);
       if (match) return match[1];
       break;
 
     case VIDEO_PLATFORMS.YOUTUBE:
-      // https://youtube.com/watch?v=VIDEO_ID
-      // https://youtu.be/VIDEO_ID
-      // https://youtube.com/embed/VIDEO_ID
       match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/);
       if (match) return match[1];
       break;
 
     case VIDEO_PLATFORMS.MUX:
-      // https://stream.mux.com/VIDEO_ID.m3u8
-      // https://mux.com/VIDEO_ID
       match = url.match(/(?:stream\.)?mux\.com\/([a-zA-Z0-9]+)/);
       if (match) return match[1];
       break;
 
-    case VIDEO_PLATFORMS.DAILYMOTION: // ADDED
-      // Remove query parameters and fragments
+    case VIDEO_PLATFORMS.DAILYMOTION:
       const cleanUrl = url.split('?')[0].split('#')[0];
       const patterns = [
         /dailymotion\.com\/video\/([a-zA-Z0-9]+)/,
@@ -102,14 +102,14 @@ const generateEmbedUrl = (videoId, platform, quality = '1080') => {
     case VIDEO_PLATFORMS.MUX:
       return `https://stream.mux.com/${videoId}.m3u8`;
 
-    case VIDEO_PLATFORMS.DAILYMOTION: // ADDED
+    case VIDEO_PLATFORMS.DAILYMOTION:
       return `https://www.dailymotion.com/embed/video/${videoId}?autoplay=1&queue-autoplay-next=0&queue-enable=0&sharing-enable=0&ui-logo=0&ui-start-screen-info=0`;
 
     case VIDEO_PLATFORMS.DIRECT:
-      return videoId; // Direct URLs are already embeddable
+      return videoId;
 
     case VIDEO_PLATFORMS.EMBED:
-      return videoId; // Embed code is already complete
+      return videoId;
 
     default:
       return '';
@@ -119,37 +119,30 @@ const generateEmbedUrl = (videoId, platform, quality = '1080') => {
 const detectPlatform = (url) => {
   if (!url || typeof url !== 'string') return VIDEO_PLATFORMS.VIMEO;
 
-  // Check for Vimeo
   if (/vimeo\.com/.test(url) || /^\d{5,}$/.test(url.trim())) {
     return VIDEO_PLATFORMS.VIMEO;
   }
 
-  // Check for YouTube
   if (/youtube\.com/.test(url) || /youtu\.be/.test(url)) {
     return VIDEO_PLATFORMS.YOUTUBE;
   }
 
-  // Check for Mux
   if (/mux\.com/.test(url) || /^[a-zA-Z0-9]+$/.test(url.trim())) {
     return VIDEO_PLATFORMS.MUX;
   }
 
-  // Check for DailyMotion - ADDED
   if (/dailymotion\.com/.test(url) || /dai\.ly/.test(url) || /^[a-zA-Z0-9]+$/.test(url.trim())) {
     return VIDEO_PLATFORMS.DAILYMOTION;
   }
 
-  // Check for direct video files
   if (/\.(mp4|webm|mkv|avi|mov|m3u8|mpd|m4v|wmv|flv|ogg|ogv)$/i.test(url)) {
     return VIDEO_PLATFORMS.DIRECT;
   }
 
-  // Check for embed code
   if (url.includes('<iframe') || url.includes('embed')) {
     return VIDEO_PLATFORMS.EMBED;
   }
 
-  // Default to Vimeo
   return VIDEO_PLATFORMS.VIMEO;
 };
 
@@ -172,7 +165,6 @@ const searchInContent = (items, searchQuery, filters = {}) => {
   if (!items || items.length === 0) return [];
 
   return items.filter(item => {
-    // Text search
     if (searchQuery && searchQuery.trim()) {
       const query = searchQuery.toLowerCase().trim();
       const matchesTitle = item.title?.toLowerCase().includes(query);
@@ -187,14 +179,12 @@ const searchInContent = (items, searchQuery, filters = {}) => {
       }
     }
 
-    // Genre/Category filter
     if (filters.genre && filters.genre !== '') {
       if (item.category?.toLowerCase() !== filters.genre.toLowerCase()) {
         return false;
       }
     }
 
-    // Year filter
     if (filters.year && filters.year !== '') {
       const itemYear = parseInt(item.year);
       const filterYear = parseInt(filters.year);
@@ -203,7 +193,6 @@ const searchInContent = (items, searchQuery, filters = {}) => {
       }
     }
 
-    // Rating filter
     if (filters.rating && filters.rating !== '') {
       const minRating = parseFloat(filters.rating);
       const itemRating = parseFloat(item.rating || item.imdbRating || 0);
@@ -212,22 +201,18 @@ const searchInContent = (items, searchQuery, filters = {}) => {
       }
     }
 
-    // Country/Nation filter
     if (filters.country && filters.country !== '') {
       if (item.nation?.toLowerCase() !== filters.country.toLowerCase()) {
         return false;
       }
     }
 
-    // Language filter (if available in your data)
     if (filters.language && filters.language !== '') {
-      // Assuming you have a language field, if not, skip this filter
       if (item.language && item.language.toLowerCase() !== filters.language.toLowerCase()) {
         return false;
       }
     }
 
-    // Type filter (movie/series/all)
     if (filters.type && filters.type !== 'all') {
       if (item.type !== filters.type) {
         return false;
@@ -250,7 +235,6 @@ const sortResults = (items, sortBy) => {
     case 'rating':
       return sorted.sort((a, b) => (b.rating || b.imdbRating || 0) - (a.rating || a.imdbRating || 0));
     case 'trending':
-      // You can implement your trending algorithm here
       return sorted.sort((a, b) => (b.views || 0) - (a.views || 0));
     case 'az':
       return sorted.sort((a, b) => a.title?.localeCompare(b.title));
@@ -268,6 +252,9 @@ export const MoviesContext = createContext({
   loadingProgress: 0,
   isOnline: true,
   error: null,
+  // Image upload functions - NEW
+  uploadImage: () => Promise.reject(new Error("MoviesContext not initialized")),
+  deleteImage: () => Promise.reject(new Error("MoviesContext not initialized")),
   // Global search state
   globalSearchQuery: '',
   globalSearchResults: [],
@@ -297,7 +284,8 @@ export const MoviesContext = createContext({
   refreshEpisodes: () => { },
   clearAllMovies: () => Promise.reject(new Error("MoviesContext not initialized")),
   clearAllEpisodes: () => Promise.reject(new Error("MoviesContext not initialized")),
-  VIDEO_PLATFORMS: VIDEO_PLATFORMS
+  VIDEO_PLATFORMS: VIDEO_PLATFORMS,
+  IMAGE_CONFIG: IMAGE_CONFIG // Export image config - NEW
 });
 
 export function MoviesProvider({ children }) {
@@ -313,10 +301,128 @@ export function MoviesProvider({ children }) {
   const [searchEpisodes, setSearchEpisodes] = useState([]);
   const [recentSearches, setRecentSearches] = useState([]);
 
-  // GLOBAL SEARCH STATE - Single source of truth for all search inputs
+  // GLOBAL SEARCH STATE
   const [globalSearchQuery, setGlobalSearchQuery] = useState('');
   const [globalSearchResults, setGlobalSearchResults] = useState([]);
   const [globalSearchFilters, setGlobalSearchFilters] = useState({});
+
+  // ========== NEW: IMAGE UPLOAD FUNCTIONS ==========
+
+  /**
+   * Upload image to Supabase Storage
+   * @param {File} file - The image file to upload
+   * @param {string} bucket - Storage bucket ('posters', 'backgrounds', 'thumbnails')
+   * @param {Function} onProgress - Progress callback
+   * @returns {Promise<string>} Public URL of uploaded image
+   */
+  const uploadImage = useCallback(async (file, bucket, onProgress = () => { }) => {
+    if (!file) throw new Error('No file provided');
+    if (!isOnline) throw new Error('You are offline. Cannot upload images.');
+
+    // Validate file type
+    if (!IMAGE_CONFIG.ALLOWED_TYPES.includes(file.type)) {
+      throw new Error('Invalid file type. Allowed: JPEG, PNG, WebP, GIF');
+    }
+
+    // Validate file size
+    if (file.size > IMAGE_CONFIG.MAX_SIZE) {
+      throw new Error(`File too large. Max size: ${IMAGE_CONFIG.MAX_SIZE / (1024 * 1024)}MB`);
+    }
+
+    // Validate bucket
+    if (!Object.values(IMAGE_CONFIG.BUCKETS).includes(bucket)) {
+      throw new Error('Invalid storage bucket');
+    }
+
+    try {
+      // Create unique filename
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+      const filePath = fileName; // Just the filename, bucket is specified separately
+
+      console.log(`📤 Uploading image to ${bucket}/${fileName}...`);
+
+      // Upload to Supabase Storage
+      const { data, error } = await supabase.storage
+        .from(bucket)
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
+
+      if (error) throw error;
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from(bucket)
+        .getPublicUrl(filePath);
+
+      console.log(`✅ Image uploaded successfully: ${publicUrl}`);
+
+      // Call progress callback with 100%
+      onProgress(100);
+
+      return publicUrl;
+
+    } catch (error) {
+      console.error('❌ Image upload failed:', error);
+      throw new Error(`Upload failed: ${error.message}`);
+    }
+  }, [isOnline]);
+
+  /**
+   * Delete image from Supabase Storage
+   * @param {string} imageUrl - Full URL or path of image to delete
+   * @returns {Promise<boolean>} Success status
+   */
+  const deleteImage = useCallback(async (imageUrl) => {
+    if (!imageUrl) return false;
+    if (!isOnline) {
+      console.warn('Offline: Cannot delete image');
+      return false;
+    }
+
+    try {
+      // Extract bucket and path from URL
+      let bucket = null;
+      let path = null;
+
+      // Try to extract from full URL
+      for (const [key, value] of Object.entries(IMAGE_CONFIG.BUCKETS)) {
+        if (imageUrl.includes(value)) {
+          bucket = value;
+          // Extract filename from URL
+          const urlParts = imageUrl.split('/');
+          path = urlParts[urlParts.length - 1];
+          break;
+        }
+      }
+
+      // If it's just a path (not full URL)
+      if (!bucket && !path) {
+        // Assume it's just a filename, try to determine bucket from context
+        // This is a fallback - better to pass full URL
+        return false;
+      }
+
+      if (!bucket || !path) return false;
+
+      console.log(`🗑️ Deleting image from ${bucket}/${path}...`);
+
+      const { error } = await supabase.storage
+        .from(bucket)
+        .remove([path]);
+
+      if (error) throw error;
+
+      console.log('✅ Image deleted successfully');
+      return true;
+
+    } catch (error) {
+      console.error('❌ Image deletion failed:', error);
+      return false;
+    }
+  }, [isOnline]);
 
   // Check online status
   useEffect(() => {
@@ -362,7 +468,7 @@ export function MoviesProvider({ children }) {
     setLoadingProgress(Math.min(progress, 100));
   }, []);
 
-  // Load from localStorage FIRST (immediate display)
+  // Load from localStorage FIRST
   useEffect(() => {
     try {
       updateProgress(10);
@@ -400,7 +506,6 @@ export function MoviesProvider({ children }) {
     try {
       console.log("🔄 Fetching movies from Supabase...");
 
-      // Fetch movies
       const { data: moviesData, error: moviesError } = await supabase
         .from('movies')
         .select('*')
@@ -414,7 +519,6 @@ export function MoviesProvider({ children }) {
       } else {
         console.log(`✅ Fetched ${moviesData?.length || 0} movies from Supabase`);
 
-        // Transform movies data with multi-platform support
         const transformedMovies = (moviesData || []).map(movie => {
           const videoInfo = processVideoUrl(movie.video_url, movie.video_type);
 
@@ -455,7 +559,6 @@ export function MoviesProvider({ children }) {
         updateProgress(85);
       }
 
-      // Fetch episodes
       try {
         const { data: episodesData, error: episodesError } = await supabase
           .from('episodes')
@@ -512,18 +615,14 @@ export function MoviesProvider({ children }) {
   }, [isOnline, updateProgress]);
 
   // SEARCH FUNCTIONS
-
-  // UPDATE GLOBAL SEARCH - Single source of truth
   const updateGlobalSearch = useCallback((query, filters = {}) => {
     setGlobalSearchQuery(query);
     setGlobalSearchFilters(filters);
 
     if (query.trim() || Object.keys(filters).length > 0) {
-      // Search in movies
       const movieResults = searchInContent(movies, query, filters);
       const sortedMovies = sortResults(movieResults, filters.sortBy || 'popular');
 
-      // Search in episodes
       const episodeResults = searchInContent(episodes, query, filters);
       const sortedEpisodes = sortResults(episodeResults, filters.sortBy || 'popular');
 
@@ -531,7 +630,6 @@ export function MoviesProvider({ children }) {
       setSearchResults(sortedMovies);
       setSearchEpisodes(sortedEpisodes);
 
-      // Save to recent searches if there's a query
       if (query.trim()) {
         saveRecentSearch({
           query: query.trim(),
@@ -546,7 +644,6 @@ export function MoviesProvider({ children }) {
     }
   }, [movies, episodes, saveRecentSearch]);
 
-  // Clear global search
   const clearGlobalSearch = useCallback(() => {
     setGlobalSearchQuery('');
     setGlobalSearchResults([]);
@@ -555,7 +652,6 @@ export function MoviesProvider({ children }) {
     setSearchEpisodes([]);
   }, []);
 
-  // Search movies only
   const searchMovies = useCallback((query, filters = {}) => {
     const results = searchInContent(movies, query, filters);
     const sorted = sortResults(results, filters.sortBy || 'popular');
@@ -563,7 +659,6 @@ export function MoviesProvider({ children }) {
     return sorted;
   }, [movies]);
 
-  // Search episodes only
   const searchEpisodesOnly = useCallback((query, filters = {}) => {
     const results = searchInContent(episodes, query, filters);
     const sorted = sortResults(results, filters.sortBy || 'popular');
@@ -571,22 +666,18 @@ export function MoviesProvider({ children }) {
     return sorted;
   }, [episodes]);
 
-  // Search all content (movies and episodes)
   const searchAll = useCallback((searchData) => {
     const { query, ...filters } = searchData;
 
-    // Search movies
     const movieResults = searchInContent(movies, query, filters);
     const sortedMovies = sortResults(movieResults, filters.sortBy || 'popular');
 
-    // Search episodes
     const episodeResults = searchInContent(episodes, query, filters);
     const sortedEpisodes = sortResults(episodeResults, filters.sortBy || 'popular');
 
     setSearchResults(sortedMovies);
     setSearchEpisodes(sortedEpisodes);
 
-    // Save to recent searches
     saveRecentSearch({
       query,
       filters,
@@ -599,14 +690,12 @@ export function MoviesProvider({ children }) {
     };
   }, [movies, episodes, saveRecentSearch]);
 
-  // Get search suggestions (for autocomplete)
   const getSuggestions = useCallback((query, limit = 5) => {
     if (!query || query.trim().length < 2) return [];
 
     const searchTerm = query.toLowerCase().trim();
     const suggestions = [];
 
-    // Add movie title suggestions
     movies.forEach(movie => {
       if (movie.title?.toLowerCase().includes(searchTerm)) {
         suggestions.push({
@@ -620,7 +709,6 @@ export function MoviesProvider({ children }) {
       }
     });
 
-    // Add series/episode suggestions
     episodes.forEach(episode => {
       if (episode.title?.toLowerCase().includes(searchTerm)) {
         suggestions.push({
@@ -636,7 +724,6 @@ export function MoviesProvider({ children }) {
       }
     });
 
-    // Add category suggestions
     const categories = new Set();
     movies.forEach(movie => {
       if (movie.category?.toLowerCase().includes(searchTerm)) {
@@ -655,7 +742,6 @@ export function MoviesProvider({ children }) {
     return suggestions.slice(0, limit);
   }, [movies, episodes]);
 
-  // Clear search results
   const clearSearch = useCallback(() => {
     setSearchResults([]);
     setSearchEpisodes([]);
@@ -669,8 +755,7 @@ export function MoviesProvider({ children }) {
       console.log("📤 Adding movie to Supabase:", {
         title: movie.title,
         videoUrl: movie.videoUrl,
-        videoType: movie.videoType,
-        allMovieData: movie
+        videoType: movie.videoType
       });
 
       const videoInfo = processVideoUrl(movie.videoUrl, movie.videoType);
@@ -753,7 +838,6 @@ export function MoviesProvider({ children }) {
 
       const videoInfo = processVideoUrl(movie.videoUrl, movie.videoType);
 
-      // Create local movie
       const localMovie = {
         id: `local-${Date.now()}`,
         title: movie.title || "Untitled",
@@ -798,8 +882,7 @@ export function MoviesProvider({ children }) {
         id: id,
         title: updates.title,
         videoUrl: updates.videoUrl,
-        videoType: updates.videoType,
-        allUpdates: updates
+        videoType: updates.videoType
       });
 
       const videoInfo = processVideoUrl(updates.videoUrl, updates.videoType);
@@ -1178,7 +1261,11 @@ export function MoviesProvider({ children }) {
     loadingProgress,
     isOnline,
     error,
-    // Global search state - SINGLE SOURCE OF TRUTH
+    // Image upload functions - NEW
+    uploadImage,
+    deleteImage,
+    IMAGE_CONFIG,
+    // Global search state
     globalSearchQuery,
     globalSearchResults,
     globalSearchFilters,
@@ -1207,7 +1294,7 @@ export function MoviesProvider({ children }) {
     refreshEpisodes: fetchAllData,
     clearAllMovies,
     clearAllEpisodes,
-    VIDEO_PLATFORMS // Export the platforms for use in other components
+    VIDEO_PLATFORMS
   };
 
   return (
