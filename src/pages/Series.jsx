@@ -10,12 +10,14 @@ import {
   FaChevronLeft, FaChevronUp, FaChevronDown,
   FaBars, FaTh, FaFilter,
   FaEllipsisV, FaShare, FaDownload, FaInfoCircle,
-  FaClock, FaLayerGroup, FaPlayCircle
+  FaClock, FaLayerGroup, FaPlayCircle, FaCheckCircle, FaCloudDownloadAlt,
+  FaTrashAlt, FaFileDownload
 } from "react-icons/fa";
 
 export default function Series() {
-  const navigate = useNavigate();
-  const { movies, episodes = [], getEpisodesBySeries } = useContext(MoviesContext);
+  // ========== ALL HOOKS MUST BE CALLED IN THE SAME ORDER EVERY RENDER ==========
+
+  // 1. All useState hooks first (in consistent order)
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("all");
   const [visible, setVisible] = useState(6);
@@ -36,24 +38,32 @@ export default function Series() {
   const [selectedSeason, setSelectedSeason] = useState(1);
   const [showMobileSearch, setShowMobileSearch] = useState(false);
 
+  // Download and watch tracking states
+  const [downloadedEpisodes, setDownloadedEpisodes] = useState({});
+  const [watchedEpisodes, setWatchedEpisodes] = useState({});
+  const [downloadProgress, setDownloadProgress] = useState({});
+  const [showDownloadOptions, setShowDownloadOptions] = useState(null);
+  const [showDownloadManager, setShowDownloadManager] = useState(false);
+
   // Slideshow state
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
   const [autoPlay, setAutoPlay] = useState(true);
-  const slideshowTimerRef = useRef(null);
 
+  // 2. All useRef hooks next
+  const slideshowTimerRef = useRef(null);
   const tabsContainerRef = useRef(null);
   const slideshowRef = useRef(null);
   const searchInputRef = useRef(null);
 
-  // ========== SERIES DATA FUNCTIONS ==========
+  // 3. All useContext hooks
+  const navigate = useNavigate();
+  const { movies, episodes = [], getEpisodesBySeries } = useContext(MoviesContext);
 
-  // Filter only series from movies
-  const allSeries = useMemo(() => {
-    return movies.filter(m => m.type === "series");
-  }, [movies]);
+  // ========== HELPER FUNCTIONS (defined after hooks, before useMemo) ==========
 
   // Get episodes for a specific series
-  const getEpisodesForSeries = useMemo(() => (seriesId) => {
+  const getEpisodesForSeries = (seriesId) => {
+    if (!seriesId) return [];
     if (typeof getEpisodesBySeries === 'function') {
       return getEpisodesBySeries(seriesId);
     }
@@ -63,10 +73,11 @@ export default function Series() {
       ep.series_id === seriesId ||
       (ep.series && ep.series.id === seriesId)
     );
-  }, [episodes, getEpisodesBySeries]);
+  };
 
   // Helper function to get seasons
   const getSeasons = (episodesArray) => {
+    if (!episodesArray || !Array.isArray(episodesArray)) return [];
     const seasons = new Set();
     episodesArray.forEach(ep => {
       seasons.add(parseInt(ep.seasonNumber) || 1);
@@ -85,6 +96,89 @@ export default function Series() {
       if (seasonA !== seasonB) return seasonA - seasonB;
       return episodeA - episodeB;
     });
+  };
+
+  // Mark episode as watched
+  const markAsWatched = (episodeId, progress = 100) => {
+    setWatchedEpisodes(prev => ({
+      ...prev,
+      [episodeId]: {
+        watched: true,
+        progress: progress,
+        lastWatched: new Date().toISOString()
+      }
+    }));
+  };
+
+  // Remove download
+  const removeDownload = (episodeId) => {
+    setDownloadedEpisodes(prev => {
+      const newState = { ...prev };
+      delete newState[episodeId];
+      return newState;
+    });
+
+    setDownloadProgress(prev => {
+      const newState = { ...prev };
+      delete newState[episodeId];
+      return newState;
+    });
+  };
+
+  // Get total download size for a season
+  const getSeasonDownloadSize = (seasonNumber) => {
+    if (!selectedSeries) return '0 MB';
+
+    const seasonEpisodes = sortEpisodes(getEpisodesForSeries(selectedSeries.id))
+      .filter(ep => (parseInt(ep.seasonNumber) || 1) === seasonNumber);
+
+    let totalSize = 0;
+    seasonEpisodes.forEach(ep => {
+      const download = downloadedEpisodes[ep.id];
+      if (download) {
+        const sizeStr = download.size || '0';
+        const sizeNum = parseFloat(sizeStr.replace('~', '').replace(' GB', '').replace(' MB', ''));
+        if (sizeStr.includes('GB')) {
+          totalSize += sizeNum * 1024;
+        } else {
+          totalSize += sizeNum;
+        }
+      }
+    });
+
+    if (totalSize > 1024) {
+      return `${(totalSize / 1024).toFixed(1)} GB`;
+    }
+    return `${totalSize.toFixed(0)} MB`;
+  };
+
+  // ========== useMemo hooks (after helper functions) ==========
+
+  // Filter only series from movies
+  const allSeries = useMemo(() => {
+    return Array.isArray(movies) ? movies.filter(m => m && m.type === "series") : [];
+  }, [movies]);
+
+  // Get unique categories
+  const categories = useMemo(() => {
+    const set = new Set();
+    if (Array.isArray(allSeries)) {
+      allSeries.forEach((s) => {
+        if (s && s.category) {
+          const cats = s.category.split(',').map(cat => cat.trim());
+          cats.forEach(cat => set.add(cat));
+        }
+      });
+    }
+    return ["all", ...Array.from(set)].sort();
+  }, [allSeries]);
+
+  // Calculate popularity
+  const calculatePopularity = (series) => {
+    if (!series) return 0;
+    const episodeCount = getEpisodesForSeries(series.id).length;
+    const rating = parseFloat(series.rating) || 5;
+    return episodeCount * 10 + rating * 20;
   };
 
   // Get the latest 5 seasons for slideshow
@@ -111,26 +205,7 @@ export default function Series() {
       .filter(s => s.latestSeason > 0)
       .sort((a, b) => b.latestSeason - a.latestSeason)
       .slice(0, 5);
-  }, [allSeries, getEpisodesForSeries]);
-
-  // Get unique categories
-  const categories = useMemo(() => {
-    const set = new Set();
-    allSeries.forEach((s) => {
-      if (s.category) {
-        const cats = s.category.split(',').map(cat => cat.trim());
-        cats.forEach(cat => set.add(cat));
-      }
-    });
-    return ["all", ...Array.from(set)].sort();
   }, [allSeries]);
-
-  // Calculate popularity
-  const calculatePopularity = (series) => {
-    const episodeCount = getEpisodesForSeries(series.id).length;
-    const rating = parseFloat(series.rating) || 5;
-    return episodeCount * 10 + rating * 20;
-  };
 
   // Sort series
   const sortedSeries = useMemo(() => {
@@ -149,11 +224,12 @@ export default function Series() {
       default:
         return series;
     }
-  }, [allSeries, sortBy, getEpisodesForSeries, calculatePopularity]);
+  }, [allSeries, sortBy]);
 
   // Filter series
   const filteredSeries = useMemo(() => {
     let filtered = sortedSeries.filter((s) => {
+      if (!s) return false;
       if (category === "all") return true;
       if (!s.category) return false;
       return s.category.split(',').map(cat => cat.trim()).includes(category);
@@ -179,125 +255,27 @@ export default function Series() {
     }
 
     return filtered;
-  }, [sortedSeries, category, query, activeTab, calculatePopularity]);
+  }, [sortedSeries, category, query, activeTab]);
 
-  // Featured series
-  const featuredSeries = useMemo(() => {
-    return [...allSeries]
-      .sort((a, b) => (parseFloat(b.rating) || 0) - (parseFloat(a.rating) || 0))
-      .slice(0, 3);
-  }, [allSeries]);
+  // ========== useEffect hooks (after useMemo) ==========
 
-  // ========== EPISODE PLAYBACK FUNCTIONS ==========
+  // Load saved states from localStorage on mount
+  useEffect(() => {
+    const savedWatched = localStorage.getItem('watchedEpisodes');
+    const savedDownloaded = localStorage.getItem('downloadedEpisodes');
 
-  // Handle play episode - Navigate to SeriesPlayer
-  const handlePlayEpisode = (series, episode) => {
-    // Get all episodes for the series
-    const allSeriesEpisodes = getEpisodesForSeries(series.id);
-    const sortedEpisodes = sortEpisodes(allSeriesEpisodes);
+    if (savedWatched) setWatchedEpisodes(JSON.parse(savedWatched));
+    if (savedDownloaded) setDownloadedEpisodes(JSON.parse(savedDownloaded));
+  }, []);
 
-    // Find the index of the current episode
-    const episodeIndex = sortedEpisodes.findIndex(ep => ep.id === episode.id);
+  // Save to localStorage when states change
+  useEffect(() => {
+    localStorage.setItem('watchedEpisodes', JSON.stringify(watchedEpisodes));
+  }, [watchedEpisodes]);
 
-    // Navigate to the SeriesPlayer with all the data
-    navigate(`/series-player/${series.id}`, {
-      state: {
-        series: series,
-        episode: episode,
-        episodes: sortedEpisodes,
-        episodeIndex: episodeIndex
-      }
-    });
-  };
-
-  // Handle play first episode
-  const handlePlayFirstEpisode = (series) => {
-    const episodes = getEpisodesForSeries(series.id);
-    if (episodes.length > 0) {
-      const firstEpisode = sortEpisodes(episodes)[0];
-      const episodeIndex = 0;
-
-      navigate(`/series-player/${series.id}`, {
-        state: {
-          series: series,
-          episode: firstEpisode,
-          episodes: sortEpisodes(episodes),
-          episodeIndex: episodeIndex
-        }
-      });
-    }
-  };
-
-  // Handle play latest season
-  const handlePlayLatestSeason = (series) => {
-    const episodes = getEpisodesForSeries(series.id);
-    if (episodes.length > 0) {
-      const seasons = getSeasons(episodes);
-      const latestSeason = Math.max(...seasons);
-      const seasonEpisodes = episodes.filter(ep =>
-        (parseInt(ep.seasonNumber) || 1) === latestSeason
-      );
-      if (seasonEpisodes.length > 0) {
-        const firstEpisodeOfLatestSeason = seasonEpisodes[0];
-        const sortedEpisodes = sortEpisodes(episodes);
-        const episodeIndex = sortedEpisodes.findIndex(ep => ep.id === firstEpisodeOfLatestSeason.id);
-
-        navigate(`/series-player/${series.id}`, {
-          state: {
-            series: series,
-            episode: firstEpisodeOfLatestSeason,
-            episodes: sortedEpisodes,
-            episodeIndex: episodeIndex
-          }
-        });
-      }
-    }
-  };
-
-  // ========== DOWNLOAD FUNCTION ==========
-
-  // Handle download episode
-  const handleDownloadEpisode = (episode) => {
-    // Create a download link
-    const downloadUrl = episode.videoUrl || episode.video || episode.url ||
-      `https://example.com/download/${episode.id}`;
-
-    // Create a temporary anchor element
-    const link = document.createElement('a');
-    link.href = downloadUrl;
-    link.download = `${episode.title || 'episode'}.mp4`;
-    link.target = '_blank';
-    link.rel = 'noopener noreferrer';
-
-    // Trigger download
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-
-    // Show download notification
-    alert(`Downloading: ${episode.title || 'Episode'}`);
-  };
-
-  // ========== SLIDESHOW FUNCTIONS ==========
-
-  const nextSlide = () => {
-    setCurrentSlideIndex((prev) =>
-      prev === latestSeasons.length - 1 ? 0 : prev + 1
-    );
-  };
-
-  const prevSlide = () => {
-    setCurrentSlideIndex((prev) =>
-      prev === 0 ? latestSeasons.length - 1 : prev - 1
-    );
-  };
-
-  const goToSlide = (index) => {
-    setCurrentSlideIndex(index);
-  };
-
-  const handleSlideshowMouseEnter = () => setAutoPlay(false);
-  const handleSlideshowMouseLeave = () => setAutoPlay(true);
+  useEffect(() => {
+    localStorage.setItem('downloadedEpisodes', JSON.stringify(downloadedEpisodes));
+  }, [downloadedEpisodes]);
 
   // Slideshow auto-play effect
   useEffect(() => {
@@ -313,8 +291,6 @@ export default function Series() {
       }
     };
   }, [autoPlay, latestSeasons.length]);
-
-  // ========== UI FUNCTIONS ==========
 
   // Focus search input when opened
   useEffect(() => {
@@ -342,6 +318,136 @@ export default function Series() {
       }
     }
   }, [selectedSeries]);
+
+  // ========== EVENT HANDLERS (after useEffect) ==========
+
+  // Handle download with quality selection
+  const handleDownloadWithQuality = (episode, quality) => {
+    if (!episode) return;
+
+    setDownloadProgress(prev => ({
+      ...prev,
+      [episode.id]: 0
+    }));
+
+    const interval = setInterval(() => {
+      setDownloadProgress(prev => {
+        const currentProgress = prev[episode.id] || 0;
+        if (currentProgress >= 100) {
+          clearInterval(interval);
+
+          setDownloadedEpisodes(prevDownloaded => ({
+            ...prevDownloaded,
+            [episode.id]: {
+              downloaded: true,
+              quality: quality,
+              downloadedAt: new Date().toISOString(),
+              size: quality === '4K' ? '~4.5 GB' : quality === '1080p' ? '~1.8 GB' : quality === '720p' ? '~800 MB' : '~350 MB',
+              title: episode.title,
+              episodeNumber: episode.episodeNumber,
+              seasonNumber: episode.seasonNumber || selectedSeason
+            }
+          }));
+
+          alert(`✅ Downloaded: ${episode.title} (${quality})`);
+          return { ...prev, [episode.id]: 100 };
+        }
+        return { ...prev, [episode.id]: currentProgress + 10 };
+      });
+    }, 300);
+
+    setShowDownloadOptions(null);
+  };
+
+  // Handle play episode
+  const handlePlayEpisode = (series, episode) => {
+    if (!series || !episode) return;
+
+    markAsWatched(episode.id, 100);
+
+    const allSeriesEpisodes = getEpisodesForSeries(series.id);
+    const sortedEpisodes = sortEpisodes(allSeriesEpisodes);
+    const episodeIndex = sortedEpisodes.findIndex(ep => ep.id === episode.id);
+
+    navigate(`/series-player/${series.id}`, {
+      state: {
+        series: series,
+        episode: episode,
+        episodes: sortedEpisodes,
+        episodeIndex: episodeIndex
+      }
+    });
+  };
+
+  // Handle play first episode
+  const handlePlayFirstEpisode = (series) => {
+    if (!series) return;
+
+    const episodes = getEpisodesForSeries(series.id);
+    if (episodes.length > 0) {
+      const firstEpisode = sortEpisodes(episodes)[0];
+      markAsWatched(firstEpisode.id, 100);
+
+      navigate(`/series-player/${series.id}`, {
+        state: {
+          series: series,
+          episode: firstEpisode,
+          episodes: sortEpisodes(episodes),
+          episodeIndex: 0
+        }
+      });
+    }
+  };
+
+  // Handle play latest season
+  const handlePlayLatestSeason = (series) => {
+    if (!series) return;
+
+    const episodes = getEpisodesForSeries(series.id);
+    if (episodes.length > 0) {
+      const seasons = getSeasons(episodes);
+      const latestSeason = Math.max(...seasons);
+      const seasonEpisodes = episodes.filter(ep =>
+        (parseInt(ep.seasonNumber) || 1) === latestSeason
+      );
+      if (seasonEpisodes.length > 0) {
+        const firstEpisodeOfLatestSeason = seasonEpisodes[0];
+        markAsWatched(firstEpisodeOfLatestSeason.id, 100);
+
+        const sortedEpisodes = sortEpisodes(episodes);
+        const episodeIndex = sortedEpisodes.findIndex(ep => ep.id === firstEpisodeOfLatestSeason.id);
+
+        navigate(`/series-player/${series.id}`, {
+          state: {
+            series: series,
+            episode: firstEpisodeOfLatestSeason,
+            episodes: sortedEpisodes,
+            episodeIndex: episodeIndex
+          }
+        });
+      }
+    }
+  };
+
+  // Slideshow functions
+  const nextSlide = () => {
+    setCurrentSlideIndex((prev) =>
+      prev === latestSeasons.length - 1 ? 0 : prev + 1
+    );
+  };
+
+  const prevSlide = () => {
+    setCurrentSlideIndex((prev) =>
+      prev === 0 ? latestSeasons.length - 1 : prev - 1
+    );
+  };
+
+  const goToSlide = (index) => {
+    setCurrentSlideIndex(index);
+  };
+
+  const handleSlideshowMouseEnter = () => setAutoPlay(false);
+  const handleSlideshowMouseLeave = () => setAutoPlay(true);
 
   // Touch drag for tabs
   const handleTouchStart = (e) => {
@@ -389,7 +495,7 @@ export default function Series() {
         {[...Array(5)].map((_, i) => (
           <FaStar
             key={i}
-            className={`text-xs ${i < fullStars ? 'text-yellow-500' : hasHalfStar && i === fullStars ? 'text-yellow-500' : 'text-gray-700'}`}
+            className={`text-xs ${i < fullStars ? 'text-yellow-500' : (hasHalfStar && i === fullStars) ? 'text-yellow-500' : 'text-gray-700'}`}
           />
         ))}
         <span className="ml-1 text-xs font-medium text-gray-300">
@@ -400,7 +506,6 @@ export default function Series() {
   };
 
   // ========== RENDER ==========
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-950 via-black to-gray-900 pt-0 pb-0">
       {/* Animated Background */}
@@ -409,17 +514,28 @@ export default function Series() {
         <div className="absolute -bottom-20 -left-20 w-40 md:w-80 h-40 md:h-80 bg-blue-600/10 rounded-full blur-3xl"></div>
       </div>
 
-      {/* Mobile Header - Optimized */}
+      {/* Mobile Header */}
       <div className="sticky top-0 z-40 bg-gradient-to-b from-gray-950 via-gray-950 to-transparent pt-2 pb-2 px-3 md:hidden">
         <div className="flex items-center gap-2">
-          {/* Logo/Title */}
           <div className="flex-1">
             <h1 className="text-lg font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
               Series
             </h1>
           </div>
 
-          {/* Search Toggle Button */}
+          {/* Download Manager Button */}
+          <button
+            onClick={() => setShowDownloadManager(true)}
+            className="p-2 bg-gray-800/80 rounded-full text-green-400 relative"
+          >
+            <FaDownload size={16} />
+            {Object.keys(downloadedEpisodes).length > 0 && (
+              <span className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full text-[6px] flex items-center justify-center text-white">
+                {Object.keys(downloadedEpisodes).length}
+              </span>
+            )}
+          </button>
+
           <button
             onClick={() => setShowMobileSearch(!showMobileSearch)}
             className="p-2 bg-gray-800/80 rounded-full text-gray-300"
@@ -427,7 +543,6 @@ export default function Series() {
             <FaSearch size={16} />
           </button>
 
-          {/* Menu Button */}
           <button
             onClick={() => setShowMobileMenu(!showMobileMenu)}
             className="p-2 bg-gray-800/80 rounded-full text-gray-300"
@@ -436,7 +551,6 @@ export default function Series() {
           </button>
         </div>
 
-        {/* Mobile Search Bar - Expandable */}
         {showMobileSearch && (
           <div className="mt-2 animate-fadeIn">
             <div className="relative">
@@ -460,6 +574,75 @@ export default function Series() {
           </div>
         )}
       </div>
+
+      {/* Download Manager Modal */}
+      {showDownloadManager && (
+        <div className="fixed inset-0 bg-black/98 z-50 flex items-start justify-center p-2 md:p-4 overflow-y-auto">
+          <div className="bg-gradient-to-br from-gray-900 via-black to-gray-900 rounded-xl md:rounded-3xl max-w-2xl w-full border border-gray-800/50 my-2 md:my-8">
+            <div className="p-4">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg md:text-xl font-bold text-white flex items-center gap-2">
+                  <FaDownload className="text-green-400" />
+                  Downloads
+                  <span className="text-xs text-gray-400">({Object.keys(downloadedEpisodes).length})</span>
+                </h3>
+                <button
+                  onClick={() => setShowDownloadManager(false)}
+                  className="p-2 bg-gray-800 rounded-full text-gray-400 hover:text-white"
+                >
+                  <FaTimes size={14} />
+                </button>
+              </div>
+
+              {Object.keys(downloadedEpisodes).length === 0 ? (
+                <div className="text-center py-8">
+                  <FaCloudDownloadAlt className="text-4xl text-gray-600 mx-auto mb-2" />
+                  <p className="text-gray-400 text-sm">No downloads yet</p>
+                  <p className="text-xs text-gray-600">Download episodes to watch offline</p>
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-96 overflow-y-auto">
+                  {Object.entries(downloadedEpisodes).map(([epId, info]) => {
+                    let seriesTitle = "Unknown";
+                    let series = allSeries.find(s => {
+                      const eps = getEpisodesForSeries(s.id);
+                      return eps.some(ep => ep.id === epId);
+                    });
+                    if (series) seriesTitle = series.title;
+
+                    return (
+                      <div key={epId} className="bg-gray-800/30 rounded-lg p-3 flex items-center gap-3">
+                        <div className="w-10 h-10 bg-gradient-to-br from-green-600 to-emerald-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                          <FaCheckCircle className="text-white text-sm" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h4 className="text-xs font-medium text-white truncate">{info.title}</h4>
+                          <div className="flex items-center gap-2 text-[8px] text-gray-400">
+                            <span>{seriesTitle}</span>
+                            <span>•</span>
+                            <span>S{info.seasonNumber}E{info.episodeNumber}</span>
+                            <span>•</span>
+                            <span className="text-green-400">{info.quality}</span>
+                            <span>•</span>
+                            <span>{info.size}</span>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => removeDownload(epId)}
+                          className="p-1.5 bg-red-600/20 hover:bg-red-600/40 rounded text-red-400 transition-colors"
+                          title="Remove download"
+                        >
+                          <FaTrashAlt size={10} />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Mobile Menu */}
       {showMobileMenu && (
@@ -574,7 +757,7 @@ export default function Series() {
           </div>
         )}
 
-        {/* Latest Seasons Slideshow - Adjusted for mobile */}
+        {/* Latest Seasons Slideshow */}
         {latestSeasons.length > 0 && (
           <div className="mb-4 md:mb-12">
             <h2 className="text-base md:text-2xl font-bold text-white mb-2 md:mb-4 flex items-center gap-1 md:gap-2">
@@ -588,7 +771,6 @@ export default function Series() {
               onMouseEnter={handleSlideshowMouseEnter}
               onMouseLeave={handleSlideshowMouseLeave}
             >
-              {/* Slides */}
               <div className="relative h-40 sm:h-48 md:h-96">
                 {latestSeasons.map((series, index) => (
                   <div
@@ -596,13 +778,12 @@ export default function Series() {
                     className={`absolute inset-0 transition-opacity duration-700 ${index === currentSlideIndex ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
                   >
                     <img
-                      src={series.seasonPoster || series.poster}
+                      src={series.seasonPoster || series.poster || "https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=400"}
                       alt={`${series.title} Season ${series.latestSeason}`}
                       className="w-full h-full object-cover"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent"></div>
 
-                    {/* Slide Content - Mobile Optimized */}
                     <div className="absolute bottom-0 left-0 right-0 p-2 md:p-8">
                       <div className="flex items-center gap-1 md:gap-2 mb-1">
                         <span className="px-1.5 py-0.5 bg-gradient-to-r from-purple-600 to-pink-600 rounded-full text-[8px] md:text-xs font-bold">
@@ -632,7 +813,6 @@ export default function Series() {
                 ))}
               </div>
 
-              {/* Navigation Arrows - Hidden on mobile */}
               <button
                 onClick={prevSlide}
                 className="hidden md:block absolute left-2 md:left-4 top-1/2 transform -translate-y-1/2 p-2 md:p-3 bg-black/50 hover:bg-black/70 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity"
@@ -647,7 +827,6 @@ export default function Series() {
                 <FaChevronRight size={16} className="md:text-xl" />
               </button>
 
-              {/* Dots Indicator */}
               <div className="absolute bottom-1 md:bottom-4 left-1/2 transform -translate-x-1/2 flex gap-1 md:gap-2">
                 {latestSeasons.map((_, index) => (
                   <button
@@ -663,7 +842,7 @@ export default function Series() {
           </div>
         )}
 
-        {/* Desktop Search and Filter - Hidden on Mobile */}
+        {/* Desktop Search */}
         <div className="hidden md:block mb-8">
           <div className="flex flex-col lg:flex-row gap-6">
             <div className="flex-1">
@@ -702,7 +881,7 @@ export default function Series() {
           </div>
         </div>
 
-        {/* Quick Filter Tabs - Mobile Horizontal Scroll */}
+        {/* Quick Filter Tabs */}
         <div className="mb-3 md:mb-6">
           <div
             ref={tabsContainerRef}
@@ -728,7 +907,6 @@ export default function Series() {
 
         {/* Series Grid/List */}
         <div className="mb-0 md:mb-0">
-          {/* Header - Hidden on Mobile */}
           <div className="hidden md:flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold text-white">
               {activeTab === "all" ? "All Series" : activeTab.charAt(0).toUpperCase() + activeTab.slice(1) + " Series"}
@@ -750,14 +928,12 @@ export default function Series() {
             </div>
           </div>
 
-          {/* Mobile Results Count */}
           <div className="md:hidden mb-2">
             <p className="text-xs text-gray-500">
               {filteredSeries.length} series found
             </p>
           </div>
 
-          {/* Filter Button for Mobile - Always Visible */}
           <div className="md:hidden mb-3">
             <button
               onClick={() => setShowMobileFilters(true)}
@@ -767,7 +943,6 @@ export default function Series() {
             </button>
           </div>
 
-          {/* Grid View - Mobile Optimized */}
           {viewMode === "grid" ? (
             <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-3 md:gap-6">
               {filteredSeries.slice(0, visible).map((series) => {
@@ -784,7 +959,6 @@ export default function Series() {
                       setShowSeriesDetails(true);
                     }}
                   >
-                    {/* Series Image */}
                     <div className="relative aspect-[2/3] overflow-hidden">
                       <img
                         src={series.poster || "https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=400"}
@@ -794,15 +968,26 @@ export default function Series() {
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent"></div>
 
-                      {/* Episode Count Badge */}
                       <div className="absolute bottom-1 left-1 md:bottom-2 md:left-2">
                         <span className="px-1.5 py-0.5 md:px-2 md:py-1 bg-black/60 backdrop-blur-sm rounded text-[8px] md:text-xs font-medium text-white">
                           {seriesEpisodes.length} EP
                         </span>
                       </div>
+
+                      {Object.keys(downloadedEpisodes).filter(epId =>
+                        seriesEpisodes.some(ep => ep.id === epId)
+                      ).length > 0 && (
+                          <div className="absolute bottom-1 right-1 md:bottom-2 md:right-2">
+                            <span className="px-1.5 py-0.5 bg-green-600/90 backdrop-blur-sm rounded text-[8px] md:text-xs font-medium text-white flex items-center gap-0.5">
+                              <FaDownload size={6} />
+                              {Object.keys(downloadedEpisodes).filter(epId =>
+                                seriesEpisodes.some(ep => ep.id === epId)
+                              ).length}
+                            </span>
+                          </div>
+                        )}
                     </div>
 
-                    {/* Series Info */}
                     <div className="p-1.5 md:p-3">
                       <h3 className="text-[10px] sm:text-xs md:text-base font-bold text-white line-clamp-1 mb-0.5">
                         {series.title}
@@ -812,7 +997,6 @@ export default function Series() {
                         {getRatingStars(series.rating)}
                       </div>
 
-                      {/* Mobile Action Buttons */}
                       <div className="flex items-center justify-between mt-1">
                         <div className="flex gap-1">
                           <button
@@ -845,7 +1029,6 @@ export default function Series() {
                         </button>
                       </div>
 
-                      {/* Desktop Action Button */}
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -861,11 +1044,13 @@ export default function Series() {
               })}
             </div>
           ) : (
-            /* List View - Mobile Optimized */
             <div className="space-y-2 md:space-y-3">
               {filteredSeries.slice(0, visible).map((series) => {
                 const seriesEpisodes = getEpisodesForSeries(series.id);
                 const isFavorite = favorites.includes(series.id);
+                const downloadedCount = Object.keys(downloadedEpisodes).filter(epId =>
+                  seriesEpisodes.some(ep => ep.id === epId
+                  )).length;
 
                 return (
                   <div
@@ -884,6 +1069,13 @@ export default function Series() {
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                           loading="lazy"
                         />
+                        {downloadedCount > 0 && (
+                          <div className="absolute bottom-0 right-0 bg-green-600 rounded-tl-md px-1 py-0.5">
+                            <span className="text-[6px] text-white flex items-center gap-0.5">
+                              <FaDownload size={4} /> {downloadedCount}
+                            </span>
+                          </div>
+                        )}
                       </div>
 
                       <div className="flex-1 min-w-0">
@@ -894,6 +1086,12 @@ export default function Series() {
                               <span>{series.year || 'N/A'}</span>
                               <span>•</span>
                               <span>{seriesEpisodes.length} EP</span>
+                              {downloadedCount > 0 && (
+                                <>
+                                  <span>•</span>
+                                  <span className="text-green-400">{downloadedCount} downloaded</span>
+                                </>
+                              )}
                             </div>
                           </div>
                           <div className="flex items-center gap-1">
@@ -927,7 +1125,6 @@ export default function Series() {
             </div>
           )}
 
-          {/* Load More */}
           {visible < filteredSeries.length && (
             <div className="text-center mt-4 md:mt-8">
               <button
@@ -941,12 +1138,11 @@ export default function Series() {
         </div>
       </div>
 
-      {/* Series Details Modal - Mobile Optimized */}
+      {/* Series Details Modal */}
       {showSeriesDetails && selectedSeries && (
         <div className="fixed inset-0 bg-black/98 z-50 flex items-start justify-center p-2 md:p-4 overflow-y-auto">
           <div className="bg-gradient-to-br from-gray-900 via-black to-gray-900 rounded-xl md:rounded-3xl max-w-6xl w-full border border-gray-800/50 my-2 md:my-8">
             <div className="relative">
-              {/* Close Button */}
               <button
                 onClick={() => {
                   setShowSeriesDetails(false);
@@ -957,18 +1153,15 @@ export default function Series() {
                 <FaTimes size={14} className="md:text-xl" />
               </button>
 
-              {/* Modal Content */}
               <div className="p-3 md:p-8">
-                {/* Header with Background Image */}
                 <div className="relative h-28 sm:h-32 md:h-64 -mx-3 -mt-3 md:-mx-8 md:-mt-8 mb-3 md:mb-8 rounded-t-xl md:rounded-t-3xl overflow-hidden">
                   <img
-                    src={selectedSeries.background || selectedSeries.poster}
+                    src={selectedSeries.background || selectedSeries.poster || "https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=400"}
                     alt={selectedSeries.title}
                     className="w-full h-full object-cover"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-gray-900 via-gray-900/80 to-transparent"></div>
 
-                  {/* Series Title Overlay - Mobile Optimized */}
                   <div className="absolute bottom-1 left-2 right-2 md:bottom-8 md:left-8">
                     <h2 className="text-base sm:text-lg md:text-4xl font-bold text-white mb-0.5 line-clamp-2">
                       {selectedSeries.title}
@@ -980,7 +1173,6 @@ export default function Series() {
                   </div>
                 </div>
 
-                {/* Action Buttons - Mobile Optimized */}
                 <div className="flex gap-2 md:gap-4 mb-3 md:mb-6">
                   <button
                     onClick={() => handlePlayFirstEpisode(selectedSeries)}
@@ -1006,7 +1198,6 @@ export default function Series() {
                   </button>
                 </div>
 
-                {/* Description - Mobile Optimized */}
                 {selectedSeries.description && (
                   <div className="mb-3 md:mb-8">
                     <h3 className="text-sm md:text-lg font-semibold text-white mb-1">Synopsis</h3>
@@ -1016,7 +1207,6 @@ export default function Series() {
                   </div>
                 )}
 
-                {/* Stats - Mobile Optimized */}
                 <div className="grid grid-cols-3 gap-1 md:gap-4 mb-3 md:mb-8">
                   <div className="bg-gray-800/30 rounded-lg md:rounded-xl p-1.5 md:p-4">
                     <div className="text-[8px] md:text-sm text-gray-400">Seasons</div>
@@ -1031,88 +1221,388 @@ export default function Series() {
                     </div>
                   </div>
                   <div className="bg-gray-800/30 rounded-lg md:rounded-xl p-1.5 md:p-4">
-                    <div className="text-[8px] md:text-sm text-gray-400">Status</div>
-                    <div className="text-[10px] md:text-lg font-bold text-emerald-400">Available</div>
+                    <div className="text-[8px] md:text-sm text-gray-400">Downloads</div>
+                    <div className="text-xs md:text-2xl font-bold text-green-400">
+                      {Object.keys(downloadedEpisodes).filter(epId =>
+                        getEpisodesForSeries(selectedSeries.id).some(ep => ep.id === epId
+                        )).length}
+                    </div>
                   </div>
                 </div>
 
-                {/* Episodes Section - Mobile Optimized */}
                 <div className="bg-gray-900/30 backdrop-blur-sm rounded-xl md:rounded-2xl p-2 md:p-6">
                   <div className="flex items-center justify-between mb-2 md:mb-4">
-                    <h3 className="text-sm md:text-xl font-bold text-white">Episodes</h3>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-sm md:text-xl font-bold text-white">Episodes</h3>
+                      {Object.keys(downloadedEpisodes).filter(epId =>
+                        getEpisodesForSeries(selectedSeries.id).some(ep => ep.id === epId
+                        )).length > 0 && (
+                          <span className="px-2 py-0.5 bg-green-600/20 text-green-400 rounded-full text-[8px] md:text-xs flex items-center gap-1">
+                            <FaDownload size={8} />
+                            {Object.keys(downloadedEpisodes).filter(epId =>
+                              getEpisodesForSeries(selectedSeries.id).some(ep => ep.id === epId
+                              )).length} Downloaded
+                          </span>
+                        )}
+                    </div>
                     <select
                       value={selectedSeason}
                       onChange={(e) => setSelectedSeason(parseInt(e.target.value))}
                       className="px-2 md:px-4 py-1 md:py-2 bg-gray-800/50 border border-gray-700/50 rounded-lg md:rounded-xl text-[10px] md:text-sm text-white"
                     >
                       {getSeasons(getEpisodesForSeries(selectedSeries.id)).map(season => (
-                        <option key={season} value={season}>S{season}</option>
+                        <option key={season} value={season}>Season {season}</option>
                       ))}
                     </select>
+                  </div>
+
+                  {sortEpisodes(getEpisodesForSeries(selectedSeries.id))
+                    .filter(ep => (parseInt(ep.seasonNumber) || 1) === selectedSeason).length > 0 && (
+                      <div className="mb-3">
+                        <div className="flex items-center justify-between text-[8px] md:text-xs text-gray-400 mb-1">
+                          <span>Season Progress</span>
+                          <span>
+                            {sortEpisodes(getEpisodesForSeries(selectedSeries.id))
+                              .filter(ep => (parseInt(ep.seasonNumber) || 1) === selectedSeason)
+                              .filter(ep => watchedEpisodes[ep.id]?.watched).length} / {
+                              sortEpisodes(getEpisodesForSeries(selectedSeries.id))
+                                .filter(ep => (parseInt(ep.seasonNumber) || 1) === selectedSeason).length
+                            } Episodes
+                          </span>
+                        </div>
+                        <div className="w-full h-1 bg-gray-800 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-gradient-to-r from-purple-600 to-pink-600 rounded-full transition-all duration-300"
+                            style={{
+                              width: `${(sortEpisodes(getEpisodesForSeries(selectedSeries.id))
+                                .filter(ep => (parseInt(ep.seasonNumber) || 1) === selectedSeason)
+                                .filter(ep => watchedEpisodes[ep.id]?.watched).length /
+                                sortEpisodes(getEpisodesForSeries(selectedSeries.id))
+                                  .filter(ep => (parseInt(ep.seasonNumber) || 1) === selectedSeason).length) * 100}%`
+                            }}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                  <div className="mb-3 flex items-center justify-between text-[8px] md:text-xs">
+                    <span className="text-gray-400">Season {selectedSeason} Downloads:</span>
+                    <span className="text-green-400 font-medium">
+                      {Object.keys(downloadedEpisodes).filter(epId => {
+                        const ep = getEpisodesForSeries(selectedSeries.id).find(e => e.id === epId);
+                        return ep && (parseInt(ep.seasonNumber) || 1) === selectedSeason;
+                      }).length} / {
+                        sortEpisodes(getEpisodesForSeries(selectedSeries.id))
+                          .filter(ep => (parseInt(ep.seasonNumber) || 1) === selectedSeason).length
+                      } episodes
+                      {Object.keys(downloadedEpisodes).filter(epId => {
+                        const ep = getEpisodesForSeries(selectedSeries.id).find(e => e.id === epId);
+                        return ep && (parseInt(ep.seasonNumber) || 1) === selectedSeason;
+                      }).length > 0 && (
+                          <span className="ml-2 text-gray-500">
+                            ({getSeasonDownloadSize(selectedSeason)})
+                          </span>
+                        )}
+                    </span>
                   </div>
 
                   <div className="space-y-1 max-h-48 md:max-h-96 overflow-y-auto pr-1">
                     {sortEpisodes(getEpisodesForSeries(selectedSeries.id))
                       .filter(ep => (parseInt(ep.seasonNumber) || 1) === selectedSeason)
-                      .map(episode => (
-                        <div
-                          key={episode.id}
-                          className="flex items-center justify-between p-2 md:p-4 bg-gray-800/30 hover:bg-gray-800/50 rounded-lg md:rounded-xl transition-colors cursor-pointer group"
-                        >
-                          <div
-                            className="flex items-center gap-2 md:gap-4 flex-1 min-w-0"
-                            onClick={() => {
-                              handlePlayEpisode(selectedSeries, episode);
-                              setShowSeriesDetails(false);
-                            }}
-                          >
-                            <div className="w-5 h-5 md:w-8 md:h-8 bg-gradient-to-r from-purple-600 to-pink-600 rounded-md md:rounded-lg flex items-center justify-center flex-shrink-0">
-                              <span className="text-[8px] md:text-xs font-bold">{episode.episodeNumber}</span>
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <h4 className="text-[10px] md:text-sm font-medium text-white group-hover:text-purple-300 transition-colors truncate">
-                                {episode.title}
-                              </h4>
-                              {episode.duration && (
-                                <p className="text-[6px] md:text-xs text-gray-500">{episode.duration}</p>
-                              )}
-                            </div>
-                          </div>
+                      .map(episode => {
+                        const isWatched = watchedEpisodes[episode.id]?.watched || false;
+                        const isDownloaded = downloadedEpisodes[episode.id]?.downloaded || false;
+                        const downloadInfo = downloadedEpisodes[episode.id];
+                        const progress = downloadProgress[episode.id];
+                        const isDownloading = progress !== undefined && progress < 100;
 
-                          <div className="flex items-center gap-1 md:gap-2">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
+                        return (
+                          <div
+                            key={episode.id}
+                            className={`flex items-center justify-between p-2 md:p-4 rounded-lg md:rounded-xl transition-colors cursor-pointer group ${isWatched
+                                ? 'bg-gray-800/50 border-l-2 border-green-500'
+                                : isDownloaded
+                                  ? 'bg-gray-800/40 border-l-2 border-blue-500'
+                                  : 'bg-gray-800/30 hover:bg-gray-800/50'
+                              }`}
+                          >
+                            <div
+                              className="flex items-center gap-2 md:gap-4 flex-1 min-w-0"
+                              onClick={() => {
                                 handlePlayEpisode(selectedSeries, episode);
                                 setShowSeriesDetails(false);
                               }}
-                              className="p-1 md:p-2 bg-purple-600/20 hover:bg-purple-600/40 rounded-md md:rounded-lg text-purple-400 flex-shrink-0 transition-all"
-                              title="Play Episode"
                             >
-                              <FaPlay size={8} className="md:text-sm" />
-                            </button>
+                              <div className="relative">
+                                <div className={`w-5 h-5 md:w-8 md:h-8 rounded-md md:rounded-lg flex items-center justify-center flex-shrink-0 ${isWatched
+                                    ? 'bg-green-600/20 text-green-400'
+                                    : isDownloaded
+                                      ? 'bg-blue-600/20 text-blue-400'
+                                      : 'bg-gradient-to-r from-purple-600 to-pink-600 text-white'
+                                  }`}>
+                                  <span className="text-[8px] md:text-xs font-bold">
+                                    {episode.episodeNumber}
+                                  </span>
+                                </div>
+                                {isWatched && (
+                                  <FaCheckCircle className="absolute -top-1 -right-1 text-green-400 text-[6px] md:text-xs" />
+                                )}
+                                {isDownloaded && !isWatched && (
+                                  <FaCheckCircle className="absolute -top-1 -right-1 text-blue-400 text-[6px] md:text-xs" />
+                                )}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <h4 className={`text-[10px] md:text-sm font-medium truncate ${isWatched ? 'text-green-400' : isDownloaded ? 'text-blue-400' : 'text-white group-hover:text-purple-300'
+                                    }`}>
+                                    {episode.title}
+                                  </h4>
+                                  {isDownloaded && (
+                                    <span className="text-[6px] md:text-xs text-blue-400 flex items-center gap-0.5 bg-blue-600/20 px-1 py-0.5 rounded">
+                                      <FaCloudDownloadAlt size={6} className="md:text-xs" />
+                                      <span className="hidden md:inline">Downloaded</span>
+                                      <span className="md:hidden">DL</span>
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-2 text-[6px] md:text-xs text-gray-500">
+                                  {episode.duration && (
+                                    <span className="flex items-center gap-0.5">
+                                      <FaClock size={6} /> {episode.duration}
+                                    </span>
+                                  )}
+                                  {downloadInfo?.quality && (
+                                    <span className="text-blue-400 bg-blue-600/20 px-1 py-0.5 rounded">
+                                      {downloadInfo.quality}
+                                    </span>
+                                  )}
+                                  {downloadInfo?.size && (
+                                    <span className="text-gray-400">{downloadInfo.size}</span>
+                                  )}
+                                </div>
+                                {isDownloading && (
+                                  <div className="mt-1 w-full h-1 bg-gray-700 rounded-full overflow-hidden">
+                                    <div
+                                      className="h-full bg-gradient-to-r from-blue-500 to-green-500 rounded-full transition-all duration-300"
+                                      style={{ width: `${progress}%` }}
+                                    />
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-1 md:gap-2">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handlePlayEpisode(selectedSeries, episode);
+                                  setShowSeriesDetails(false);
+                                }}
+                                className="p-1 md:p-2 bg-purple-600/20 hover:bg-purple-600/40 rounded-md md:rounded-lg text-purple-400 flex-shrink-0 transition-all"
+                                title="Play Episode"
+                              >
+                                <FaPlay size={8} className="md:text-sm" />
+                              </button>
+
+                              <div className="relative">
+                                {isDownloaded ? (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (window.confirm(`Remove "${episode.title}" from downloads?`)) {
+                                        removeDownload(episode.id);
+                                      }
+                                    }}
+                                    className="group/download relative p-1 md:p-2 bg-gradient-to-br from-green-500 to-emerald-600 hover:from-red-500 hover:to-red-600 rounded-md md:rounded-lg text-white flex-shrink-0 transition-all duration-300 shadow-lg shadow-green-600/20 hover:shadow-red-600/20"
+                                    title="Downloaded - Click to remove"
+                                  >
+                                    <FaDownload size={8} className="md:text-sm block group-hover/download:hidden" />
+                                    <FaTrashAlt size={8} className="md:text-sm hidden group-hover/download:block" />
+
+                                    <span className="absolute -top-1 -right-1 text-[6px] font-bold bg-white text-green-600 rounded-full w-3 h-3 flex items-center justify-center group-hover/download:bg-red-600 group-hover/download:text-white">
+                                      {downloadInfo?.quality === '1080p' ? 'F' : downloadInfo?.quality === '720p' ? 'H' : 'SD'}
+                                    </span>
+                                  </button>
+                                ) : isDownloading ? (
+                                  <button
+                                    className="relative p-1 md:p-2 bg-gradient-to-br from-blue-500 to-purple-600 rounded-md md:rounded-lg text-white flex-shrink-0 cursor-wait"
+                                    title={`Downloading... ${progress}%`}
+                                  >
+                                    <FaDownload size={8} className="md:text-sm animate-pulse" />
+                                    <svg className="absolute top-0 left-0 w-full h-full" viewBox="0 0 20 20">
+                                      <circle
+                                        cx="10"
+                                        cy="10"
+                                        r="8"
+                                        fill="none"
+                                        stroke="rgba(255,255,255,0.3)"
+                                        strokeWidth="2"
+                                      />
+                                      <circle
+                                        cx="10"
+                                        cy="10"
+                                        r="8"
+                                        fill="none"
+                                        stroke="white"
+                                        strokeWidth="2"
+                                        strokeDasharray={`${2 * Math.PI * 8}`}
+                                        strokeDashoffset={`${2 * Math.PI * 8 * (1 - progress / 100)}`}
+                                        transform="rotate(-90 10 10)"
+                                        className="transition-all duration-300"
+                                      />
+                                    </svg>
+                                  </button>
+                                ) : (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setShowDownloadOptions(showDownloadOptions === episode.id ? null : episode.id);
+                                    }}
+                                    className="relative p-1 md:p-2 bg-gradient-to-br from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 rounded-md md:rounded-lg text-white flex-shrink-0 transition-all duration-300 shadow-lg shadow-blue-600/20 group/download"
+                                    title="Download Episode"
+                                  >
+                                    <FaDownload size={8} className="md:text-sm" />
+                                    <span className="absolute -top-1 -right-1 w-2 h-2 bg-white rounded-full animate-pulse"></span>
+                                  </button>
+                                )}
+
+                                {showDownloadOptions === episode.id && !isDownloaded && !isDownloading && (
+                                  <div className="absolute right-0 bottom-full mb-2 w-28 md:w-36 bg-gray-800 rounded-lg shadow-2xl border border-gray-700 overflow-hidden z-50 animate-fadeIn">
+                                    <div className="text-[8px] md:text-xs font-medium text-gray-400 px-3 py-2 bg-gray-900 border-b border-gray-700">
+                                      Select Quality
+                                    </div>
+                                    {[
+                                      { quality: '1080p', size: '~1.8 GB', icon: 'F', color: 'from-purple-600 to-pink-600' },
+                                      { quality: '720p', size: '~800 MB', icon: 'H', color: 'from-blue-600 to-cyan-600' },
+                                      { quality: '480p', size: '~350 MB', icon: 'S', color: 'from-green-600 to-emerald-600' }
+                                    ].map((item) => (
+                                      <button
+                                        key={item.quality}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleDownloadWithQuality(episode, item.quality);
+                                        }}
+                                        className="w-full px-3 py-2 text-[8px] md:text-xs text-left hover:bg-gray-700 text-white flex items-center justify-between group transition-all"
+                                      >
+                                        <div className="flex items-center gap-2">
+                                          <span className={`w-4 h-4 rounded-full bg-gradient-to-r ${item.color} text-[6px] flex items-center justify-center font-bold`}>
+                                            {item.icon}
+                                          </span>
+                                          <span>{item.quality}</span>
+                                        </div>
+                                        <span className="text-gray-400 text-[6px] md:text-xs">
+                                          {item.size}
+                                        </span>
+                                      </button>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                   </div>
 
-                  {/* Download Button at Bottom of Episodes Section */}
                   <div className="mt-3 pt-2 border-t border-gray-700/50">
                     <button
                       onClick={() => {
-                        const episodes = sortEpisodes(getEpisodesForSeries(selectedSeries.id))
+                        const seasonEpisodes = sortEpisodes(getEpisodesForSeries(selectedSeries.id))
                           .filter(ep => (parseInt(ep.seasonNumber) || 1) === selectedSeason);
-                        if (episodes.length > 0) {
-                          handleDownloadEpisode(episodes[0]);
+
+                        const downloadedInSeason = seasonEpisodes.filter(ep => downloadedEpisodes[ep.id]?.downloaded).length;
+
+                        if (downloadedInSeason === seasonEpisodes.length) {
+                          if (window.confirm(`Remove all ${seasonEpisodes.length} downloaded episodes from Season ${selectedSeason}?`)) {
+                            seasonEpisodes.forEach(episode => {
+                              if (downloadedEpisodes[episode.id]) {
+                                removeDownload(episode.id);
+                              }
+                            });
+                          }
+                        } else {
+                          if (window.confirm(`Download all ${seasonEpisodes.length} episodes of Season ${selectedSeason}?`)) {
+                            seasonEpisodes.forEach((episode, index) => {
+                              setTimeout(() => {
+                                if (!downloadedEpisodes[episode.id]) {
+                                  handleDownloadWithQuality(episode, '720p');
+                                }
+                              }, index * 1000);
+                            });
+                          }
                         }
                       }}
-                      className="w-full px-3 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 rounded-lg text-[10px] md:text-sm font-medium text-white flex items-center justify-center gap-1 transition-all"
+                      className={`w-full px-3 py-2 rounded-lg text-[10px] md:text-sm font-medium text-white flex items-center justify-center gap-1 transition-all group ${sortEpisodes(getEpisodesForSeries(selectedSeries.id))
+                          .filter(ep => (parseInt(ep.seasonNumber) || 1) === selectedSeason)
+                          .every(ep => downloadedEpisodes[ep.id]?.downloaded)
+                          ? 'bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-700 hover:to-pink-700'
+                          : 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700'
+                        }`}
                     >
-                      <FaDownload size={10} />
-                      Download S{selectedSeason}
+                      {sortEpisodes(getEpisodesForSeries(selectedSeries.id))
+                        .filter(ep => (parseInt(ep.seasonNumber) || 1) === selectedSeason)
+                        .every(ep => downloadedEpisodes[ep.id]?.downloaded) ? (
+                        <>
+                          <FaTrashAlt size={10} className="group-hover:scale-110 transition-transform" />
+                          Remove All Season {selectedSeason} Downloads
+                        </>
+                      ) : (
+                        <>
+                          <FaDownload size={10} className="group-hover:scale-110 transition-transform" />
+                          Download All Season {selectedSeason} ({sortEpisodes(getEpisodesForSeries(selectedSeries.id))
+                            .filter(ep => (parseInt(ep.seasonNumber) || 1) === selectedSeason).length} Episodes)
+                        </>
+                      )}
                     </button>
                   </div>
                 </div>
+
+                {Object.keys(downloadedEpisodes).filter(epId =>
+                  getEpisodesForSeries(selectedSeries.id).some(ep => ep.id === epId
+                  )).length > 0 && (
+                    <div className="mt-3 bg-gradient-to-br from-gray-800/50 to-gray-900/50 rounded-xl p-3 border border-blue-500/20">
+                      <h4 className="text-[10px] md:text-sm font-medium text-white mb-2 flex items-center gap-1">
+                        <FaCloudDownloadAlt className="text-blue-400" />
+                        Downloaded Episodes
+                        <span className="text-xs text-gray-400 ml-1">
+                          ({Object.keys(downloadedEpisodes).filter(epId =>
+                            getEpisodesForSeries(selectedSeries.id).some(ep => ep.id === epId
+                            )).length})
+                        </span>
+                      </h4>
+                      <div className="flex flex-wrap gap-1">
+                        {Object.entries(downloadedEpisodes)
+                          .filter(([epId, info]) =>
+                            getEpisodesForSeries(selectedSeries.id).some(ep => ep.id === epId)
+                          )
+                          .map(([epId, info]) => {
+                            const episode = getEpisodesForSeries(selectedSeries.id).find(ep => ep.id === epId);
+                            return (
+                              <div key={epId} className="group/download-card relative">
+                                <div className="flex items-center gap-1 bg-gradient-to-r from-blue-600/20 to-purple-600/20 backdrop-blur-sm rounded-full px-2 py-1 border border-blue-500/30 hover:border-blue-500/60 transition-all">
+                                  <span className="text-[6px] md:text-xs text-white font-medium">
+                                    S{episode?.seasonNumber || selectedSeason}E{episode?.episodeNumber}
+                                  </span>
+                                  <span className="text-[6px] text-blue-400 bg-blue-600/30 px-1 rounded">
+                                    {info.quality}
+                                  </span>
+                                  <button
+                                    onClick={() => removeDownload(epId)}
+                                    className="ml-1 text-gray-500 hover:text-red-400 transition-colors"
+                                  >
+                                    <FaTimes size={6} />
+                                  </button>
+                                </div>
+
+                                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1 hidden group-hover/download-card:block bg-gray-800 text-white text-[6px] rounded px-2 py-1 whitespace-nowrap z-10">
+                                  {info.title} • {info.size}
+                                </div>
+                              </div>
+                            );
+                          })}
+                      </div>
+                    </div>
+                  )}
               </div>
             </div>
           </div>

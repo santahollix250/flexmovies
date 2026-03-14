@@ -1,4 +1,4 @@
-import { FaPlay, FaStar, FaLanguage, FaTv, FaHeart, FaRegHeart, FaCalendarAlt, FaClock } from "react-icons/fa";
+import { FaPlay, FaStar, FaLanguage, FaTv, FaHeart, FaRegHeart, FaCalendarAlt, FaClock, FaLayerGroup } from "react-icons/fa";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -8,8 +8,61 @@ export default function MovieCard({ movie }) {
   const [imageError, setImageError] = useState(false);
   const navigate = useNavigate();
 
-  // Get stream URL from admin form fields
-  const streamUrl = movie?.streamLink || movie?.videoUrl || movie?.video_url || null;
+  // Helper function to get movie parts from download field
+  const getMovieParts = (movie) => {
+    if (!movie) return [];
+
+    // If parts already exist in the movie object
+    if (movie.parts && Array.isArray(movie.parts)) {
+      return movie.parts;
+    }
+
+    // Try to parse from download field
+    if (movie.download) {
+      try {
+        const parsed = typeof movie.download === 'string'
+          ? JSON.parse(movie.download)
+          : movie.download;
+
+        if (Array.isArray(parsed)) {
+          return parsed;
+        } else if (parsed && parsed.parts && Array.isArray(parsed.parts)) {
+          return parsed.parts;
+        }
+      } catch (e) {
+        // Not JSON, ignore
+      }
+    }
+
+    return [];
+  };
+
+  // Check if movie has any playable content
+  const hasPlayableContent = (movie) => {
+    if (!movie) return false;
+
+    // Check for direct video URL
+    if (movie.videoUrl || movie.streamLink) return true;
+
+    // Check for parts
+    const parts = getMovieParts(movie);
+    if (parts.length > 0) return true;
+
+    // Check for embed code
+    if (movie.embedCode) return true;
+
+    return false;
+  };
+
+  const parts = getMovieParts(movie);
+  const hasContent = hasPlayableContent(movie);
+
+  // Get stream URL - prioritize parts if available
+  const streamUrl = movie?.streamLink ||
+    movie?.videoUrl ||
+    (parts.length > 0 ? parts[0]?.streamLink || parts[0]?.videoUrl : null) ||
+    null;
+
   const safeStreamUrl = streamUrl?.startsWith('http') ? streamUrl : streamUrl ? `https://${streamUrl}` : null;
   const rating = movie?.rating || (movie?.vote_average ? movie.vote_average.toFixed(1) : null);
   const translator = movie?.translator || '';
@@ -55,25 +108,36 @@ export default function MovieCard({ movie }) {
     e?.preventDefault();
     e?.stopPropagation();
 
-    if (!safeStreamUrl) {
-      alert("⚠️ Stream not available");
+    if (!hasContent) {
+      alert("⚠️ Content not available yet");
       return;
     }
 
     const movieId = movie?.id || movie?._id || Date.now().toString();
 
-    navigate(`/player/${movieId}`, {
-      state: {
-        movie: {
-          id: movieId,
-          title: movie?.title || 'Untitled',
-          videoUrl: safeStreamUrl,
-          poster: movie?.poster || "https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=500&h=750&fit=crop",
-          translator: translator,
-          ...movie
+    // If movie has parts, pass the parts in state
+    if (parts.length > 0) {
+      navigate(`/player/${movieId}`, {
+        state: {
+          movie: {
+            ...movie,
+            parts: parts,
+            hasParts: true,
+            videoUrl: parts[0]?.videoUrl || movie.videoUrl,
+            streamLink: parts[0]?.streamLink || movie.streamLink
+          }
         }
-      }
-    });
+      });
+    } else {
+      navigate(`/player/${movieId}`, {
+        state: {
+          movie: {
+            ...movie,
+            hasParts: false
+          }
+        }
+      });
+    }
   };
 
   // Toggle like
@@ -110,8 +174,16 @@ export default function MovieCard({ movie }) {
 
         {/* Top Badges - Responsive sizing */}
         <div className="absolute top-1 sm:top-2 left-1 sm:left-2 right-1 sm:right-2 flex flex-wrap gap-0.5 sm:gap-1 z-10">
-          {/* Translator Badge */}
-          {translator && (
+          {/* Parts Badge - Show if movie has parts */}
+          {parts.length > 0 && (
+            <div className="px-1 sm:px-2 py-0.5 sm:py-1 bg-gradient-to-r from-green-600 to-teal-600 rounded-full text-[7px] xs:text-[8px] sm:text-[10px] text-white font-medium flex items-center gap-0.5 sm:gap-1 shadow-md sm:shadow-lg">
+              <FaLayerGroup className="text-[6px] xs:text-[7px] sm:text-[10px]" />
+              <span>{parts.length} {parts.length === 1 ? 'Part' : 'Parts'}</span>
+            </div>
+          )}
+
+          {/* Translator Badge - only show if no parts or if translator exists */}
+          {translator && !parts.length && (
             <div className="px-1 sm:px-2 py-0.5 sm:py-1 bg-green-600/90 rounded-full text-[7px] xs:text-[8px] sm:text-[10px] text-white font-medium flex items-center gap-0.5 sm:gap-1 shadow-md sm:shadow-lg">
               <FaLanguage className="text-[6px] xs:text-[7px] sm:text-[10px]" />
               <span className="max-w-[35px] xs:max-w-[40px] sm:max-w-[50px] truncate">{translator}</span>
@@ -134,7 +206,7 @@ export default function MovieCard({ movie }) {
           </div>
         </div>
 
-        {/* Year Badge - Moved to bottom left */}
+        {/* Year Badge */}
         {year && (
           <div className="absolute bottom-1 sm:bottom-2 left-1 sm:left-2 px-1 sm:px-2 py-0.5 sm:py-1 bg-black/70 rounded-full text-[7px] xs:text-[8px] sm:text-[10px] text-white flex items-center gap-0.5 sm:gap-1 z-10">
             <FaCalendarAlt className="text-[6px] xs:text-[7px] sm:text-[10px] text-gray-400" />
@@ -155,7 +227,7 @@ export default function MovieCard({ movie }) {
         </button>
 
         {/* Play Overlay on Hover */}
-        {isHovered && safeStreamUrl && (
+        {isHovered && hasContent && (
           <div className="absolute inset-0 bg-black/50 sm:bg-black/60 flex items-center justify-center z-20 backdrop-blur-[1px] sm:backdrop-blur-none">
             <div className="w-7 h-7 xs:w-8 xs:h-8 sm:w-10 sm:h-10 bg-gradient-to-r from-red-600 to-red-700 rounded-full flex items-center justify-center shadow-md sm:shadow-lg transform hover:scale-105 sm:hover:scale-110 transition-transform">
               <FaPlay className="text-white text-[10px] xs:text-xs sm:text-sm ml-0.5" />
@@ -164,7 +236,7 @@ export default function MovieCard({ movie }) {
         )}
 
         {/* Unavailable Overlay */}
-        {isHovered && !safeStreamUrl && (
+        {isHovered && !hasContent && (
           <div className="absolute inset-0 bg-black/70 sm:bg-black/80 flex items-center justify-center z-20">
             <div className="text-center">
               <span className="text-white text-[8px] xs:text-[9px] sm:text-xs font-medium bg-yellow-600/80 px-2 xs:px-2.5 sm:px-3 py-1 xs:py-1.5 sm:py-1.5 rounded-full">
@@ -175,7 +247,7 @@ export default function MovieCard({ movie }) {
         )}
       </div>
 
-      {/* Title Section - Now with category AND uploaded time */}
+      {/* Title Section */}
       <div className="p-1.5 xs:p-2 sm:p-3">
         <h3 className="text-white text-[10px] xs:text-xs sm:text-sm font-semibold line-clamp-1 text-center group-hover:text-red-400 transition-colors duration-300">
           {movie?.title || 'Untitled'}
@@ -189,7 +261,7 @@ export default function MovieCard({ movie }) {
             </p>
           )}
 
-          {/* Uploaded time in title section */}
+          {/* Uploaded time */}
           {uploadedTime && (
             <>
               {movie?.category && <span className="text-[7px] xs:text-[8px] sm:text-[10px] text-gray-600">•</span>}
@@ -201,17 +273,17 @@ export default function MovieCard({ movie }) {
           )}
         </div>
 
-        {/* If no category, show just upload time centered */}
-        {!movie?.category && uploadedTime && (
-          <div className="flex items-center justify-center gap-0.5 mt-0.5 xs:mt-1 text-[7px] xs:text-[8px] sm:text-[10px] text-purple-400">
-            <FaClock className="text-[6px] xs:text-[7px] sm:text-[8px]" />
-            <span>{uploadedTime}</span>
+        {/* Show parts count if available and no other info */}
+        {parts.length > 0 && !movie?.category && !uploadedTime && (
+          <div className="flex items-center justify-center gap-0.5 mt-0.5 xs:mt-1 text-[7px] xs:text-[8px] sm:text-[10px] text-green-400">
+            <FaLayerGroup className="text-[6px] xs:text-[7px] sm:text-[8px]" />
+            <span>{parts.length} {parts.length === 1 ? 'Part' : 'Parts'}</span>
           </div>
         )}
       </div>
 
-      {/* Touch-friendly hover effect for mobile */}
+      {/* Touch-friendly hover effect */}
       <div className="absolute inset-0 rounded-lg sm:rounded-xl bg-gradient-to-r from-red-500/0 via-red-500/0 to-red-500/0 group-active:from-red-500/10 group-active:via-red-500/5 group-active:to-red-500/10 sm:group-hover:from-red-500/5 sm:group-hover:via-red-500/10 sm:group-hover:to-red-500/5 opacity-0 group-active:opacity-100 sm:group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
     </div>
   );
-} 
+}

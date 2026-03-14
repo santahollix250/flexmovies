@@ -39,7 +39,7 @@ import {
   FaUpload,
   FaPlusCircle,
   FaPlayCircle,
-  FaLanguage // Added for translator icon
+  FaLanguage
 } from "react-icons/fa";
 
 // ===== CINEMATIC LOADING ANIMATION =====
@@ -441,6 +441,35 @@ export default function Movies() {
     });
   }, []);
 
+  // ===== Helper function to get movie parts from download field =====
+  const getMovieParts = useCallback((movie) => {
+    if (!movie) return [];
+
+    // If parts already exist in the movie object
+    if (movie.parts && Array.isArray(movie.parts)) {
+      return movie.parts;
+    }
+
+    // Try to parse from download field
+    if (movie.download) {
+      try {
+        const parsed = typeof movie.download === 'string'
+          ? JSON.parse(movie.download)
+          : movie.download;
+
+        if (Array.isArray(parsed)) {
+          return parsed;
+        } else if (parsed && parsed.parts && Array.isArray(parsed.parts)) {
+          return parsed.parts;
+        }
+      } catch (e) {
+        // Not JSON, ignore
+      }
+    }
+
+    return [];
+  }, []);
+
   // ===== Get hero content with latest episodes =====
   const heroContent = useMemo(() => {
     // Get all series that have episodes
@@ -568,28 +597,42 @@ export default function Movies() {
       .slice(0, 12);
   }, [movies, episodes]);
 
-  // ===== Handle series click =====
+  // ===== Handle series click - Improved navigation =====
   const handleSeriesClick = useCallback((series, latestEpisode = null) => {
+    if (!series || !series.id) return;
+
+    // Get all episodes for the series
     const allSeriesEpisodes = getEpisodesForSeries(series.id);
+
+    // Sort episodes by season and episode number
     const sortedEpisodes = sortEpisodes(allSeriesEpisodes);
 
+    // Determine which episode to play
     let targetEpisode = latestEpisode;
     let episodeIndex = 0;
 
     if (targetEpisode) {
-      episodeIndex = sortedEpisodes.findIndex(ep => ep.id === targetEpisode.id);
+      // Find the index of the target episode
+      episodeIndex = sortedEpisodes.findIndex(ep => ep && ep.id === targetEpisode.id);
+      if (episodeIndex === -1) episodeIndex = 0;
     } else {
-      targetEpisode = sortedEpisodes[0];
+      // If no specific episode, play the first episode
+      targetEpisode = sortedEpisodes.length > 0 ? sortedEpisodes[0] : null;
     }
 
-    navigate(`/series-player/${series.id}`, {
-      state: {
-        series: series,
-        episode: targetEpisode,
-        episodes: sortedEpisodes,
-        episodeIndex: episodeIndex
-      }
-    });
+    // Only navigate if we have a target episode
+    if (targetEpisode) {
+      navigate(`/series-player/${series.id}`, {
+        state: {
+          series: series,
+          episode: targetEpisode,
+          episodes: sortedEpisodes,
+          episodeIndex: episodeIndex >= 0 ? episodeIndex : 0
+        }
+      });
+    } else {
+      console.log('No episodes available for this series');
+    }
   }, [navigate, getEpisodesForSeries, sortEpisodes]);
 
   // ===== Handle hero play =====
@@ -599,11 +642,26 @@ export default function Movies() {
     if (isSeriesWithNewEpisode && currentHeroItem.latestEpisode) {
       handleSeriesClick(currentHeroItem, currentHeroItem.latestEpisode);
     } else {
+      // Check if movie has parts
+      const parts = getMovieParts(currentHeroItem);
+
+      // Create enhanced movie object with parts
+      const movieToPlay = {
+        ...currentHeroItem,
+        parts: parts,
+        hasParts: parts.length > 0,
+        // If there are parts, use the first part's video URL
+        videoUrl: currentHeroItem.videoUrl || (parts.length > 0 ? parts[0]?.videoUrl : null),
+        streamLink: currentHeroItem.streamLink || (parts.length > 0 ? parts[0]?.streamLink || parts[0]?.videoUrl : null),
+        download_link: currentHeroItem.download_link || currentHeroItem.download,
+        download: currentHeroItem.download
+      };
+
       navigate(`/player/${currentHeroItem.id}`, {
-        state: { movie: currentHeroItem }
+        state: { movie: movieToPlay }
       });
     }
-  }, [currentHeroItem, isSeriesWithNewEpisode, navigate, handleSeriesClick]);
+  }, [currentHeroItem, isSeriesWithNewEpisode, navigate, handleSeriesClick, getMovieParts]);
 
   // Handle hero info
   const handleHeroInfoClick = useCallback(() => {
@@ -750,11 +808,28 @@ export default function Movies() {
     if (movie?.type === "series") {
       handleSeriesClick(movie);
     } else {
-      navigate(`/player/${movie?.id}`, { state: { movie } });
-    }
-  }, [navigate, handleSeriesClick]);
+      // Check if movie has parts
+      const parts = getMovieParts(movie);
 
-  // Format date helper (keep for other uses but not displayed on cards)
+      // Create enhanced movie object with parts
+      const movieToPlay = {
+        ...movie,
+        parts: parts,
+        hasParts: parts.length > 0,
+        // If there are parts, use the first part's video URL
+        videoUrl: movie.videoUrl || (parts.length > 0 ? parts[0]?.videoUrl : null),
+        streamLink: movie.streamLink || (parts.length > 0 ? parts[0]?.streamLink || parts[0]?.videoUrl : null),
+        download_link: movie.download_link || movie.download,
+        download: movie.download
+      };
+
+      navigate(`/player/${movie?.id}`, {
+        state: { movie: movieToPlay }
+      });
+    }
+  }, [navigate, handleSeriesClick, getMovieParts]);
+
+  // Format date helper
   const formatDate = useCallback((dateString) => {
     if (!dateString) return 'Recently';
     try {
@@ -773,7 +848,7 @@ export default function Movies() {
     }
   }, []);
 
-  // Loading state - SHOW CINEMATIC LOADING
+  // Loading state
   if (loading) {
     return <CinematicLoading />;
   }
@@ -842,7 +917,6 @@ export default function Movies() {
                   </>
                 )}
 
-                {/* Mobile Translator Badge - Now functional */}
                 {currentHeroItem?.translator && (
                   <div className="px-1.5 py-0.5 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-[8px] font-semibold flex items-center gap-0.5 shadow-lg">
                     <FaLanguage className="text-[6px]" />
@@ -886,7 +960,6 @@ export default function Movies() {
                   </>
                 )}
 
-                {/* Translator Badge - Now functional and matches MovieCard styling */}
                 {currentHeroItem?.translator && (
                   <div className="px-2 py-1 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-[8px] sm:text-xs font-semibold flex items-center gap-1 shadow-lg border border-blue-400/30 hover:from-blue-700 hover:to-indigo-700 transition-all duration-300">
                     <FaLanguage className="text-[10px] sm:text-xs" />
@@ -1074,7 +1147,7 @@ export default function Movies() {
             </h2>
           </div>
 
-          {/* Desktop Grid - with proper gap between cards */}
+          {/* Desktop Grid */}
           <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 md:gap-5 lg:gap-6">
             {recentlyUpdatedSeries.map(series => (
               <div
@@ -1093,7 +1166,7 @@ export default function Movies() {
             ))}
           </div>
 
-          {/* Mobile Horizontal Scroll - with proper gap between cards */}
+          {/* Mobile Horizontal Scroll */}
           <div className="flex md:hidden gap-3 overflow-x-auto pb-4 px-1 scrollbar-hide"
             style={{
               scrollbarWidth: 'none',
