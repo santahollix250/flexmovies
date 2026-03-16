@@ -432,10 +432,10 @@ export default function Movies() {
   const sortEpisodes = useCallback((episodesArray) => {
     if (!episodesArray || !Array.isArray(episodesArray)) return [];
     return [...episodesArray].sort((a, b) => {
-      const seasonA = parseInt(a.seasonNumber) || 1;
-      const seasonB = parseInt(b.seasonNumber) || 1;
-      const episodeA = parseInt(a.episodeNumber) || 1;
-      const episodeB = parseInt(b.episodeNumber) || 1;
+      const seasonA = parseInt(a.seasonNumber) || parseInt(a.season_number) || 1;
+      const seasonB = parseInt(b.seasonNumber) || parseInt(b.season_number) || 1;
+      const episodeA = parseInt(a.episodeNumber) || parseInt(a.episode_number) || 1;
+      const episodeB = parseInt(b.episodeNumber) || parseInt(b.episode_number) || 1;
       if (seasonA !== seasonB) return seasonA - seasonB;
       return episodeA - episodeB;
     });
@@ -597,8 +597,32 @@ export default function Movies() {
       .slice(0, 12);
   }, [movies, episodes]);
 
-  // ===== Handle series click - Improved navigation =====
-  const handleSeriesClick = useCallback((series, latestEpisode = null) => {
+  // ===== Handle movie click - Navigates to Player component (DEFINED FIRST) =====
+  const handleMovieClick = useCallback((movie) => {
+    if (!movie || !movie.id) return;
+
+    // Check if movie has parts
+    const parts = getMovieParts(movie);
+
+    // Create enhanced movie object with parts
+    const movieToPlay = {
+      ...movie,
+      parts: parts,
+      hasParts: parts.length > 0,
+      // If there are parts, use the first part's video URL
+      videoUrl: movie.videoUrl || (parts.length > 0 ? parts[0]?.videoUrl : null),
+      streamLink: movie.streamLink || (parts.length > 0 ? parts[0]?.streamLink || parts[0]?.videoUrl : null),
+      download_link: movie.download_link || movie.download,
+      download: movie.download
+    };
+
+    navigate(`/player/${movie.id}`, {
+      state: { movie: movieToPlay }
+    });
+  }, [navigate, getMovieParts]);
+
+  // ===== Handle series click - Navigates to SeriesPlayer with ALL episodes starting from episode 1 =====
+  const handleSeriesClick = useCallback((series) => {
     if (!series || !series.id) return;
 
     // Get all episodes for the series
@@ -607,61 +631,65 @@ export default function Movies() {
     // Sort episodes by season and episode number
     const sortedEpisodes = sortEpisodes(allSeriesEpisodes);
 
-    // Determine which episode to play
-    let targetEpisode = latestEpisode;
-    let episodeIndex = 0;
-
-    if (targetEpisode) {
-      // Find the index of the target episode
-      episodeIndex = sortedEpisodes.findIndex(ep => ep && ep.id === targetEpisode.id);
-      if (episodeIndex === -1) episodeIndex = 0;
-    } else {
-      // If no specific episode, play the first episode
-      targetEpisode = sortedEpisodes.length > 0 ? sortedEpisodes[0] : null;
-    }
+    // Default to first episode (episode 1, season 1)
+    const targetEpisode = sortedEpisodes.length > 0 ? sortedEpisodes[0] : null;
 
     // Only navigate if we have a target episode
     if (targetEpisode) {
+      // Navigate to series player with all episodes and start from episode 1
       navigate(`/series-player/${series.id}`, {
         state: {
           series: series,
           episode: targetEpisode,
           episodes: sortedEpisodes,
-          episodeIndex: episodeIndex >= 0 ? episodeIndex : 0
+          episodeIndex: 0 // Start from first episode
         }
       });
     } else {
       console.log('No episodes available for this series');
+      // Optional: Show a toast or notification to user
+      alert('No episodes available for this series yet.');
     }
   }, [navigate, getEpisodesForSeries, sortEpisodes]);
 
-  // ===== Handle hero play =====
+  // ===== Handle series click with specific episode (for hero "Watch Latest" button) =====
+  const handleSeriesClickWithEpisode = useCallback((series, episode) => {
+    if (!series || !series.id || !episode) return;
+
+    // Get all episodes for the series
+    const allSeriesEpisodes = getEpisodesForSeries(series.id);
+
+    // Sort episodes by season and episode number
+    const sortedEpisodes = sortEpisodes(allSeriesEpisodes);
+
+    // Find the index of the target episode
+    const episodeIndex = sortedEpisodes.findIndex(ep => ep && ep.id === episode.id);
+
+    navigate(`/series-player/${series.id}`, {
+      state: {
+        series: series,
+        episode: episode,
+        episodes: sortedEpisodes,
+        episodeIndex: episodeIndex >= 0 ? episodeIndex : 0
+      }
+    });
+  }, [navigate, getEpisodesForSeries, sortEpisodes]);
+
+  // ===== Handle hero play (uses both movie and series handlers - DEFINED AFTER THEY'RE DEFINED) =====
   const handleHeroPlayClick = useCallback(() => {
     if (!currentHeroItem || !currentHeroItem.id) return;
 
     if (isSeriesWithNewEpisode && currentHeroItem.latestEpisode) {
-      handleSeriesClick(currentHeroItem, currentHeroItem.latestEpisode);
+      // For hero section, use the specific episode (latest)
+      handleSeriesClickWithEpisode(currentHeroItem, currentHeroItem.latestEpisode);
+    } else if (currentHeroItem.type === "series") {
+      // For series without latest episode info
+      handleSeriesClick(currentHeroItem);
     } else {
-      // Check if movie has parts
-      const parts = getMovieParts(currentHeroItem);
-
-      // Create enhanced movie object with parts
-      const movieToPlay = {
-        ...currentHeroItem,
-        parts: parts,
-        hasParts: parts.length > 0,
-        // If there are parts, use the first part's video URL
-        videoUrl: currentHeroItem.videoUrl || (parts.length > 0 ? parts[0]?.videoUrl : null),
-        streamLink: currentHeroItem.streamLink || (parts.length > 0 ? parts[0]?.streamLink || parts[0]?.videoUrl : null),
-        download_link: currentHeroItem.download_link || currentHeroItem.download,
-        download: currentHeroItem.download
-      };
-
-      navigate(`/player/${currentHeroItem.id}`, {
-        state: { movie: movieToPlay }
-      });
+      // For movies
+      handleMovieClick(currentHeroItem);
     }
-  }, [currentHeroItem, isSeriesWithNewEpisode, navigate, handleSeriesClick, getMovieParts]);
+  }, [currentHeroItem, isSeriesWithNewEpisode, handleSeriesClickWithEpisode, handleSeriesClick, handleMovieClick]);
 
   // Handle hero info
   const handleHeroInfoClick = useCallback(() => {
@@ -723,7 +751,7 @@ export default function Movies() {
     return icons[categoryLower] || <FaVideo className="text-blue-400" />;
   };
 
-  // Filter and sort movies
+  // Filter and sort movies (only movies, not series)
   const filteredMovies = useMemo(() => {
     let filtered = movies.filter(movie => movie?.type === "movie");
 
@@ -802,32 +830,6 @@ export default function Movies() {
     clearGlobalSearch();
     setCurrentPage(1);
   }, [navigate, clearGlobalSearch]);
-
-  // Handle movie click
-  const handleMovieClick = useCallback((movie) => {
-    if (movie?.type === "series") {
-      handleSeriesClick(movie);
-    } else {
-      // Check if movie has parts
-      const parts = getMovieParts(movie);
-
-      // Create enhanced movie object with parts
-      const movieToPlay = {
-        ...movie,
-        parts: parts,
-        hasParts: parts.length > 0,
-        // If there are parts, use the first part's video URL
-        videoUrl: movie.videoUrl || (parts.length > 0 ? parts[0]?.videoUrl : null),
-        streamLink: movie.streamLink || (parts.length > 0 ? parts[0]?.streamLink || parts[0]?.videoUrl : null),
-        download_link: movie.download_link || movie.download,
-        download: movie.download
-      };
-
-      navigate(`/player/${movie?.id}`, {
-        state: { movie: movieToPlay }
-      });
-    }
-  }, [navigate, handleSeriesClick, getMovieParts]);
 
   // Format date helper
   const formatDate = useCallback((dateString) => {
@@ -1153,7 +1155,7 @@ export default function Movies() {
               <div
                 key={series?.id}
                 className="cursor-pointer group relative transform transition-transform duration-300 hover:scale-105"
-                onClick={() => handleSeriesClick(series, series.latestEpisode)}
+                onClick={() => handleSeriesClick(series)} // This will navigate to SeriesPlayer with ALL episodes starting from episode 1
               >
                 <div className="absolute top-2 left-2 z-10">
                   <span className="px-2 py-1 bg-purple-600 text-white text-xs rounded-full flex items-center gap-1 shadow-lg">
@@ -1177,7 +1179,7 @@ export default function Movies() {
               <div
                 key={series?.id}
                 className="flex-none w-[120px] sm:w-[140px] relative transform transition-transform duration-300 active:scale-95"
-                onClick={() => handleSeriesClick(series, series.latestEpisode)}
+                onClick={() => handleSeriesClick(series)} // This will navigate to SeriesPlayer with ALL episodes starting from episode 1
               >
                 <div className="absolute top-1 left-1 z-10">
                   <span className="px-1.5 py-0.5 bg-purple-600 text-white text-[8px] rounded-full shadow-lg">
@@ -1221,7 +1223,7 @@ export default function Movies() {
                 className="cursor-pointer group relative transform transition-transform duration-300 hover:scale-105"
                 onClick={() => {
                   if (item.uploadType === 'series') {
-                    handleSeriesClick(item, item.latestEpisode);
+                    handleSeriesClick(item); // This will navigate to SeriesPlayer with ALL episodes starting from episode 1
                   } else {
                     handleMovieClick(item);
                   }
@@ -1263,7 +1265,7 @@ export default function Movies() {
                 className="flex-none w-[120px] sm:w-[140px] relative transform transition-transform duration-300 active:scale-95"
                 onClick={() => {
                   if (item.uploadType === 'series') {
-                    handleSeriesClick(item, item.latestEpisode);
+                    handleSeriesClick(item); // This will navigate to SeriesPlayer with ALL episodes starting from episode 1
                   } else {
                     handleMovieClick(item);
                   }
@@ -1661,7 +1663,10 @@ export default function Movies() {
                 <button
                   onClick={() => {
                     if (quickViewMovie.latestEpisode) {
-                      handleSeriesClick(quickViewMovie, quickViewMovie.latestEpisode);
+                      // For quick view "Watch Latest" button, use the specific episode handler
+                      handleSeriesClickWithEpisode(quickViewMovie, quickViewMovie.latestEpisode);
+                    } else if (quickViewMovie.type === "series") {
+                      handleSeriesClick(quickViewMovie);
                     } else {
                       handleMovieClick(quickViewMovie);
                     }

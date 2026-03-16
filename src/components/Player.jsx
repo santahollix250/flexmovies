@@ -7,7 +7,8 @@ import {
     FaSpinner, FaExclamationTriangle, FaDownload,
     FaFilm, FaTv, FaFire, FaClock,
     FaCalendarAlt, FaPlayCircle, FaChevronRight, FaChevronLeft,
-    FaYoutube, FaVimeo, FaDailymotion, FaList, FaLayerGroup, FaUser
+    FaYoutube, FaVimeo, FaDailymotion, FaList, FaLayerGroup, FaUser,
+    FaLanguage // Added FaLanguage for translator badge
 } from 'react-icons/fa';
 import { supabase } from '../lib/supabaseClient';
 import { MoviesContext } from '../context/MoviesContext';
@@ -1314,11 +1315,27 @@ const Player = () => {
                                         <FaStar className="text-[8px] md:text-xs" /> {movie.rating}
                                     </span>
                                 )}
+
+                                {/* Translator Badge - Show when no parts */}
+                                {movie.translator && !movieParts.length && (
+                                    <span className="px-2 py-0.5 bg-green-600 rounded-full flex items-center gap-0.5 text-[10px] md:text-xs">
+                                        <FaLanguage className="text-[8px] md:text-xs" /> {movie.translator}
+                                    </span>
+                                )}
+
                                 {movie.category && (
                                     <span className="px-2 py-0.5 bg-purple-600 rounded-full text-[10px] md:text-xs truncate max-w-[80px] md:max-w-[120px]">
                                         {movie.category.split(',')[0]}
                                     </span>
                                 )}
+
+                                {/* Translator Badge - Show when parts exist (so it's not lost) */}
+                                {movie.translator && movieParts.length > 0 && (
+                                    <span className="px-2 py-0.5 bg-green-600 rounded-full flex items-center gap-0.5 text-[10px] md:text-xs">
+                                        <FaLanguage className="text-[8px] md:text-xs" /> {movie.translator}
+                                    </span>
+                                )}
+
                                 {movieParts.length > 0 && (
                                     <span className="px-2 py-0.5 bg-gradient-to-r from-green-600 to-teal-600 rounded-full flex items-center gap-0.5 text-[10px] md:text-xs">
                                         <FaLayerGroup className="text-[8px] md:text-xs" />
