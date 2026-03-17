@@ -2,7 +2,7 @@ import { FaPlay, FaStar, FaLanguage, FaTv, FaHeart, FaRegHeart, FaCalendarAlt, F
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-export default function MovieCard({ movie }) {
+export default function MovieCard({ movie, onSeriesClick }) {
   const [isHovered, setIsHovered] = useState(false);
   const [liked, setLiked] = useState(false);
   const [imageError, setImageError] = useState(false);
@@ -103,7 +103,7 @@ export default function MovieCard({ movie }) {
 
   const uploadedTime = formatUploadedTime(movie?.created_at || movie?.uploaded_at || movie?.timestamp);
 
-  // Handle Watch Now
+  // Handle Watch Now - FIXED to handle both movies and series
   const handleWatchNow = (e) => {
     e?.preventDefault();
     e?.stopPropagation();
@@ -113,6 +113,22 @@ export default function MovieCard({ movie }) {
       return;
     }
 
+    // If this is a series, check if we have an onSeriesClick prop
+    if (movie?.type === 'series') {
+      if (onSeriesClick) {
+        // Use the provided series click handler
+        onSeriesClick(movie);
+      } else {
+        // Default series navigation - navigate to series player
+        const movieId = movie?.id || movie?._id || Date.now().toString();
+        navigate(`/series-player/${movieId}`, {
+          state: { series: movie }
+        });
+      }
+      return;
+    }
+
+    // Handle movie
     const movieId = movie?.id || movie?._id || Date.now().toString();
 
     // If movie has parts, pass the parts in state

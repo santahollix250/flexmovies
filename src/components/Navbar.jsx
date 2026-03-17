@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useContext } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom'; // Add Link import
 import { FiSearch, FiX, FiFilm, FiTv } from 'react-icons/fi';
 import { MoviesContext } from '../context/MoviesContext';
 import logo from '../assets/logo.png';
@@ -303,11 +303,11 @@ export default function Navbar() {
       <div className="mx-auto px-4 sm:px-6">
         <div className="flex items-center justify-between h-16">
 
-          {/* Logo */}
+          {/* Logo - Use Link instead of a */}
           <div className="flex items-center">
-            <a
-              href="/"
-              onClick={handleNavigation('/')}
+            <Link
+              to="/"
+              onClick={() => setIsOpen(false)}
               className="flex items-center gap-3 group"
             >
               {/* Logo Image */}
@@ -338,41 +338,41 @@ export default function Navbar() {
                 </h1>
                 <span className="text-[10px] text-gray-400 -mt-1">Premium Streaming</span>
               </div>
-            </a>
+            </Link>
           </div>
 
-          {/* Desktop Navigation */}
+          {/* Desktop Navigation - Use Link instead of a */}
           <div className="hidden md:flex items-center gap-1">
-            <a
-              href="/"
-              onClick={handleNavigation('/')}
+            <Link
+              to="/"
+              onClick={() => setIsOpen(false)}
               className={`px-4 py-2.5 text-sm font-medium rounded-xl transition-all duration-300 hover:scale-105 group ${location.pathname === '/'
-                  ? 'text-white bg-gradient-to-r from-purple-600/30 to-pink-600/20'
-                  : 'text-gray-300 hover:text-white hover:bg-gradient-to-r from-purple-600/20 to-pink-600/10'
+                ? 'text-white bg-gradient-to-r from-purple-600/30 to-pink-600/20'
+                : 'text-gray-300 hover:text-white hover:bg-gradient-to-r from-purple-600/20 to-pink-600/10'
                 }`}
             >
               <span className="group-hover:text-purple-300">🏠</span> Home
-            </a>
-            <a
-              href="/movies"
-              onClick={handleNavigation('/movies')}
+            </Link>
+            <Link
+              to="/movies"
+              onClick={() => setIsOpen(false)}
               className={`px-4 py-2.5 text-sm font-medium rounded-xl transition-all duration-300 hover:scale-105 group ${location.pathname === '/movies'
-                  ? 'text-white bg-gradient-to-r from-blue-600/30 to-cyan-600/20'
-                  : 'text-gray-300 hover:text-white hover:bg-gradient-to-r from-blue-600/20 to-cyan-600/10'
+                ? 'text-white bg-gradient-to-r from-blue-600/30 to-cyan-600/20'
+                : 'text-gray-300 hover:text-white hover:bg-gradient-to-r from-blue-600/20 to-cyan-600/10'
                 }`}
             >
               <span className="group-hover:text-blue-300">🎬</span> Movies
-            </a>
-            <a
-              href="/series"
-              onClick={handleNavigation('/series')}
+            </Link>
+            <Link
+              to="/series"
+              onClick={() => setIsOpen(false)}
               className={`px-4 py-2.5 text-sm font-medium rounded-xl transition-all duration-300 hover:scale-105 group ${location.pathname === '/series'
-                  ? 'text-white bg-gradient-to-r from-pink-600/30 to-red-600/20'
-                  : 'text-gray-300 hover:text-white hover:bg-gradient-to-r from-pink-600/20 to-red-600/10'
+                ? 'text-white bg-gradient-to-r from-pink-600/30 to-red-600/20'
+                : 'text-gray-300 hover:text-white hover:bg-gradient-to-r from-pink-600/20 to-red-600/10'
                 }`}
             >
               <span className="group-hover:text-pink-300">📺</span> Series
-            </a>
+            </Link>
           </div>
 
           {/* Right Side - Search & Admin */}
@@ -408,14 +408,14 @@ export default function Navbar() {
               {showResults && renderSuggestions()}
             </div>
 
-            {/* Admin Button */}
-            <a
-              href="/admin"
-              onClick={handleNavigation('/admin')}
+            {/* Admin Button - Use Link instead of a */}
+            <Link
+              to="/admin"
+              onClick={() => setIsOpen(false)}
               className="hidden md:block px-4 py-2 text-sm font-medium border border-purple-600/50 rounded-lg text-purple-400 hover:bg-purple-600/10"
             >
               Admin
-            </a>
+            </Link>
 
             {/* Mobile Menu Button */}
             <button
@@ -466,38 +466,38 @@ export default function Navbar() {
               )}
             </div>
 
-            {/* Mobile Navigation Links */}
-            <a
-              href="/"
-              onClick={handleNavigation('/', true)}
+            {/* Mobile Navigation Links - Use Link instead of a */}
+            <Link
+              to="/"
+              onClick={() => setIsOpen(false)}
               className={`block px-4 py-2 rounded-lg ${location.pathname === '/' ? 'text-white bg-purple-600/20' : 'text-gray-300'
                 }`}
             >
               Home
-            </a>
-            <a
-              href="/movies"
-              onClick={handleNavigation('/movies', true)}
+            </Link>
+            <Link
+              to="/movies"
+              onClick={() => setIsOpen(false)}
               className={`block px-4 py-2 rounded-lg ${location.pathname === '/movies' ? 'text-white bg-blue-600/20' : 'text-gray-300'
                 }`}
             >
               Movies
-            </a>
-            <a
-              href="/series"
-              onClick={handleNavigation('/series', true)}
+            </Link>
+            <Link
+              to="/series"
+              onClick={() => setIsOpen(false)}
               className={`block px-4 py-2 rounded-lg ${location.pathname === '/series' ? 'text-white bg-pink-600/20' : 'text-gray-300'
                 }`}
             >
               Series
-            </a>
-            <a
-              href="/admin"
-              onClick={handleNavigation('/admin', true)}
+            </Link>
+            <Link
+              to="/admin"
+              onClick={() => setIsOpen(false)}
               className="block px-4 py-2 text-purple-400"
             >
               Admin
-            </a>
+            </Link>
           </div>
         </div>
       )}
