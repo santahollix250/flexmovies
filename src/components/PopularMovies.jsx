@@ -1,4 +1,4 @@
-import { useContext, useMemo, useState, useEffect, useCallback } from "react";
+import { useContext, useMemo, useState, useEffect, useCallback, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { MoviesContext } from "../context/MoviesContext";
 import MovieCard from "../components/MovieCard";
@@ -294,7 +294,7 @@ const CinematicLoading = () => {
         </div>
       </div>
 
-      {/* CSS Animations - FIXED: removed jsx attribute */}
+      {/* CSS Animations */}
       <style>{`
         @keyframes filmSlide {
           0% { background-position: 0 0; }
@@ -391,6 +391,11 @@ export default function Movies() {
   const location = useLocation();
   const navigate = useNavigate();
 
+  // Refs for touch handling
+  const heroRef = useRef(null);
+  const touchStartX = useRef(0);
+  const touchEndX = useRef(0);
+
   // Get search query from URL
   const searchParams = new URLSearchParams(location.search);
   const urlSearchQuery = searchParams.get('search') || '';
@@ -400,7 +405,6 @@ export default function Movies() {
   const [isAutoPlaying, setIsAutoPlaying] = useState(true);
   const [heroContentType, setHeroContentType] = useState("all");
   const [isHoveringHero, setIsHoveringHero] = useState(false);
-  const [showMobileHeroMenu, setShowMobileHeroMenu] = useState(false);
 
   // Filter State
   const [selectedCategory, setSelectedCategory] = useState("all");
@@ -415,6 +419,34 @@ export default function Movies() {
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [imageLoading, setImageLoading] = useState(true);
   const itemsPerPage = 24;
+
+  // Touch handlers for mobile hero slider
+  const handleTouchStart = (e) => {
+    touchStartX.current = e.touches[0].clientX;
+    setIsAutoPlaying(false);
+  };
+
+  const handleTouchMove = (e) => {
+    touchEndX.current = e.touches[0].clientX;
+  };
+
+  const handleTouchEnd = () => {
+    const swipeThreshold = 50;
+    const diffX = touchStartX.current - touchEndX.current;
+
+    if (Math.abs(diffX) > swipeThreshold) {
+      if (diffX > 0) {
+        // Swipe left - next slide
+        setCurrentHeroSlide((prev) => (prev + 1) % filteredHeroContent.length);
+      } else {
+        // Swipe right - previous slide
+        setCurrentHeroSlide((prev) => (prev - 1 + filteredHeroContent.length) % filteredHeroContent.length);
+      }
+    }
+
+    // Resume auto-play after 5 seconds
+    setTimeout(() => setIsAutoPlaying(true), 5000);
+  };
 
   // Sync URL with global search
   useEffect(() => {
@@ -535,7 +567,7 @@ export default function Movies() {
   const currentHeroItem = filteredHeroContent[currentHeroSlide] || {};
   const isSeriesWithNewEpisode = currentHeroItem?.latestEpisode ? true : false;
 
-  // ===== Get recently updated series =====
+  // ===== Get recently updated series (increased to 12 for better display) =====
   const recentlyUpdatedSeries = useMemo(() => {
     return movies
       .filter(item => item?.type === "series")
@@ -558,10 +590,10 @@ export default function Movies() {
       })
       .filter(series => series !== null)
       .sort((a, b) => new Date(b.lastUpdated) - new Date(a.lastUpdated))
-      .slice(0, 8);
+      .slice(0, 12);
   }, [movies, episodes]);
 
-  // ===== Latest uploads =====
+  // ===== Latest uploads (increased to 16 for better display) =====
   const latestUploads = useMemo(() => {
     const moviesList = movies
       .filter(movie => movie?.type === "movie")
@@ -594,7 +626,7 @@ export default function Movies() {
 
     return [...moviesList, ...seriesList]
       .sort((a, b) => new Date(b.displayDate) - new Date(a.displayDate))
-      .slice(0, 12);
+      .slice(0, 16);
   }, [movies, episodes]);
 
   // ===== Handle movie click - Navigates to Player component =====
@@ -885,12 +917,16 @@ export default function Movies() {
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-black via-gray-900 to-black">
-      {/* HERO SLIDER SECTION */}
+      {/* HERO SLIDER SECTION - Original Look */}
       {filteredHeroContent.length > 0 && !globalSearchQuery && (
         <section
+          ref={heroRef}
           className="relative h-[40vh] sm:h-[50vh] md:h-[60vh] lg:h-[70vh] xl:h-[80vh] overflow-hidden group"
           onMouseEnter={() => setIsHoveringHero(true)}
           onMouseLeave={() => setIsHoveringHero(false)}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
         >
           {/* Background Images */}
           {filteredHeroContent.map((item, index) => (
@@ -1126,7 +1162,17 @@ export default function Movies() {
             ))}
           </div>
 
-          {/* Navigation Arrows */}
+          {/* Mobile swipe indicator */}
+          <div className="absolute top-1/2 left-0 right-0 flex justify-between px-2 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity sm:hidden">
+            <div className="w-8 h-8 bg-black/50 rounded-full flex items-center justify-center">
+              <FaChevronLeft className="text-white text-sm" />
+            </div>
+            <div className="w-8 h-8 bg-black/50 rounded-full flex items-center justify-center">
+              <FaChevronRight className="text-white text-sm" />
+            </div>
+          </div>
+
+          {/* Desktop Navigation Arrows */}
           <button
             onClick={prevHeroSlide}
             className="hidden sm:block absolute left-2 sm:left-4 top-1/2 transform -translate-y-1/2 z-30 group/arrow"
@@ -1166,7 +1212,7 @@ export default function Movies() {
         </section>
       )}
 
-      {/* Recently Updated Series Section */}
+      {/* Recently Updated Series Section - Improved with tighter grid */}
       {!globalSearchQuery && recentlyUpdatedSeries.length > 0 && (
         <section className="container mx-auto px-4 py-6 sm:py-8">
           <div className="flex items-center justify-between mb-3 sm:mb-4">
@@ -1175,10 +1221,13 @@ export default function Movies() {
               <span className="hidden xs:inline">Recently Updated Series</span>
               <span className="xs:hidden">Updated Series</span>
             </h2>
+            <span className="text-xs text-gray-400 bg-gray-800 px-2 py-1 rounded-full">
+              {recentlyUpdatedSeries.length}
+            </span>
           </div>
 
-          {/* Desktop Grid */}
-          <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 md:gap-5 lg:gap-6">
+          {/* Desktop Grid - Tighter gap like all movies section */}
+          <div className="hidden md:grid md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-2 md:gap-3 lg:gap-4">
             {recentlyUpdatedSeries.map(series => (
               <div
                 key={series?.id}
@@ -1186,7 +1235,7 @@ export default function Movies() {
               >
                 <div className="absolute top-2 left-2 z-10">
                   <span className="px-2 py-1 bg-purple-600 text-white text-xs rounded-full flex items-center gap-1 shadow-lg">
-                    <FaPlusCircle className="text-[8px]" />
+                    <FaPlusCircle className="text-[10px]" />
                     S{series.latestEpisode.seasonNumber}:E{series.latestEpisode.episodeNumber}
                   </span>
                 </div>
@@ -1195,20 +1244,20 @@ export default function Movies() {
             ))}
           </div>
 
-          {/* Mobile Horizontal Scroll */}
-          <div className="flex md:hidden gap-3 overflow-x-auto pb-4 px-1 scrollbar-hide"
+          {/* Mobile Horizontal Scroll - Tighter spacing */}
+          <div className="flex md:hidden gap-2 overflow-x-auto pb-4 px-1 scrollbar-hide"
             style={{
               scrollbarWidth: 'none',
               msOverflowStyle: 'none',
               WebkitOverflowScrolling: 'touch'
             }}>
-            {recentlyUpdatedSeries.slice(0, 8).map(series => (
+            {recentlyUpdatedSeries.map(series => (
               <div
                 key={series?.id}
-                className="flex-none w-[120px] sm:w-[140px] relative transform transition-transform duration-300 active:scale-95"
+                className="flex-none w-[130px] sm:w-[150px] relative transform transition-transform duration-300 active:scale-95"
               >
                 <div className="absolute top-1 left-1 z-10">
-                  <span className="px-1.5 py-0.5 bg-purple-600 text-white text-[8px] rounded-full shadow-lg">
+                  <span className="px-1.5 py-0.5 bg-purple-600 text-white text-[10px] rounded-full shadow-lg">
                     S{series.latestEpisode.seasonNumber}:E{series.latestEpisode.episodeNumber}
                   </span>
                 </div>
@@ -1216,21 +1265,10 @@ export default function Movies() {
               </div>
             ))}
           </div>
-
-          {/* Scroll indicator for mobile */}
-          <div className="flex md:hidden justify-center gap-1 mt-2">
-            {[...Array(Math.min(5, recentlyUpdatedSeries.length))].map((_, i) => (
-              <div
-                key={i}
-                className={`w-1 h-1 rounded-full transition-all duration-300 ${i === 0 ? 'w-3 bg-purple-500' : 'w-1 bg-gray-600'
-                  }`}
-              />
-            ))}
-          </div>
         </section>
       )}
 
-      {/* Latest Uploads Section */}
+      {/* Latest Uploads Section - Improved with tighter grid */}
       {!globalSearchQuery && latestUploads.length > 0 && (
         <section className="container mx-auto px-4 py-6 sm:py-8">
           <div className="flex items-center justify-between mb-3 sm:mb-4">
@@ -1239,10 +1277,13 @@ export default function Movies() {
               <span className="hidden xs:inline">Latest Updates</span>
               <span className="xs:hidden">Updates</span>
             </h2>
+            <span className="text-xs text-gray-400 bg-gray-800 px-2 py-1 rounded-full">
+              {latestUploads.length}
+            </span>
           </div>
 
-          {/* Desktop Grid */}
-          <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 md:gap-5 lg:gap-6">
+          {/* Desktop Grid - Tighter gap like all movies section */}
+          <div className="hidden md:grid md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-2 md:gap-3 lg:gap-4">
             {latestUploads.map(item => (
               <div
                 key={item?.id}
@@ -1252,7 +1293,7 @@ export default function Movies() {
                   {item.uploadType === 'series' && item.latestEpisode ? (
                     <>
                       <span className="px-2 py-1 bg-purple-600 text-white text-xs rounded-full flex items-center gap-1 shadow-lg">
-                        <FaTv className="text-[8px]" />
+                        <FaTv className="text-[10px]" />
                         New
                       </span>
                       <span className="px-2 py-1 bg-blue-600 text-white text-xs rounded-full">
@@ -1261,7 +1302,7 @@ export default function Movies() {
                     </>
                   ) : (
                     <span className="px-2 py-1 bg-green-600 text-white text-xs rounded-full flex items-center gap-1 shadow-lg">
-                      <FaUpload className="text-[8px]" />
+                      <FaUpload className="text-[10px]" />
                       New
                     </span>
                   )}
@@ -1274,25 +1315,25 @@ export default function Movies() {
             ))}
           </div>
 
-          {/* Mobile Horizontal Scroll */}
-          <div className="flex md:hidden gap-3 overflow-x-auto pb-4 px-1 scrollbar-hide"
+          {/* Mobile Horizontal Scroll - Tighter spacing */}
+          <div className="flex md:hidden gap-2 overflow-x-auto pb-4 px-1 scrollbar-hide"
             style={{
               scrollbarWidth: 'none',
               msOverflowStyle: 'none',
               WebkitOverflowScrolling: 'touch'
             }}>
-            {latestUploads.slice(0, 8).map(item => (
+            {latestUploads.map(item => (
               <div
                 key={item?.id}
-                className="flex-none w-[120px] sm:w-[140px] relative transform transition-transform duration-300 active:scale-95"
+                className="flex-none w-[130px] sm:w-[150px] relative transform transition-transform duration-300 active:scale-95"
               >
                 <div className="absolute top-1 left-1 z-10">
                   {item.uploadType === 'series' ? (
-                    <span className="px-1.5 py-0.5 bg-purple-600 text-white text-[8px] rounded-full shadow-lg">
+                    <span className="px-1.5 py-0.5 bg-purple-600 text-white text-[10px] rounded-full shadow-lg">
                       NEW
                     </span>
                   ) : (
-                    <span className="px-1.5 py-0.5 bg-green-600 text-white text-[8px] rounded-full shadow-lg">
+                    <span className="px-1.5 py-0.5 bg-green-600 text-white text-[10px] rounded-full shadow-lg">
                       NEW
                     </span>
                   )}
@@ -1302,17 +1343,6 @@ export default function Movies() {
                   onSeriesClick={item.uploadType === 'series' ? handleUpdatedSeriesClick : undefined}
                 />
               </div>
-            ))}
-          </div>
-
-          {/* Scroll indicator for mobile */}
-          <div className="flex md:hidden justify-center gap-1 mt-2">
-            {[...Array(Math.min(5, latestUploads.length))].map((_, i) => (
-              <div
-                key={i}
-                className={`w-1 h-1 rounded-full transition-all duration-300 ${i === 0 ? 'w-3 bg-green-500' : 'w-1 bg-gray-600'
-                  }`}
-              />
             ))}
           </div>
         </section>
@@ -1460,8 +1490,8 @@ export default function Movies() {
           </div>
 
           {/* Desktop Grid */}
-          <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 md:gap-5 lg:gap-6">
-            {featuredMovies.slice(0, 10).map(movie => (
+          <div className="hidden md:grid md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-2 md:gap-3 lg:gap-4">
+            {featuredMovies.slice(0, 12).map(movie => (
               <div
                 key={movie?.id}
                 className="cursor-pointer transform transition-transform duration-300 hover:scale-105"
@@ -1473,7 +1503,7 @@ export default function Movies() {
           </div>
 
           {/* Mobile Horizontal Scroll */}
-          <div className="flex md:hidden gap-3 overflow-x-auto pb-4 px-1 scrollbar-hide"
+          <div className="flex md:hidden gap-2 overflow-x-auto pb-4 px-1 scrollbar-hide"
             style={{
               scrollbarWidth: 'none',
               msOverflowStyle: 'none',
@@ -1482,7 +1512,7 @@ export default function Movies() {
             {featuredMovies.slice(0, 8).map(movie => (
               <div
                 key={movie?.id}
-                className="flex-none w-[120px] sm:w-[140px] transform transition-transform duration-300 active:scale-95"
+                className="flex-none w-[130px] sm:w-[150px] transform transition-transform duration-300 active:scale-95"
                 onClick={() => handleMovieClick(movie)}
               >
                 <MovieCard movie={movie} />
@@ -1547,7 +1577,7 @@ export default function Movies() {
           </div>
         )}
 
-        {/* Movies Grid */}
+        {/* Movies Grid - Tighter gap */}
         {filteredMovies.length === 0 ? (
           <div className="text-center py-8 sm:py-12 bg-gray-900/30 rounded-lg">
             <div className="text-3xl sm:text-4xl mb-1 sm:mb-2">🎬</div>
@@ -1566,7 +1596,7 @@ export default function Movies() {
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-1 sm:gap-2 md:gap-4">
+            <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-1 sm:gap-2 md:gap-3">
               {paginatedMovies.map(movie => (
                 <div
                   key={movie?.id}

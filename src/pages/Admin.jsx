@@ -125,7 +125,7 @@ function Admin({ onLogout }) {
     streamLink: ""
   };
 
-  // Empty episode form
+  // Empty episode form - UPDATED to properly handle video fields
   const emptyEpisode = {
     id: null,
     seasonNumber: "1",
@@ -183,7 +183,7 @@ function Admin({ onLogout }) {
   const [editingEpisode, setEditingEpisode] = useState(null);
   const [showEpisodeForm, setShowEpisodeForm] = useState(false);
 
-  // Store the series video URL when creating/editing a series
+  // Store the series video URL for reference only (not forced)
   const [seriesVideoUrl, setSeriesVideoUrl] = useState("");
 
   useEffect(() => {
@@ -417,6 +417,13 @@ function Admin({ onLogout }) {
           videoFile: file,
           videoUrl: previewUrl
         }));
+      } else if (showEpisodeForm || editingEpisode) {
+        setEpisodeForm(prev => ({
+          ...prev,
+          videoType: VIDEO_PLATFORMS.DIRECT,
+          videoFile: file,
+          videoUrl: previewUrl
+        }));
       } else {
         setForm(prev => ({
           ...prev,
@@ -439,14 +446,14 @@ function Admin({ onLogout }) {
     }
   };
 
-  // Load episodes when series is selected
+  // Load episodes when series is selected - UPDATED to not force series video URL
   useEffect(() => {
     if (selectedSeries && typeof getEpisodesBySeries === 'function') {
       const loadedEpisodes = getEpisodesBySeries(selectedSeries.id) || [];
       const sortedEpisodes = sortEpisodes(loadedEpisodes);
       setSeriesEpisodes(sortedEpisodes);
 
-      // Set the series video URL for episodes
+      // Store series video URL for reference only
       if (selectedSeries.videoUrl) {
         setSeriesVideoUrl(selectedSeries.videoUrl);
       }
@@ -457,20 +464,17 @@ function Admin({ onLogout }) {
           const currNum = parseInt(current.episodeNumber || 0);
           return prevNum > currNum ? prev : current;
         });
+
+        // Set next episode number but don't force video URL
         setEpisodeForm(prev => ({
-          ...prev,
+          ...emptyEpisode, // Reset to empty episode
           seasonNumber: (lastEpisode.seasonNumber || 1).toString(),
           episodeNumber: (parseInt(lastEpisode.episodeNumber || 0) + 1).toString(),
-          videoType: lastEpisode.videoType || VIDEO_PLATFORMS.VIMEO,
-          // Use series video URL for episodes
-          videoUrl: selectedSeries.videoUrl || ""
+          // Don't set videoUrl - let user enter their own
         }));
       } else {
-        // First episode - use series video URL
-        setEpisodeForm(prev => ({
-          ...prev,
-          videoUrl: selectedSeries.videoUrl || ""
-        }));
+        // First episode - completely empty form
+        setEpisodeForm(emptyEpisode);
       }
     }
   }, [selectedSeries, getEpisodesBySeries]);
@@ -581,21 +585,24 @@ function Admin({ onLogout }) {
           [name]: value,
           videoType: detectedPlatform
         }));
+      } else if (showEpisodeForm || editingEpisode) {
+        setEpisodeForm((f) => ({
+          ...f,
+          [name]: value,
+          videoType: detectedPlatform
+        }));
       } else {
         setForm((f) => ({
           ...f,
           [name]: value,
           videoType: detectedPlatform
         }));
-
-        // If this is a series, update seriesVideoUrl
-        if (form.type === 'series') {
-          setSeriesVideoUrl(value);
-        }
       }
     } else {
       if (showPartForm) {
         setPartForm((f) => ({ ...f, [name]: value }));
+      } else if (showEpisodeForm || editingEpisode) {
+        setEpisodeForm((f) => ({ ...f, [name]: value }));
       } else {
         setForm((f) => ({ ...f, [name]: value }));
       }
@@ -668,7 +675,7 @@ function Admin({ onLogout }) {
     addNotification("info", `Editing: ${movie.title}`);
   }
 
-  // Start editing episode
+  // Start editing episode - UPDATED to properly load episode data
   function startEditEpisode(episode) {
     if (!episode) return;
 
@@ -680,7 +687,7 @@ function Admin({ onLogout }) {
       title: episode.title || "",
       description: episode.description || "",
       duration: episode.duration || "",
-      videoUrl: episode.videoUrl || "",
+      videoUrl: episode.videoUrl || "", // Use episode's own video URL
       download_link: episode.download_link || "",
       thumbnail: episode.thumbnail || "",
       airDate: episode.airDate || new Date().toISOString().split('T')[0],
@@ -697,10 +704,7 @@ function Admin({ onLogout }) {
   // Cancel episode editing
   function cancelEpisodeEdit() {
     setEditingEpisode(null);
-    setEpisodeForm({
-      ...emptyEpisode,
-      videoUrl: seriesVideoUrl || "" // Preserve series video URL
-    });
+    setEpisodeForm(emptyEpisode); // Reset to empty
     setShowEpisodeForm(false);
   }
 
@@ -822,38 +826,21 @@ function Admin({ onLogout }) {
     }
   }
 
-  // Select series for episode management
+  // Select series for episode management - UPDATED
   function selectSeriesForEpisodes(series) {
     setSelectedSeries(series);
     setActiveTab("episodes");
     setShowEpisodeForm(false);
     setEditingEpisode(null);
 
-    // Set series video URL for episodes
+    // Store series video URL for reference only
     setSeriesVideoUrl(series.videoUrl || "");
 
-    setEpisodeForm({
-      ...emptyEpisode,
-      videoUrl: series.videoUrl || "" // Use series video URL
-    });
+    // Reset episode form to empty
+    setEpisodeForm(emptyEpisode);
 
     const loadedEpisodes = getEpisodesBySeries(series.id) || [];
     setSeriesEpisodes(sortEpisodes(loadedEpisodes));
-
-    if (loadedEpisodes.length > 0) {
-      const lastEpisode = loadedEpisodes.reduce((prev, current) => {
-        const prevNum = parseInt(prev.episodeNumber || 0);
-        const currNum = parseInt(current.episodeNumber || 0);
-        return prevNum > currNum ? prev : current;
-      });
-      setEpisodeForm(prev => ({
-        ...prev,
-        seasonNumber: (lastEpisode.seasonNumber || 1).toString(),
-        episodeNumber: (parseInt(lastEpisode.episodeNumber || 0) + 1).toString(),
-        videoType: lastEpisode.videoType || VIDEO_PLATFORMS.VIMEO,
-        videoUrl: series.videoUrl || "" // Keep using series video URL
-      }));
-    }
 
     addNotification("info", `Managing episodes for: ${series.title}`);
   }
@@ -1068,7 +1055,7 @@ function Admin({ onLogout }) {
     }
   }
 
-  // Add or update episode
+  // Add or update episode - UPDATED to properly handle video URLs
   async function handleAddOrUpdateEpisode() {
     if (!selectedSeries) {
       addNotification("error", "No series selected");
@@ -1080,17 +1067,48 @@ function Admin({ onLogout }) {
       return;
     }
 
+    if (!episodeForm.videoUrl && !episodeForm.videoFile) {
+      addNotification("error", "Video URL is required");
+      return;
+    }
+
+    if (episodeForm.videoUrl) {
+      const validation = validateVideoUrl(episodeForm.videoUrl, episodeForm.videoType);
+      if (!validation.valid && episodeForm.videoType !== VIDEO_PLATFORMS.DIRECT) {
+        addNotification("error", validation.message);
+        return;
+      }
+    }
+
     setSubmitting(true);
     try {
+      // Generate videoId and embedCode if needed
+      let videoId = episodeForm.videoId || '';
+      let embedCode = episodeForm.embedCode || '';
+
+      if (episodeForm.videoUrl && !videoId) {
+        if (episodeForm.videoType !== VIDEO_PLATFORMS.DIRECT) {
+          videoId = extractVideoId(episodeForm.videoUrl, episodeForm.videoType);
+        } else {
+          videoId = episodeForm.videoUrl;
+        }
+      }
+
       const episodeData = {
-        ...episodeForm,
         seriesId: selectedSeries.id,
         seriesTitle: selectedSeries.title,
         seasonNumber: parseInt(episodeForm.seasonNumber) || 1,
         episodeNumber: parseInt(episodeForm.episodeNumber) || 1,
+        title: episodeForm.title,
+        description: episodeForm.description || "",
+        duration: episodeForm.duration || "",
+        videoUrl: episodeForm.videoUrl || "",
+        download_link: episodeForm.download_link || "",
         thumbnail: episodeForm.thumbnail || selectedSeries.poster || "",
-        // Use series video URL if episode doesn't have its own
-        videoUrl: episodeForm.videoUrl || seriesVideoUrl || ""
+        airDate: episodeForm.airDate || new Date().toISOString().split('T')[0],
+        videoType: episodeForm.videoType || VIDEO_PLATFORMS.VIMEO,
+        videoId: videoId,
+        embedCode: embedCode
       };
 
       if (editingEpisode) {
@@ -1101,18 +1119,14 @@ function Admin({ onLogout }) {
         addNotification("success", `Episode "${episodeForm.title}" added`);
       }
 
-      setEpisodeForm(prev => ({
-        ...prev,
-        episodeNumber: (parseInt(prev.episodeNumber || 1) + 1).toString(),
-        title: "",
-        description: "",
-        duration: "",
-        download_link: "",
-        thumbnail: "",
-        airDate: new Date().toISOString().split('T')[0],
-        videoUrl: seriesVideoUrl || "" // Keep series video URL for next episode
-      }));
+      // Reset form for next episode but keep season number
+      setEpisodeForm({
+        ...emptyEpisode,
+        seasonNumber: episodeForm.seasonNumber, // Keep same season
+        episodeNumber: (parseInt(episodeForm.episodeNumber || 1) + 1).toString() // Increment episode
+      });
 
+      // Refresh episodes list
       const updatedEpisodes = getEpisodesBySeries(selectedSeries.id) || [];
       setSeriesEpisodes(sortEpisodes(updatedEpisodes));
 
@@ -1120,6 +1134,7 @@ function Admin({ onLogout }) {
       setShowEpisodeForm(false);
 
     } catch (err) {
+      console.error("Error managing episode:", err);
       addNotification("error", editingEpisode ? "Error updating episode" : "Error adding episode");
     } finally {
       setSubmitting(false);
@@ -1209,10 +1224,10 @@ function Admin({ onLogout }) {
           <div
             key={notification.id}
             className={`transform transition-all duration-300 ease-out text-sm sm:text-base ${notification.type === "success"
-                ? "bg-green-900/90 border-l-4 border-green-500"
-                : notification.type === "error"
-                  ? "bg-red-900/90 border-l-4 border-red-500"
-                  : "bg-blue-900/90 border-l-4 border-blue-500"
+              ? "bg-green-900/90 border-l-4 border-green-500"
+              : notification.type === "error"
+                ? "bg-red-900/90 border-l-4 border-red-500"
+                : "bg-blue-900/90 border-l-4 border-blue-500"
               } backdrop-blur-lg rounded-r-lg shadow-2xl p-3 sm:p-4 flex items-start gap-2 sm:gap-3`}
           >
             <div className="flex-shrink-0">
@@ -1271,8 +1286,8 @@ function Admin({ onLogout }) {
             <button
               onClick={() => setActiveTab("series")}
               className={`px-3 sm:px-6 py-2 sm:py-3 font-medium whitespace-nowrap text-sm sm:text-base ${activeTab === "series"
-                  ? "text-blue-400 border-b-2 border-blue-500"
-                  : "text-gray-400 hover:text-gray-300"
+                ? "text-blue-400 border-b-2 border-blue-500"
+                : "text-gray-400 hover:text-gray-300"
                 }`}
             >
               <FaTv className="inline mr-1 sm:mr-2 text-xs sm:text-sm" /> Manage Content
@@ -1280,8 +1295,8 @@ function Admin({ onLogout }) {
             <button
               onClick={() => setActiveTab("episodes")}
               className={`px-3 sm:px-6 py-2 sm:py-3 font-medium whitespace-nowrap text-sm sm:text-base ${activeTab === "episodes"
-                  ? "text-purple-400 border-b-2 border-purple-500"
-                  : "text-gray-400 hover:text-gray-300"
+                ? "text-purple-400 border-b-2 border-purple-500"
+                : "text-gray-400 hover:text-gray-300"
                 }`}
             >
               <FaList className="inline mr-1 sm:mr-2 text-xs sm:text-sm" /> Manage Episodes
@@ -1289,8 +1304,8 @@ function Admin({ onLogout }) {
             <button
               onClick={() => setActiveTab("parts")}
               className={`px-3 sm:px-6 py-2 sm:py-3 font-medium whitespace-nowrap text-sm sm:text-base ${activeTab === "parts"
-                  ? "text-green-400 border-b-2 border-green-500"
-                  : "text-gray-400 hover:text-gray-300"
+                ? "text-green-400 border-b-2 border-green-500"
+                : "text-gray-400 hover:text-gray-300"
                 }`}
             >
               <FaLayerGroup className="inline mr-1 sm:mr-2 text-xs sm:text-sm" /> Manage Movie Parts
@@ -1325,8 +1340,8 @@ function Admin({ onLogout }) {
                 <button
                   onClick={() => setForm({ ...emptyMovie, type: "movie" })}
                   className={`p-3 sm:p-4 rounded-xl flex flex-col items-center justify-center gap-1 sm:gap-2 ${form.type === "movie"
-                      ? "bg-red-600/20 border-2 border-red-500/50"
-                      : "bg-gray-800/50 border border-gray-700"
+                    ? "bg-red-600/20 border-2 border-red-500/50"
+                    : "bg-gray-800/50 border border-gray-700"
                     }`}
                 >
                   <FaFilm className={`text-xl sm:text-2xl ${form.type === "movie" ? "text-red-400" : "text-gray-400"}`} />
@@ -1337,8 +1352,8 @@ function Admin({ onLogout }) {
                 <button
                   onClick={() => setForm({ ...emptyMovie, type: "series" })}
                   className={`p-3 sm:p-4 rounded-xl flex flex-col items-center justify-center gap-1 sm:gap-2 ${form.type === "series"
-                      ? "bg-purple-600/20 border-2 border-purple-500/50"
-                      : "bg-gray-800/50 border border-gray-700"
+                    ? "bg-purple-600/20 border-2 border-purple-500/50"
+                    : "bg-gray-800/50 border border-gray-700"
                     }`}
                 >
                   <FaTv className={`text-xl sm:text-2xl ${form.type === "series" ? "text-purple-400" : "text-gray-400"}`} />
@@ -1361,8 +1376,8 @@ function Admin({ onLogout }) {
                         type="button"
                         onClick={() => setForm(prev => ({ ...prev, videoType: key, videoUrl: '' }))}
                         className={`p-2 sm:p-3 rounded-xl flex items-center gap-2 sm:gap-3 ${isActive
-                            ? 'border-2'
-                            : 'border border-gray-700'
+                          ? 'border-2'
+                          : 'border border-gray-700'
                           }`}
                         style={{
                           backgroundColor: isActive ? `${config.color}10` : 'rgb(31 41 55 / 0.5)',
@@ -1821,7 +1836,7 @@ function Admin({ onLogout }) {
           </div>
         )}
 
-        {/* EPISODES TAB */}
+        {/* EPISODES TAB - UPDATED with proper video URL handling */}
         {activeTab === "episodes" && (
           <div className="space-y-4 sm:space-y-6">
             <div className="bg-gradient-to-br from-gray-800/50 to-gray-900/50 backdrop-blur-lg rounded-xl border border-gray-700/50 p-4 sm:p-6">
@@ -1864,12 +1879,45 @@ function Admin({ onLogout }) {
                 </div>
               ) : (
                 <>
-                  {/* Episode Form */}
+                  {/* Episode Form - UPDATED with proper video URL fields */}
                   {(showEpisodeForm || editingEpisode) && (
                     <div className="mb-4 sm:mb-6 p-4 bg-gray-800/50 rounded-xl">
                       <h3 className="text-sm sm:text-lg font-bold mb-3 sm:mb-4">
                         {editingEpisode ? "Edit Episode" : "Add New Episode"}
                       </h3>
+
+                      {/* Platform Selection for Episode */}
+                      <div className="mb-4">
+                        <label className="block text-xs font-medium text-gray-300 mb-2">Video Platform:</label>
+                        <div className="grid grid-cols-2 gap-2">
+                          {Object.entries(platformConfig).map(([key, config]) => {
+                            const Icon = config.icon;
+                            const isActive = episodeForm.videoType === key;
+                            return (
+                              <button
+                                key={key}
+                                type="button"
+                                onClick={() => setEpisodeForm(prev => ({ ...prev, videoType: key, videoUrl: '' }))}
+                                className={`p-2 rounded-xl flex items-center gap-2 ${isActive
+                                  ? 'border-2'
+                                  : 'border border-gray-700'
+                                  }`}
+                                style={{
+                                  backgroundColor: isActive ? `${config.color}10` : 'rgb(31 41 55 / 0.5)',
+                                  borderColor: isActive ? config.color : ''
+                                }}
+                              >
+                                <Icon className={`text-base sm:text-lg flex-shrink-0 ${isActive ? '' : 'text-gray-400'}`}
+                                  style={isActive ? { color: config.color } : {}} />
+                                <span className={`text-[10px] sm:text-xs font-medium truncate ${isActive ? 'text-white' : 'text-gray-300'}`}>
+                                  {config.name}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
                           <label className="block text-xs font-medium text-gray-300 mb-1">Season</label>
@@ -1902,21 +1950,55 @@ function Admin({ onLogout }) {
                           />
                         </div>
 
-                        {/* Video URL is now hidden and uses series video URL */}
+                        {/* Video URL Field - Now fully editable */}
                         <div className="sm:col-span-2">
                           <label className="block text-xs font-medium text-gray-300 mb-1">
-                            Video URL (from series)
+                            Video URL * {episodeForm.videoType === VIDEO_PLATFORMS.DIRECT ? '(Direct URL)' : ''}
                           </label>
                           <input
                             name="videoUrl"
-                            value={episodeForm.videoUrl || seriesVideoUrl}
+                            value={episodeForm.videoUrl}
                             onChange={handleEpisodeChange}
-                            placeholder="Video URL from series"
-                            className="w-full p-2 bg-gray-800/70 border border-gray-700 rounded-xl text-xs sm:text-sm opacity-75"
-                            readOnly
+                            placeholder={platformConfig[episodeForm.videoType]?.placeholder}
+                            className="w-full p-2 bg-gray-800/70 border border-gray-700 rounded-xl text-xs sm:text-sm"
                           />
-                          <p className="text-[10px] text-gray-500 mt-1">Episodes use the series video URL</p>
+                          {seriesVideoUrl && !editingEpisode && (
+                            <p className="text-[10px] text-gray-500 mt-1">
+                              Series video URL: {seriesVideoUrl} (you can use this or enter a different one)
+                            </p>
+                          )}
                         </div>
+
+                        {/* File Upload for Direct Videos */}
+                        {episodeForm.videoType === VIDEO_PLATFORMS.DIRECT && (
+                          <div className="sm:col-span-2">
+                            <label className="block text-xs font-medium text-gray-300 mb-1">Or Upload Video File</label>
+                            <div className="border-2 border-dashed border-gray-700 rounded-xl p-3 text-center">
+                              <input
+                                type="file"
+                                name="videoFile"
+                                id="episodeVideoFile"
+                                accept="video/*"
+                                onChange={handleChange}
+                                className="hidden"
+                              />
+                              <label htmlFor="episodeVideoFile" className="cursor-pointer block">
+                                <FaUpload className="text-xl text-gray-400 mx-auto mb-1" />
+                                <div className="text-[10px] text-gray-300">Click to upload video</div>
+                                {uploadingFile && (
+                                  <div className="mt-2">
+                                    <div className="w-full bg-gray-700 rounded-full h-1">
+                                      <div
+                                        className="bg-blue-600 h-1 rounded-full"
+                                        style={{ width: `${uploadProgress}%` }}
+                                      ></div>
+                                    </div>
+                                  </div>
+                                )}
+                              </label>
+                            </div>
+                          </div>
+                        )}
 
                         <div className="sm:col-span-2">
                           <label className="block text-xs font-medium text-gray-300 mb-1 flex items-center gap-1">
@@ -1930,6 +2012,29 @@ function Admin({ onLogout }) {
                             className="w-full p-2 bg-gray-800/70 border border-gray-700 rounded-xl text-xs sm:text-sm"
                           />
                         </div>
+
+                        <div>
+                          <label className="block text-xs font-medium text-gray-300 mb-1">Duration</label>
+                          <input
+                            name="duration"
+                            value={episodeForm.duration}
+                            onChange={handleEpisodeChange}
+                            placeholder="e.g., 45:30"
+                            className="w-full p-2 bg-gray-800/70 border border-gray-700 rounded-xl text-xs sm:text-sm"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-medium text-gray-300 mb-1">Air Date</label>
+                          <input
+                            name="airDate"
+                            value={episodeForm.airDate}
+                            onChange={handleEpisodeChange}
+                            type="date"
+                            className="w-full p-2 bg-gray-800/70 border border-gray-700 rounded-xl text-xs sm:text-sm"
+                          />
+                        </div>
+
                         <div className="sm:col-span-2">
                           <label className="block text-xs font-medium text-gray-300 mb-1">
                             Description
@@ -1943,7 +2048,21 @@ function Admin({ onLogout }) {
                             className="w-full p-2 bg-gray-800/70 border border-gray-700 rounded-xl text-xs sm:text-sm"
                           />
                         </div>
-                        <div className="sm:col-span-2 flex flex-col sm:flex-row gap-2">
+
+                        <div className="sm:col-span-2">
+                          <label className="block text-xs font-medium text-gray-300 mb-1">
+                            Thumbnail URL (Optional)
+                          </label>
+                          <input
+                            name="thumbnail"
+                            value={episodeForm.thumbnail}
+                            onChange={handleEpisodeChange}
+                            placeholder="https://example.com/thumbnail.jpg"
+                            className="w-full p-2 bg-gray-800/70 border border-gray-700 rounded-xl text-xs sm:text-sm"
+                          />
+                        </div>
+
+                        <div className="sm:col-span-2 flex flex-col sm:flex-row gap-2 mt-2">
                           <button
                             onClick={handleAddOrUpdateEpisode}
                             disabled={submitting}
@@ -1966,7 +2085,18 @@ function Admin({ onLogout }) {
                   {!editingEpisode && !showEpisodeForm && (
                     <div className="mb-4">
                       <button
-                        onClick={() => setShowEpisodeForm(true)}
+                        onClick={() => {
+                          setEpisodeForm({
+                            ...emptyEpisode,
+                            seasonNumber: seriesEpisodes.length > 0
+                              ? seriesEpisodes[seriesEpisodes.length - 1].seasonNumber?.toString() || "1"
+                              : "1",
+                            episodeNumber: seriesEpisodes.length > 0
+                              ? (parseInt(seriesEpisodes[seriesEpisodes.length - 1].episodeNumber || 0) + 1).toString()
+                              : "1"
+                          });
+                          setShowEpisodeForm(true);
+                        }}
                         className="w-full sm:w-auto px-4 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 rounded-xl font-semibold flex items-center justify-center gap-2 text-xs sm:text-sm"
                       >
                         <FaPlus className="text-xs" /> Add New Episode
@@ -1983,46 +2113,63 @@ function Admin({ onLogout }) {
                       </div>
                     ) : (
                       <div className="space-y-2">
-                        {sortEpisodes(seriesEpisodes).map((episode, index) => (
-                          <div key={episode.id || index} className="bg-gray-800/30 rounded-lg p-3 hover:bg-gray-800/50 transition-colors">
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                              <div className="flex-1">
-                                <div className="flex items-center flex-wrap gap-1 sm:gap-2 mb-1">
-                                  <span className="px-2 py-0.5 bg-purple-600/20 text-purple-400 rounded-full text-[10px] sm:text-xs">
-                                    S{episode.seasonNumber}E{episode.episodeNumber}
-                                  </span>
-                                  <h4 className="font-medium text-xs sm:text-sm">{episode.title}</h4>
-                                  {episode.download_link && (
-                                    <span className="px-1.5 py-0.5 bg-green-500/20 text-green-400 rounded-full text-[8px] sm:text-[10px] flex items-center gap-0.5">
-                                      <FaDownload className="text-[6px] sm:text-[8px]" /> DL
+                        {sortEpisodes(seriesEpisodes).map((episode, index) => {
+                          const platform = platformConfig[episode.videoType] || platformConfig[VIDEO_PLATFORMS.VIMEO];
+                          return (
+                            <div key={episode.id || index} className="bg-gray-800/30 rounded-lg p-3 hover:bg-gray-800/50 transition-colors">
+                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                <div className="flex-1">
+                                  <div className="flex items-center flex-wrap gap-1 sm:gap-2 mb-1">
+                                    <span className="px-2 py-0.5 bg-purple-600/20 text-purple-400 rounded-full text-[10px] sm:text-xs">
+                                      S{episode.seasonNumber}E{episode.episodeNumber}
                                     </span>
+                                    <h4 className="font-medium text-xs sm:text-sm">{episode.title}</h4>
+                                    <span
+                                      className="px-1.5 py-0.5 rounded-full text-[8px] sm:text-[10px]"
+                                      style={{
+                                        backgroundColor: `${platform.color}20`,
+                                        color: platform.color
+                                      }}
+                                    >
+                                      {platform.name}
+                                    </span>
+                                    {episode.download_link && (
+                                      <span className="px-1.5 py-0.5 bg-green-500/20 text-green-400 rounded-full text-[8px] sm:text-[10px] flex items-center gap-0.5">
+                                        <FaDownload className="text-[6px] sm:text-[8px]" /> DL
+                                      </span>
+                                    )}
+                                  </div>
+                                  {episode.description && (
+                                    <p className="text-[10px] sm:text-xs text-gray-400 truncate max-w-full sm:max-w-md">
+                                      {episode.description}
+                                    </p>
+                                  )}
+                                  {episode.videoUrl && (
+                                    <p className="text-[8px] sm:text-[10px] text-gray-500 truncate max-w-full">
+                                      URL: {episode.videoUrl}
+                                    </p>
                                   )}
                                 </div>
-                                {episode.description && (
-                                  <p className="text-[10px] sm:text-xs text-gray-400 truncate max-w-full sm:max-w-md">
-                                    {episode.description}
-                                  </p>
-                                )}
-                              </div>
-                              <div className="flex gap-1 self-end sm:self-center">
-                                <button
-                                  onClick={() => startEditEpisode(episode)}
-                                  className="p-1.5 bg-blue-600/20 hover:bg-blue-600/30 rounded"
-                                  title="Edit episode"
-                                >
-                                  <FaEdit className="text-blue-400 text-xs" />
-                                </button>
-                                <button
-                                  onClick={() => handleDeleteEpisode(episode.id, episode.title)}
-                                  className="p-1.5 bg-red-600/20 hover:bg-red-600/30 rounded"
-                                  title="Delete episode"
-                                >
-                                  <FaTrash className="text-red-400 text-xs" />
-                                </button>
+                                <div className="flex gap-1 self-end sm:self-center">
+                                  <button
+                                    onClick={() => startEditEpisode(episode)}
+                                    className="p-1.5 bg-blue-600/20 hover:bg-blue-600/30 rounded"
+                                    title="Edit episode"
+                                  >
+                                    <FaEdit className="text-blue-400 text-xs" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteEpisode(episode.id, episode.title)}
+                                    className="p-1.5 bg-red-600/20 hover:bg-red-600/30 rounded"
+                                    title="Delete episode"
+                                  >
+                                    <FaTrash className="text-red-400 text-xs" />
+                                  </button>
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     )}
                   </div>
@@ -2125,8 +2272,8 @@ function Admin({ onLogout }) {
                                   type="button"
                                   onClick={() => setPartForm(prev => ({ ...prev, videoType: key, videoUrl: '' }))}
                                   className={`p-2 rounded-xl flex items-center gap-2 ${isActive
-                                      ? 'border-2'
-                                      : 'border border-gray-700'
+                                    ? 'border-2'
+                                    : 'border border-gray-700'
                                     }`}
                                   style={{
                                     backgroundColor: isActive ? `${config.color}10` : 'rgb(31 41 55 / 0.5)',

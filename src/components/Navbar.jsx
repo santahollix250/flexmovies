@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef, useContext } from 'react';
-import { useNavigate, useLocation, Link } from 'react-router-dom'; // Add Link import
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { FiSearch, FiX, FiFilm, FiTv } from 'react-icons/fi';
+import { FaShieldAlt } from 'react-icons/fa';
 import { MoviesContext } from '../context/MoviesContext';
-import logo from '../assets/logo.png';
+import logo from '../assets/Newlogo.png';
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
@@ -299,88 +300,93 @@ export default function Navbar() {
   };
 
   return (
-    <nav className="fixed top-0 z-50 w-full bg-gradient-to-b from-black/95 via-black/90 to-black/85 backdrop-blur-xl border-b border-purple-600/30 shadow-2xl">
-      <div className="mx-auto px-4 sm:px-6">
-        <div className="flex items-center justify-between h-16">
+    <nav className="fixed top-0 z-50 w-full bg-black/95 backdrop-blur-sm border-b border-purple-600/30 shadow-lg">
+      <div className="mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between h-16 md:h-20">
 
-          {/* Logo - Use Link instead of a */}
-          <div className="flex items-center">
-            <Link
-              to="/"
-              onClick={() => setIsOpen(false)}
-              className="flex items-center gap-3 group"
-            >
-              {/* Logo Image */}
-              <div className="h-10 w-10 rounded-xl overflow-hidden ring-2 ring-purple-600/30 group-hover:ring-purple-500 transition-all duration-300 group-hover:scale-105">
+          {/* Logo - Reduced Size */}
+          <Link
+            to="/"
+            onClick={() => setIsOpen(false)}
+            className="flex items-center gap-2 group"
+          >
+            {/* Logo Image - Smaller */}
+            <div className="relative">
+              <div className="h-10 w-10 md:h-12 md:w-12 rounded-lg overflow-hidden ring-2 ring-purple-600/30 group-hover:ring-purple-500 transition-all duration-300 group-hover:scale-105">
                 <img
                   src={logo}
-                  alt="Agasobanuye Flex Zone Logo"
+                  alt="agasobanuyecineva Logo"
                   className="h-full w-full object-cover"
                   onError={(e) => {
                     e.target.style.display = 'none';
                     e.target.parentElement.innerHTML = `
-                      <div class="h-full w-full bg-gradient-to-br from-purple-600 via-purple-500 to-pink-500 flex items-center justify-center">
-                        <span class="text-white font-bold text-lg">A</span>
+                      <div class="h-full w-full bg-gradient-to-br from-purple-600 to-pink-600 flex items-center justify-center">
+                        <span class="text-white font-bold text-xl">A</span>
                       </div>
                     `;
                   }}
                 />
               </div>
-              <div className="flex flex-col">
-                <h1 className="text-xl font-bold text-white">
-                  <span className="bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400 bg-clip-text text-transparent">
-                    agasobanuye
-                  </span>
-                  <span className="text-white">flex</span>
-                  <span className="bg-gradient-to-r from-blue-400 via-cyan-400 to-purple-400 bg-clip-text text-transparent">
-                    zone
-                  </span>
-                </h1>
-                <span className="text-[10px] text-gray-400 -mt-1">Premium Streaming</span>
-              </div>
-            </Link>
-          </div>
+              <div className="absolute -inset-1 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg opacity-0 group-hover:opacity-30 blur-xl transition-opacity duration-500"></div>
+            </div>
 
-          {/* Desktop Navigation - Use Link instead of a */}
+            {/* Brand Name - Smaller */}
+            <div className="flex flex-col">
+              <h1 className="text-sm md:text-lg lg:text-xl font-bold">
+                <span className="bg-gradient-to-r from-purple-400 via-pink-400 to-purple-400 bg-clip-text text-transparent">
+                  agasobanuyecineva
+                </span>
+              </h1>
+              <span className="text-[8px] md:text-[10px] text-gray-500 -mt-0.5">Premium Streaming</span>
+            </div>
+          </Link>
+
+          {/* Desktop Navigation - Smaller */}
           <div className="hidden md:flex items-center gap-1">
             <Link
               to="/"
               onClick={() => setIsOpen(false)}
-              className={`px-4 py-2.5 text-sm font-medium rounded-xl transition-all duration-300 hover:scale-105 group ${location.pathname === '/'
-                ? 'text-white bg-gradient-to-r from-purple-600/30 to-pink-600/20'
-                : 'text-gray-300 hover:text-white hover:bg-gradient-to-r from-purple-600/20 to-pink-600/10'
+              className={`px-3 py-2 text-xs font-medium rounded-lg transition-all duration-300 ${location.pathname === '/'
+                ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/30'
+                : 'text-gray-300 hover:bg-purple-600/20 hover:text-white'
                 }`}
             >
-              <span className="group-hover:text-purple-300">🏠</span> Home
+              <span className="flex items-center gap-1">
+                <span>🏠</span> Home
+              </span>
             </Link>
             <Link
               to="/movies"
               onClick={() => setIsOpen(false)}
-              className={`px-4 py-2.5 text-sm font-medium rounded-xl transition-all duration-300 hover:scale-105 group ${location.pathname === '/movies'
-                ? 'text-white bg-gradient-to-r from-blue-600/30 to-cyan-600/20'
-                : 'text-gray-300 hover:text-white hover:bg-gradient-to-r from-blue-600/20 to-cyan-600/10'
+              className={`px-3 py-2 text-xs font-medium rounded-lg transition-all duration-300 ${location.pathname === '/movies'
+                ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
+                : 'text-gray-300 hover:bg-blue-600/20 hover:text-white'
                 }`}
             >
-              <span className="group-hover:text-blue-300">🎬</span> Movies
+              <span className="flex items-center gap-1">
+                <span>🎬</span> Movies
+              </span>
             </Link>
             <Link
               to="/series"
               onClick={() => setIsOpen(false)}
-              className={`px-4 py-2.5 text-sm font-medium rounded-xl transition-all duration-300 hover:scale-105 group ${location.pathname === '/series'
-                ? 'text-white bg-gradient-to-r from-pink-600/30 to-red-600/20'
-                : 'text-gray-300 hover:text-white hover:bg-gradient-to-r from-pink-600/20 to-red-600/10'
+              className={`px-3 py-2 text-xs font-medium rounded-lg transition-all duration-300 ${location.pathname === '/series'
+                ? 'bg-pink-600 text-white shadow-lg shadow-pink-600/30'
+                : 'text-gray-300 hover:bg-pink-600/20 hover:text-white'
                 }`}
             >
-              <span className="group-hover:text-pink-300">📺</span> Series
+              <span className="flex items-center gap-1">
+                <span>📺</span> Series
+              </span>
             </Link>
           </div>
 
-          {/* Right Side - Search & Admin */}
-          <div className="flex items-center gap-3">
-            {/* Desktop Search */}
+          {/* Right Side - Search & Admin - Smaller */}
+          <div className="flex items-center gap-2">
+            {/* Desktop Search - Smaller */}
             <div className="hidden md:block relative" ref={searchRef}>
               <form onSubmit={handleFormSubmit} className="relative">
-                <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                <FiSearch className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm" />
                 <input
                   ref={inputRef}
                   type="text"
@@ -393,49 +399,51 @@ export default function Navbar() {
                     }
                   }}
                   placeholder="Search..."
-                  className="pl-9 pr-8 py-2 w-48 lg:w-64 text-sm rounded-lg bg-white/5 border border-purple-600/30 text-white placeholder:text-gray-400 focus:outline-none focus:border-purple-500"
+                  className="pl-7 pr-7 py-1.5 w-48 lg:w-56 text-xs rounded-lg bg-gray-800 border border-purple-600/30 text-white placeholder-gray-400 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
                 />
                 {search && (
                   <button
                     type="button"
                     onClick={handleClearSearch}
-                    className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white"
+                    className="absolute right-1.5 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
                   >
-                    <FiX size={16} />
+                    <FiX size={14} />
                   </button>
                 )}
               </form>
               {showResults && renderSuggestions()}
             </div>
 
-            {/* Admin Button - Use Link instead of a */}
+            {/* Admin Button - Smaller */}
             <Link
               to="/admin"
               onClick={() => setIsOpen(false)}
-              className="hidden md:block px-4 py-2 text-sm font-medium border border-purple-600/50 rounded-lg text-purple-400 hover:bg-purple-600/10"
+              className="hidden md:flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 rounded-lg text-white shadow-lg shadow-purple-600/30 transition-all duration-300 hover:scale-105"
             >
+              <FaShieldAlt className="text-xs" />
               Admin
             </Link>
 
             {/* Mobile Menu Button */}
             <button
               onClick={() => setIsOpen(!isOpen)}
-              className="md:hidden p-2 text-gray-300 hover:text-white"
+              className="md:hidden p-1.5 text-gray-300 hover:text-white transition-colors"
+              aria-label="Toggle menu"
             >
-              {isOpen ? <FiX size={24} /> : <span className="text-2xl">☰</span>}
+              {isOpen ? <FiX size={20} /> : <span className="text-xl">☰</span>}
             </button>
           </div>
         </div>
       </div>
 
-      {/* Mobile Menu */}
+      {/* Mobile Menu - Compact */}
       {isOpen && (
-        <div className="md:hidden bg-black/95 border-t border-purple-600/30">
-          <div className="px-4 py-4 space-y-3">
+        <div className="md:hidden bg-black/95 backdrop-blur-sm border-t border-purple-600/30">
+          <div className="px-4 py-3 space-y-2">
             {/* Mobile Search */}
             <div className="relative" ref={searchRef}>
               <form onSubmit={handleFormSubmit}>
-                <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                <FiSearch className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm" />
                 <input
                   type="text"
                   value={search}
@@ -447,7 +455,7 @@ export default function Navbar() {
                     }
                   }}
                   placeholder="Search..."
-                  className="w-full pl-9 pr-8 py-2 rounded-lg bg-white/5 border border-purple-600/30 text-white"
+                  className="w-full pl-7 pr-7 py-2 text-sm rounded-lg bg-gray-800 border border-purple-600/30 text-white placeholder-gray-400"
                 />
                 {search && (
                   <button
@@ -460,43 +468,57 @@ export default function Navbar() {
                 )}
               </form>
               {showResults && (
-                <div className="absolute top-full left-0 right-0 mt-2">
+                <div className="absolute top-full left-0 right-0 mt-1 z-50">
                   {renderSuggestions()}
                 </div>
               )}
             </div>
 
-            {/* Mobile Navigation Links - Use Link instead of a */}
+            {/* Mobile Navigation Links - Compact */}
             <Link
               to="/"
               onClick={() => setIsOpen(false)}
-              className={`block px-4 py-2 rounded-lg ${location.pathname === '/' ? 'text-white bg-purple-600/20' : 'text-gray-300'
+              className={`block px-3 py-2 text-sm rounded-lg transition-colors ${location.pathname === '/'
+                ? 'bg-purple-600 text-white'
+                : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
                 }`}
             >
-              Home
+              <span className="flex items-center gap-2">
+                <span>🏠</span> Home
+              </span>
             </Link>
             <Link
               to="/movies"
               onClick={() => setIsOpen(false)}
-              className={`block px-4 py-2 rounded-lg ${location.pathname === '/movies' ? 'text-white bg-blue-600/20' : 'text-gray-300'
+              className={`block px-3 py-2 text-sm rounded-lg transition-colors ${location.pathname === '/movies'
+                ? 'bg-blue-600 text-white'
+                : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
                 }`}
             >
-              Movies
+              <span className="flex items-center gap-2">
+                <span>🎬</span> Movies
+              </span>
             </Link>
             <Link
               to="/series"
               onClick={() => setIsOpen(false)}
-              className={`block px-4 py-2 rounded-lg ${location.pathname === '/series' ? 'text-white bg-pink-600/20' : 'text-gray-300'
+              className={`block px-3 py-2 text-sm rounded-lg transition-colors ${location.pathname === '/series'
+                ? 'bg-pink-600 text-white'
+                : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
                 }`}
             >
-              Series
+              <span className="flex items-center gap-2">
+                <span>📺</span> Series
+              </span>
             </Link>
             <Link
               to="/admin"
               onClick={() => setIsOpen(false)}
-              className="block px-4 py-2 text-purple-400"
+              className="block px-3 py-2 text-sm bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg text-white font-medium"
             >
-              Admin
+              <span className="flex items-center gap-2">
+                <FaShieldAlt className="text-sm" /> Admin
+              </span>
             </Link>
           </div>
         </div>
