@@ -6,7 +6,8 @@ import {
     FaVideo, FaComment, FaHeart, FaPaperPlane, FaTrash, FaEdit, FaCheck, FaTimes,
     FaSpinner, FaExclamationTriangle, FaCloudDownloadAlt, FaFileDownload,
     FaChevronDown, FaChevronUp, FaLink, FaHdd, FaFilm, FaList, FaChevronLeft, FaChevronRight,
-    FaBookmark, FaEllipsisV, FaCalendar, FaClock, FaEye, FaThumbsUp, FaShare, FaInfoCircle
+    FaBookmark, FaEllipsisV, FaCalendar, FaClock, FaEye, FaThumbsUp, FaShare, FaInfoCircle,
+    FaLanguage
 } from 'react-icons/fa';
 import { supabase } from '../lib/supabaseClient';
 import { MoviesContext } from '../context/MoviesContext';
@@ -2020,7 +2021,7 @@ const SeriesPlayer = () => {
                 <div className="max-w-7xl mx-auto px-4 py-8">
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                         <div className="lg:col-span-2">
-                            {/* Episode Info with Download Button Beside Rating */}
+                            {/* Episode Info with Download Button Beside Rating and Translator Name */}
                             <div className="mb-8">
                                 <h1 className="text-4xl md:text-5xl font-bold mb-3">{series?.title}</h1>
                                 <div className="flex flex-wrap items-center gap-3 mb-4">
@@ -2038,6 +2039,13 @@ const SeriesPlayer = () => {
                                     {series?.rating && (
                                         <span className="px-4 py-2 bg-gradient-to-r from-yellow-600 to-yellow-700 rounded-full flex items-center gap-2 text-sm md:text-base font-medium">
                                             <FaStar className="text-yellow-300" /> {series.rating}
+                                        </span>
+                                    )}
+
+                                    {/* Translator Badge - Added next to rating */}
+                                    {series?.translator && (
+                                        <span className="px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 rounded-full flex items-center gap-2 text-sm md:text-base font-medium">
+                                            <FaLanguage className="text-green-200" /> {series.translator}
                                         </span>
                                     )}
 
@@ -2198,6 +2206,9 @@ const SeriesPlayer = () => {
                                     )}
                                     {series?.language && (
                                         <p><span className="text-gray-400">Language:</span> {series.language}</p>
+                                    )}
+                                    {series?.translator && (
+                                        <p className="flex items-center gap-1"><span className="text-gray-400">Translator:</span> <span className="text-green-400">{series.translator}</span></p>
                                     )}
                                     <p><span className="text-gray-400">Total Episodes:</span> {episodesList.length}</p>
                                     <p><span className="text-gray-400">Seasons:</span> {seasons.length}</p>
