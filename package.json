@@ -17,6 +17,7 @@
     "axios": "^1.13.4",
     "bootstrap": "^5.3.8",
     "firebase": "^12.7.0",
+    "framer-motion": "^12.38.0",
     "lucide-react": "^0.562.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",

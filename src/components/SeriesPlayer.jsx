@@ -7,7 +7,7 @@ import {
     FaSpinner, FaExclamationTriangle, FaCloudDownloadAlt, FaFileDownload,
     FaChevronDown, FaChevronUp, FaLink, FaHdd, FaFilm, FaList, FaChevronLeft, FaChevronRight,
     FaBookmark, FaEllipsisV, FaCalendar, FaClock, FaEye, FaThumbsUp, FaShare, FaInfoCircle,
-    FaLanguage
+    FaLanguage, FaTv, FaPlayCircle, FaListUl, FaArrowCircleRight, FaArrowCircleLeft
 } from 'react-icons/fa';
 import { supabase } from '../lib/supabaseClient';
 import { MoviesContext } from '../context/MoviesContext';
@@ -36,6 +36,7 @@ const SeriesPlayer = () => {
     const iframeRef = useRef(null);
     const progressBarRef = useRef(null);
     const volumeBarRef = useRef(null);
+    const episodesScrollRef = useRef(null);
 
     // YouTube specific states
     const [youTubePlayer, setYouTubePlayer] = useState(null);
@@ -67,6 +68,7 @@ const SeriesPlayer = () => {
     const [youtubeId, setYoutubeId] = useState('');
     const [isYouTubeVideo, setIsYouTubeVideo] = useState(false);
     const [showMobileMenu, setShowMobileMenu] = useState(false);
+    const [showSeasonSelector, setShowSeasonSelector] = useState(false);
 
     // Slider interaction states
     const [isSeeking, setIsSeeking] = useState(false);
@@ -850,7 +852,6 @@ const SeriesPlayer = () => {
         }
     };
 
-    // FIXED: Slider control with proper event handling
     const handleSeekStart = (e) => {
         e.stopPropagation();
         setIsSeeking(true);
@@ -861,7 +862,6 @@ const SeriesPlayer = () => {
         const seekTo = parseFloat(e.target.value);
         setProgress(seekTo);
 
-        // Update preview time while seeking
         if (videoType === 'youtube' && youTubePlayer) {
             const newTime = seekTo * youTubePlayer.getDuration();
             setCurrentTime(newTime);
@@ -887,7 +887,6 @@ const SeriesPlayer = () => {
         showControlsWithTimer();
     };
 
-    // FIXED: Volume slider with proper event handling
     const handleVolumeStart = (e) => {
         e.stopPropagation();
         setIsVolumeChanging(true);
@@ -976,7 +975,6 @@ const SeriesPlayer = () => {
         showControlsWithTimer();
     };
 
-    // Simplified download function - directly navigates to download link
     const handleDownload = (e, episode) => {
         e?.stopPropagation();
 
@@ -986,7 +984,6 @@ const SeriesPlayer = () => {
             setDownloadEpisodeId(episode.id);
             setDownloading(true);
 
-            // Open the download link in a new tab/window
             window.open(downloadUrl, '_blank');
 
             setTimeout(() => {
@@ -1313,15 +1310,15 @@ const SeriesPlayer = () => {
     };
 
     const renderCommentsSection = () => (
-        <div className="mt-8 bg-gradient-to-br from-gray-900 to-gray-950 rounded-2xl p-6 border border-gray-800 shadow-xl">
-            <div className="flex items-center justify-between mb-6">
-                <h3 className="text-2xl md:text-3xl font-bold flex items-center gap-3">
-                    <FaComment className="text-red-500" />
+        <div className="mt-8 bg-gradient-to-br from-gray-900/80 to-gray-950/80 rounded-2xl p-5 md:p-6 border border-gray-800 shadow-xl">
+            <div className="flex items-center justify-between mb-5 md:mb-6">
+                <h3 className="text-xl md:text-2xl font-bold flex items-center gap-2 md:gap-3">
+                    <FaComment className="text-purple-500 text-xl md:text-2xl" />
                     Comments ({comments.length})
                 </h3>
                 <button
                     onClick={() => setShowComments(!showComments)}
-                    className="px-5 py-2.5 bg-gray-800 hover:bg-gray-700 rounded-lg text-white font-medium transition-all duration-200 hover:scale-105 text-base"
+                    className="px-4 md:px-5 py-2 md:py-2.5 bg-gray-800 hover:bg-gray-700 rounded-xl text-white font-medium transition-all duration-200 text-sm md:text-base"
                 >
                     {showComments ? 'Hide' : 'Show'} Comments
                 </button>
@@ -1329,12 +1326,12 @@ const SeriesPlayer = () => {
 
             {showComments && (
                 <>
-                    <div className="mb-6 p-5 bg-gray-800/50 rounded-xl border border-gray-700">
+                    <div className="mb-6 p-4 md:p-5 bg-gray-800/50 rounded-xl border border-gray-700">
                         <div className="flex items-center gap-3 mb-4">
                             <img
                                 src={userAvatar}
                                 alt={userName}
-                                className="w-12 h-12 rounded-full border-2 border-red-600"
+                                className="w-10 h-10 md:w-12 md:h-12 rounded-full border-2 border-purple-600"
                                 onError={(e) => {
                                     e.target.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${userName}`;
                                 }}
@@ -1344,7 +1341,7 @@ const SeriesPlayer = () => {
                                     type="text"
                                     value={userName}
                                     onChange={updateUserName}
-                                    className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-base"
+                                    className="w-full px-3 md:px-4 py-2 md:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm md:text-base"
                                     placeholder="Your name"
                                 />
                             </div>
@@ -1354,19 +1351,19 @@ const SeriesPlayer = () => {
                             <textarea
                                 value={newComment}
                                 onChange={(e) => setNewComment(e.target.value)}
-                                className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-xl text-white resize-none text-base"
+                                className="w-full px-3 md:px-4 py-3 md:py-3 bg-gray-900 border border-gray-700 rounded-xl text-white resize-none text-sm md:text-base"
                                 placeholder="Share your thoughts about this episode..."
                                 rows="3"
                                 maxLength="500"
                             />
                             <div className="flex items-center justify-between mt-3">
-                                <span className="text-sm text-gray-400">
+                                <span className="text-xs md:text-sm text-gray-400">
                                     {newComment.length}/500 characters
                                 </span>
                                 <button
                                     type="submit"
                                     disabled={isSubmitting || !newComment.trim()}
-                                    className="px-6 py-3 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 disabled:from-gray-700 disabled:to-gray-800 disabled:cursor-not-allowed rounded-lg text-white font-medium flex items-center gap-2 transition-all duration-200 hover:scale-105 text-base"
+                                    className="px-4 md:px-6 py-2 md:py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 disabled:from-gray-700 disabled:to-gray-800 disabled:cursor-not-allowed rounded-lg text-white font-medium flex items-center gap-2 transition-all duration-200 text-sm md:text-base"
                                 >
                                     {isSubmitting ? (
                                         <>
@@ -1383,23 +1380,23 @@ const SeriesPlayer = () => {
                         </form>
                     </div>
 
-                    <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
+                    <div className="space-y-3 md:space-y-4 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
                         {comments.length === 0 ? (
-                            <div className="text-center py-12 text-gray-500">
-                                <FaComment className="text-5xl mx-auto mb-3 opacity-50" />
-                                <p className="text-lg">No comments yet. Be the first to share your thoughts!</p>
+                            <div className="text-center py-10 md:py-12 text-gray-500">
+                                <FaComment className="text-4xl md:text-5xl mx-auto mb-3 opacity-50" />
+                                <p className="text-sm md:text-base">No comments yet. Be the first to share your thoughts!</p>
                             </div>
                         ) : (
                             comments.map((comment) => (
                                 <div
                                     key={comment.id}
-                                    className="bg-gray-800/30 rounded-xl p-5 hover:bg-gray-800/50 transition-all duration-200 border border-gray-700/50 hover:border-gray-600"
+                                    className="bg-gray-800/30 rounded-xl p-4 md:p-5 hover:bg-gray-800/50 transition-all duration-200 border border-gray-700/50 hover:border-gray-600"
                                 >
                                     <div className="flex items-start gap-3">
                                         <img
                                             src={comment.user_avatar}
                                             alt={comment.user_name}
-                                            className="w-12 h-12 rounded-full border-2 border-red-600/50"
+                                            className="w-10 h-10 md:w-12 md:h-12 rounded-full border-2 border-purple-600/50"
                                             onError={(e) => {
                                                 e.target.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${comment.user_name}`;
                                             }}
@@ -1407,11 +1404,11 @@ const SeriesPlayer = () => {
 
                                         <div className="flex-1">
                                             <div className="flex items-center justify-between mb-2">
-                                                <div>
-                                                    <span className="font-bold text-white text-base md:text-lg">
+                                                <div className="flex items-center gap-2 flex-wrap">
+                                                    <span className="font-bold text-white text-sm md:text-base">
                                                         {comment.user_name}
                                                     </span>
-                                                    <span className="text-xs text-gray-400 ml-2">
+                                                    <span className="text-xs text-gray-400">
                                                         {formatTimeAgo(comment.created_at)}
                                                         {comment.device_info?.platform && (
                                                             <span className="ml-2">
@@ -1422,39 +1419,39 @@ const SeriesPlayer = () => {
                                                 </div>
 
                                                 {comment.user_name === userName && (
-                                                    <div className="flex items-center gap-2">
+                                                    <div className="flex items-center gap-1 md:gap-2">
                                                         {editingComment === comment.id ? (
                                                             <>
                                                                 <button
                                                                     onClick={() => handleSaveEdit(comment.id)}
-                                                                    className="p-2 text-green-500 hover:text-green-400 hover:bg-green-500/10 rounded-lg transition-all"
+                                                                    className="p-1.5 md:p-2 text-green-500 hover:text-green-400 hover:bg-green-500/10 rounded-lg transition-all"
                                                                     title="Save"
                                                                 >
-                                                                    <FaCheck size={16} />
+                                                                    <FaCheck size={14} />
                                                                 </button>
                                                                 <button
                                                                     onClick={() => setEditingComment(null)}
-                                                                    className="p-2 text-red-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
+                                                                    className="p-1.5 md:p-2 text-red-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
                                                                     title="Cancel"
                                                                 >
-                                                                    <FaTimes size={16} />
+                                                                    <FaTimes size={14} />
                                                                 </button>
                                                             </>
                                                         ) : (
                                                             <>
                                                                 <button
                                                                     onClick={() => handleEditComment(comment)}
-                                                                    className="p-2 text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 rounded-lg transition-all"
+                                                                    className="p-1.5 md:p-2 text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 rounded-lg transition-all"
                                                                     title="Edit"
                                                                 >
-                                                                    <FaEdit size={16} />
+                                                                    <FaEdit size={14} />
                                                                 </button>
                                                                 <button
                                                                     onClick={() => handleDeleteComment(comment.id)}
-                                                                    className="p-2 text-red-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
+                                                                    className="p-1.5 md:p-2 text-red-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
                                                                     title="Delete"
                                                                 >
-                                                                    <FaTrash size={16} />
+                                                                    <FaTrash size={14} />
                                                                 </button>
                                                             </>
                                                         )}
@@ -1467,23 +1464,23 @@ const SeriesPlayer = () => {
                                                     <textarea
                                                         value={editText}
                                                         onChange={(e) => setEditText(e.target.value)}
-                                                        className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white text-base"
+                                                        className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm md:text-base"
                                                         rows="2"
                                                         autoFocus
                                                     />
                                                 </div>
                                             ) : (
-                                                <p className="text-gray-200 mb-3 whitespace-pre-wrap text-base md:text-lg">
+                                                <p className="text-gray-200 mb-3 whitespace-pre-wrap text-sm md:text-base leading-relaxed">
                                                     {comment.message}
                                                 </p>
                                             )}
 
-                                            <div className="flex items-center gap-4">
+                                            <div className="flex items-center gap-3 md:gap-4">
                                                 <button
                                                     onClick={() => handleLikeComment(comment.id)}
-                                                    className="flex items-center gap-2 text-gray-400 hover:text-red-500 transition-colors text-base"
+                                                    className="flex items-center gap-1.5 text-gray-400 hover:text-purple-500 transition-colors text-sm md:text-base"
                                                 >
-                                                    <FaHeart className={`${comment.likes > 0 ? 'text-red-500' : ''} text-lg`} />
+                                                    <FaHeart className={`${comment.likes > 0 ? 'text-purple-500' : ''} text-sm md:text-base`} />
                                                     <span>{comment.likes || 0}</span>
                                                 </button>
 
@@ -1506,28 +1503,28 @@ const SeriesPlayer = () => {
 
                     {comments.length > 0 && (
                         <div className="mt-6 pt-6 border-t border-gray-800">
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                <div className="text-center p-4 bg-gradient-to-br from-gray-800/50 to-gray-900/50 rounded-xl border border-gray-700">
-                                    <div className="text-3xl font-bold text-red-500">{comments.length}</div>
-                                    <div className="text-sm text-gray-400">Total Comments</div>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+                                <div className="text-center p-3 md:p-4 bg-gradient-to-br from-gray-800/50 to-gray-900/50 rounded-xl border border-gray-700">
+                                    <div className="text-xl md:text-3xl font-bold text-purple-500">{comments.length}</div>
+                                    <div className="text-xs md:text-sm text-gray-400">Total Comments</div>
                                 </div>
-                                <div className="text-center p-4 bg-gradient-to-br from-gray-800/50 to-gray-900/50 rounded-xl border border-gray-700">
-                                    <div className="text-3xl font-bold text-yellow-500">
+                                <div className="text-center p-3 md:p-4 bg-gradient-to-br from-gray-800/50 to-gray-900/50 rounded-xl border border-gray-700">
+                                    <div className="text-xl md:text-3xl font-bold text-yellow-500">
                                         {comments.reduce((sum, c) => sum + (c.likes || 0), 0)}
                                     </div>
-                                    <div className="text-sm text-gray-400">Total Likes</div>
+                                    <div className="text-xs md:text-sm text-gray-400">Total Likes</div>
                                 </div>
-                                <div className="text-center p-4 bg-gradient-to-br from-gray-800/50 to-gray-900/50 rounded-xl border border-gray-700">
-                                    <div className="text-3xl font-bold text-green-500">
+                                <div className="text-center p-3 md:p-4 bg-gradient-to-br from-gray-800/50 to-gray-900/50 rounded-xl border border-gray-700">
+                                    <div className="text-xl md:text-3xl font-bold text-green-500">
                                         {new Set(comments.map(c => c.user_name)).size}
                                     </div>
-                                    <div className="text-sm text-gray-400">Unique Users</div>
+                                    <div className="text-xs md:text-sm text-gray-400">Unique Users</div>
                                 </div>
-                                <div className="text-center p-4 bg-gradient-to-br from-gray-800/50 to-gray-900/50 rounded-xl border border-gray-700">
-                                    <div className="text-3xl font-bold text-blue-500">
+                                <div className="text-center p-3 md:p-4 bg-gradient-to-br from-gray-800/50 to-gray-900/50 rounded-xl border border-gray-700">
+                                    <div className="text-xl md:text-3xl font-bold text-blue-500">
                                         {comments.filter(c => c.device_info?.platform?.includes('Mobile')).length}
                                     </div>
-                                    <div className="text-sm text-gray-400">Mobile Users</div>
+                                    <div className="text-xs md:text-sm text-gray-400">Mobile Users</div>
                                 </div>
                             </div>
                         </div>
@@ -1543,8 +1540,8 @@ const SeriesPlayer = () => {
         return (
             <div className="min-h-screen bg-gradient-to-br from-gray-950 to-black flex items-center justify-center">
                 <div className="text-center">
-                    <div className="w-20 h-20 border-4 border-red-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                    <p className="text-white text-2xl font-light">Loading player...</p>
+                    <div className="w-12 h-12 md:w-16 md:h-16 border-3 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto mb-3 md:mb-4"></div>
+                    <p className="text-white text-base md:text-xl font-light">Loading player...</p>
                 </div>
             </div>
         );
@@ -1553,27 +1550,27 @@ const SeriesPlayer = () => {
     if (error || !currentEpisode) {
         return (
             <div className="min-h-screen bg-gradient-to-br from-gray-950 to-black flex items-center justify-center p-4">
-                <div className="text-center p-10 max-w-lg bg-gradient-to-br from-gray-900 to-gray-950 rounded-2xl border border-gray-800 shadow-2xl">
-                    <FaExclamationTriangle className="text-red-500 text-7xl mx-auto mb-4" />
-                    <h1 className="text-4xl text-white font-bold mb-4">Playback Error</h1>
-                    <p className="text-gray-400 text-lg mb-8">{error || "No episode selected"}</p>
-                    <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <div className="text-center p-6 md:p-10 max-w-lg bg-gradient-to-br from-gray-900 to-gray-950 rounded-2xl border border-gray-800 shadow-2xl">
+                    <FaExclamationTriangle className="text-purple-500 text-5xl md:text-7xl mx-auto mb-3 md:mb-4" />
+                    <h1 className="text-2xl md:text-4xl text-white font-bold mb-2 md:mb-4">Playback Error</h1>
+                    <p className="text-gray-400 text-sm md:text-lg mb-6 md:mb-8">{error || "No episode selected"}</p>
+                    <div className="flex flex-col sm:flex-row gap-3 md:gap-4 justify-center">
                         <button
                             onClick={() => navigate(-1)}
-                            className="px-6 py-3 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 rounded-lg text-white font-medium transition-all duration-200 hover:scale-105 text-base"
+                            className="px-4 md:px-6 py-2 md:py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 rounded-xl text-white font-medium transition-all duration-200 text-sm md:text-base"
                         >
                             Go Back
                         </button>
                         <button
                             onClick={handleGoHome}
-                            className="px-6 py-3 bg-gradient-to-r from-gray-700 to-gray-800 hover:from-gray-800 hover:to-gray-900 rounded-lg text-white font-medium transition-all duration-200 hover:scale-105 flex items-center gap-2 justify-center text-base"
+                            className="px-4 md:px-6 py-2 md:py-3 bg-gradient-to-r from-gray-700 to-gray-800 hover:from-gray-800 hover:to-gray-900 rounded-xl text-white font-medium transition-all duration-200 flex items-center gap-2 justify-center text-sm md:text-base"
                         >
                             <FaHome /> Go Home
                         </button>
                         {error && error.includes('format') && (
                             <button
                                 onClick={handleUseEmbed}
-                                className="px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 rounded-lg text-white font-medium transition-all duration-200 hover:scale-105 text-base"
+                                className="px-4 md:px-6 py-2 md:py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 rounded-xl text-white font-medium transition-all duration-200 text-sm md:text-base"
                             >
                                 Try Embed Player
                             </button>
@@ -1581,7 +1578,7 @@ const SeriesPlayer = () => {
                         {error && (
                             <button
                                 onClick={handleRetry}
-                                className="px-6 py-3 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 rounded-lg text-white font-medium transition-all duration-200 hover:scale-105 text-base"
+                                className="px-4 md:px-6 py-2 md:py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 rounded-xl text-white font-medium transition-all duration-200 text-sm md:text-base"
                             >
                                 Retry
                             </button>
@@ -1640,100 +1637,115 @@ const SeriesPlayer = () => {
     return (
         <div className="min-h-screen bg-gradient-to-br from-gray-950 to-black text-white">
             {!isFullscreen && (
-                <div className="absolute top-0 left-0 right-0 p-6 bg-gradient-to-b from-black/90 via-black/60 to-transparent z-30">
+                <div className="absolute top-0 left-0 right-0 p-4 md:p-6 bg-gradient-to-b from-black/90 via-black/60 to-transparent z-30">
                     <div className="max-w-7xl mx-auto flex items-center justify-between">
-                        <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-white hover:text-red-500 transition-colors text-lg font-medium group">
+                        <button
+                            onClick={() => navigate(-1)}
+                            className="flex items-center gap-2 text-white hover:text-purple-500 transition-colors text-sm md:text-base font-medium group"
+                        >
                             <FaArrowLeft className="group-hover:-translate-x-1 transition-transform" /> Back
                         </button>
 
                         <div className="flex-1 text-center px-4 hidden md:block">
-                            <h1 className="text-2xl font-bold truncate max-w-2xl mx-auto">{series?.title || 'Series'}</h1>
-                            <div className="flex items-center justify-center gap-2 mt-2">
+                            <h1 className="text-xl md:text-2xl font-bold truncate max-w-2xl mx-auto">{series?.title || 'Series'}</h1>
+                            <div className="flex items-center justify-center gap-2 mt-1">
                                 <FaVideo className={playerType.color} />
-                                <span className={`text-sm ${playerType.text}`}>
+                                <span className={`text-xs md:text-sm ${playerType.text}`}>
                                     {playerType.label}
                                 </span>
                             </div>
-                            <div className="text-sm text-gray-400 mt-1">
-                                S{currentEpisode.seasonNumber || currentEpisode.season_number || 1} • E{currentEpisode.episodeNumber || currentEpisode.episode_number || 1}: {currentEpisode.title}
+                            <div className="text-xs md:text-sm text-gray-400 mt-0.5">
+                                Season {currentEpisode.seasonNumber || currentEpisode.season_number || 1} • Episode {currentEpisode.episodeNumber || currentEpisode.episode_number || 1}: {currentEpisode.title}
                             </div>
                         </div>
 
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-2 md:gap-4">
                             {/* Favorite & Watchlist Buttons */}
                             <button
                                 onClick={toggleFavorite}
-                                className={`p-2 rounded-lg transition-colors hidden md:block ${isFavorite ? 'text-red-500' : 'text-gray-400 hover:text-red-500'}`}
+                                className={`p-1.5 md:p-2 rounded-lg transition-colors hidden md:block ${isFavorite ? 'text-purple-500' : 'text-gray-400 hover:text-purple-500'}`}
                                 title={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
                             >
-                                <FaHeart size={22} />
+                                <FaHeart size={20} />
                             </button>
                             <button
                                 onClick={toggleWatchlist}
-                                className={`p-2 rounded-lg transition-colors hidden md:block ${inWatchlist ? 'text-blue-500' : 'text-gray-400 hover:text-blue-500'}`}
+                                className={`p-1.5 md:p-2 rounded-lg transition-colors hidden md:block ${inWatchlist ? 'text-blue-500' : 'text-gray-400 hover:text-blue-500'}`}
                                 title={inWatchlist ? 'Remove from watchlist' : 'Add to watchlist'}
                             >
-                                <FaBookmark size={22} />
+                                <FaBookmark size={20} />
                             </button>
 
                             {/* Episode Navigation */}
                             <button
                                 onClick={goToPreviousEpisode}
                                 disabled={currentEpisodeIndex === 0}
-                                className={`p-2 rounded-lg transition-colors hidden md:block ${currentEpisodeIndex === 0
+                                className={`p-1.5 md:p-2 rounded-lg transition-colors hidden md:block ${currentEpisodeIndex === 0
                                     ? 'bg-gray-800/50 text-gray-600 cursor-not-allowed'
                                     : 'bg-gray-800 hover:bg-gray-700 text-white'
                                     }`}
                                 title="Previous Episode"
                             >
-                                <FaChevronLeft size={18} />
+                                <FaArrowCircleLeft size={18} />
                             </button>
-                            <span className="text-sm text-gray-300 hidden md:block font-medium">
+                            <span className="text-xs md:text-sm text-gray-300 hidden md:block font-medium">
                                 {currentEpisodeIndex + 1}/{episodesList.length}
                             </span>
                             <button
                                 onClick={goToNextEpisode}
                                 disabled={currentEpisodeIndex === episodesList.length - 1}
-                                className={`p-2 rounded-lg transition-colors hidden md:block ${currentEpisodeIndex === episodesList.length - 1
+                                className={`p-1.5 md:p-2 rounded-lg transition-colors hidden md:block ${currentEpisodeIndex === episodesList.length - 1
                                     ? 'bg-gray-800/50 text-gray-600 cursor-not-allowed'
                                     : 'bg-gray-800 hover:bg-gray-700 text-white'
                                     }`}
                                 title="Next Episode"
                             >
-                                <FaChevronRight size={18} />
+                                <FaArrowCircleRight size={18} />
                             </button>
 
                             {/* Episode List Toggle */}
                             <button
                                 onClick={() => setShowEpisodeList(!showEpisodeList)}
-                                className="p-2 bg-gray-800 hover:bg-gray-700 rounded-lg text-white hidden md:block"
+                                className="p-1.5 md:p-2 bg-gray-800 hover:bg-gray-700 rounded-lg text-white hidden md:block"
                                 title={showEpisodeList ? 'Hide episodes' : 'Show episodes'}
                             >
-                                <FaList size={22} />
+                                <FaListUl size={20} />
                             </button>
+
+                            {/* Season Selector Toggle */}
+                            {seasons.length > 1 && (
+                                <button
+                                    onClick={() => setShowSeasonSelector(!showSeasonSelector)}
+                                    className="p-1.5 md:p-2 bg-gray-800 hover:bg-gray-700 rounded-lg text-white hidden md:flex items-center gap-1"
+                                    title="Select Season"
+                                >
+                                    <FaTv size={18} />
+                                    <span className="text-xs">S{selectedSeason}</span>
+                                </button>
+                            )}
 
                             {/* Mobile Menu Button */}
                             <button
                                 onClick={() => setShowMobileMenu(!showMobileMenu)}
                                 className="md:hidden p-2 bg-gray-800 hover:bg-gray-700 rounded-lg text-white"
                             >
-                                <FaEllipsisV size={22} />
+                                <FaEllipsisV size={18} />
                             </button>
 
                             {/* Mobile Menu Dropdown */}
                             {showMobileMenu && (
-                                <div className="absolute top-20 right-4 w-72 bg-gradient-to-br from-gray-900 to-gray-950 border border-gray-800 rounded-xl shadow-2xl z-50 mobile-menu-container md:hidden">
+                                <div className="absolute top-16 right-4 w-80 bg-gradient-to-br from-gray-900 to-gray-950 border border-gray-800 rounded-xl shadow-2xl z-50 mobile-menu-container md:hidden">
                                     <div className="p-4 border-b border-gray-800">
                                         <p className="text-sm font-medium text-gray-300">Menu Options</p>
                                     </div>
-                                    <div className="p-3 space-y-1">
+                                    <div className="p-3 space-y-1 max-h-[80vh] overflow-y-auto">
                                         <button
                                             onClick={toggleFavorite}
-                                            className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg transition-colors ${isFavorite ? 'text-red-500 bg-red-500/10' : 'text-gray-300 hover:bg-gray-800'
+                                            className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg transition-colors ${isFavorite ? 'text-purple-500 bg-purple-500/10' : 'text-gray-300 hover:bg-gray-800'
                                                 }`}
                                         >
-                                            <FaHeart size={20} />
-                                            <span className="text-base">{isFavorite ? 'Remove from favorites' : 'Add to favorites'}</span>
+                                            <FaHeart size={18} />
+                                            <span className="text-sm">{isFavorite ? 'Remove from favorites' : 'Add to favorites'}</span>
                                         </button>
 
                                         <button
@@ -1741,9 +1753,42 @@ const SeriesPlayer = () => {
                                             className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg transition-colors ${inWatchlist ? 'text-blue-500 bg-blue-500/10' : 'text-gray-300 hover:bg-gray-800'
                                                 }`}
                                         >
-                                            <FaBookmark size={20} />
-                                            <span className="text-base">{inWatchlist ? 'Remove from watchlist' : 'Add to watchlist'}</span>
+                                            <FaBookmark size={18} />
+                                            <span className="text-sm">{inWatchlist ? 'Remove from watchlist' : 'Add to watchlist'}</span>
                                         </button>
+
+                                        <div className="border-t border-gray-800 my-2"></div>
+
+                                        {/* Mobile Season Selector */}
+                                        {seasons.length > 1 && (
+                                            <div className="mb-2">
+                                                <p className="text-xs text-gray-400 px-3 py-2">Select Season</p>
+                                                <div className="flex flex-wrap gap-2 px-3">
+                                                    {seasons.map(season => (
+                                                        <button
+                                                            key={season}
+                                                            onClick={() => {
+                                                                setSelectedSeason(season);
+                                                                const firstEpisode = episodesList.find(ep =>
+                                                                    (parseInt(ep.seasonNumber) || parseInt(ep.season_number) || 1) === season
+                                                                );
+                                                                if (firstEpisode) {
+                                                                    const index = episodesList.findIndex(ep => ep.id === firstEpisode.id);
+                                                                    goToEpisode(index);
+                                                                }
+                                                                setShowMobileMenu(false);
+                                                            }}
+                                                            className={`px-3 py-1.5 rounded-lg text-sm ${selectedSeason === season
+                                                                ? 'bg-purple-600 text-white'
+                                                                : 'bg-gray-800 text-gray-300'
+                                                                }`}
+                                                        >
+                                                            Season {season}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
 
                                         <div className="border-t border-gray-800 my-2"></div>
 
@@ -1755,8 +1800,8 @@ const SeriesPlayer = () => {
                                                 : 'text-gray-300 hover:bg-gray-800'
                                                 }`}
                                         >
-                                            <FaChevronLeft size={20} />
-                                            <span className="text-base">Previous Episode</span>
+                                            <FaArrowCircleLeft size={18} />
+                                            <span className="text-sm">Previous Episode</span>
                                         </button>
 
                                         <button
@@ -1767,41 +1812,44 @@ const SeriesPlayer = () => {
                                                 : 'text-gray-300 hover:bg-gray-800'
                                                 }`}
                                         >
-                                            <FaChevronRight size={20} />
-                                            <span className="text-base">Next Episode</span>
+                                            <FaArrowCircleRight size={18} />
+                                            <span className="text-sm">Next Episode</span>
                                         </button>
 
                                         <button
-                                            onClick={() => setShowEpisodeList(!showEpisodeList)}
+                                            onClick={() => {
+                                                setShowEpisodeList(!showEpisodeList);
+                                                setShowMobileMenu(false);
+                                            }}
                                             className="w-full flex items-center gap-3 px-3 py-3 rounded-lg text-gray-300 hover:bg-gray-800 transition-colors"
                                         >
-                                            <FaList size={20} />
-                                            <span className="text-base">{showEpisodeList ? 'Hide episodes' : 'Show episodes'}</span>
+                                            <FaListUl size={18} />
+                                            <span className="text-sm">{showEpisodeList ? 'Hide episodes' : 'Show episodes'}</span>
                                         </button>
 
                                         {/* Mobile Download Option */}
                                         {hasDownload(currentEpisode) && (
                                             <>
                                                 <div className="border-t border-gray-800 my-2"></div>
-                                                <div className="px-3 py-2">
-                                                    <p className="text-xs text-gray-400 mb-2">Download</p>
-                                                    <button
-                                                        onClick={(e) => handleDownload(e, currentEpisode)}
-                                                        className="w-full flex items-center gap-3 px-3 py-3 bg-gradient-to-r from-green-600/20 to-emerald-600/20 hover:from-green-600/30 hover:to-emerald-600/30 rounded-lg transition-all group border border-green-500/20 hover:border-green-500/40"
-                                                        disabled={downloading && downloadEpisodeId === currentEpisode.id}
-                                                    >
-                                                        <div className="w-10 h-10 bg-gradient-to-br from-green-500/20 to-emerald-500/20 rounded-lg flex items-center justify-center">
-                                                            <FaCloudDownloadAlt className="text-green-400 text-xl" />
-                                                        </div>
-                                                        <div className="flex-1 text-left">
-                                                            <p className="text-base font-medium text-white">
-                                                                {downloading && downloadEpisodeId === currentEpisode.id ? 'Opening...' : 'Download Episode'}
-                                                            </p>
-                                                            <p className="text-xs text-gray-400">Click to download</p>
-                                                        </div>
-                                                        {downloading && downloadEpisodeId === currentEpisode.id && <FaSpinner className="animate-spin text-green-400" />}
-                                                    </button>
-                                                </div>
+                                                <button
+                                                    onClick={(e) => {
+                                                        handleDownload(e, currentEpisode);
+                                                        setShowMobileMenu(false);
+                                                    }}
+                                                    className="w-full flex items-center gap-3 px-3 py-3 bg-gradient-to-r from-green-600/20 to-emerald-600/20 hover:from-green-600/30 hover:to-emerald-600/30 rounded-lg transition-all group border border-green-500/20 hover:border-green-500/40"
+                                                    disabled={downloading && downloadEpisodeId === currentEpisode.id}
+                                                >
+                                                    <div className="w-8 h-8 bg-gradient-to-br from-green-500/20 to-emerald-500/20 rounded-lg flex items-center justify-center">
+                                                        <FaCloudDownloadAlt className="text-green-400 text-lg" />
+                                                    </div>
+                                                    <div className="flex-1 text-left">
+                                                        <p className="text-sm font-medium text-white">
+                                                            {downloading && downloadEpisodeId === currentEpisode.id ? 'Opening...' : 'Download Episode'}
+                                                        </p>
+                                                        <p className="text-xs text-gray-400">Click to download</p>
+                                                    </div>
+                                                    {downloading && downloadEpisodeId === currentEpisode.id && <FaSpinner className="animate-spin text-green-400" />}
+                                                </button>
                                             </>
                                         )}
                                     </div>
@@ -1812,13 +1860,45 @@ const SeriesPlayer = () => {
                 </div>
             )}
 
+            {/* Season Selector Dropdown - Desktop */}
+            {showSeasonSelector && seasons.length > 1 && !isFullscreen && (
+                <div className="absolute top-20 right-32 z-40 bg-gradient-to-br from-gray-900 to-gray-950 border border-gray-700 rounded-xl shadow-2xl">
+                    <div className="p-3">
+                        <p className="text-xs text-gray-400 mb-2 px-2">Select Season</p>
+                        <div className="flex flex-col gap-1">
+                            {seasons.map(season => (
+                                <button
+                                    key={season}
+                                    onClick={() => {
+                                        setSelectedSeason(season);
+                                        const firstEpisode = episodesList.find(ep =>
+                                            (parseInt(ep.seasonNumber) || parseInt(ep.season_number) || 1) === season
+                                        );
+                                        if (firstEpisode) {
+                                            const index = episodesList.findIndex(ep => ep.id === firstEpisode.id);
+                                            goToEpisode(index);
+                                        }
+                                        setShowSeasonSelector(false);
+                                    }}
+                                    className={`px-4 py-2 rounded-lg text-sm text-left transition-all ${selectedSeason === season
+                                        ? 'bg-purple-600 text-white'
+                                        : 'text-gray-300 hover:bg-gray-800'
+                                        }`}
+                                >
+                                    Season {season}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <div
                 ref={playerContainerRef}
-                className={`relative w-full ${isMobile ? 'h-[60vh]' : 'h-screen'} bg-black`}
+                className={`relative w-full ${isMobile ? 'h-[50vh]' : 'h-[70vh]'} bg-black`}
                 onMouseMove={shouldShowCustomControls ? showControlsWithTimer : undefined}
                 onMouseLeave={() => shouldShowCustomControls && setShowControls(false)}
                 onClick={(e) => {
-                    // Don't trigger play/pause if clicking on sliders
                     if (shouldShowCustomControls &&
                         !e.target.closest('button') &&
                         !e.target.closest('input') &&
@@ -1842,12 +1922,12 @@ const SeriesPlayer = () => {
                 {renderVideoPlayer()}
 
                 {shouldShowCustomControls && videoLoaded && !playing && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-20">
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/60 z-20">
                         <button
                             onClick={handlePlayPause}
-                            className="w-28 h-28 bg-gradient-to-br from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 rounded-full flex items-center justify-center transition-all transform hover:scale-110 shadow-2xl"
+                            className="w-16 h-16 md:w-20 md:h-20 bg-gradient-to-br from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 rounded-full flex items-center justify-center transition-all transform hover:scale-110 shadow-2xl"
                         >
-                            <FaPlay size={48} className="text-white ml-2" />
+                            <FaPlay size={24} className="text-white ml-1" />
                         </button>
                     </div>
                 )}
@@ -1855,27 +1935,27 @@ const SeriesPlayer = () => {
                 {!videoLoaded && !error && (
                     <div className="absolute inset-0 flex items-center justify-center bg-black/80 z-20">
                         <div className="text-center">
-                            <FaSpinner className="text-5xl text-red-600 animate-spin mx-auto mb-4" />
-                            <p className="text-white text-xl">Loading video...</p>
+                            <FaSpinner className="text-3xl md:text-4xl text-purple-600 animate-spin mx-auto mb-3" />
+                            <p className="text-white text-sm md:text-base">Loading video...</p>
                         </div>
                     </div>
                 )}
 
                 {error && (
                     <div className="absolute inset-0 flex items-center justify-center bg-black/90 z-20">
-                        <div className="text-center p-8 max-w-md bg-gradient-to-br from-gray-900 to-gray-950 rounded-2xl border border-gray-800">
-                            <FaExclamationTriangle className="text-red-500 text-5xl mx-auto mb-4" />
-                            <p className="text-white text-lg mb-6">{error}</p>
+                        <div className="text-center p-6 max-w-md bg-gradient-to-br from-gray-900 to-gray-950 rounded-2xl border border-gray-800">
+                            <FaExclamationTriangle className="text-purple-500 text-4xl md:text-5xl mx-auto mb-3" />
+                            <p className="text-white text-sm md:text-base mb-4">{error}</p>
                             <div className="flex gap-3 justify-center">
                                 <button
                                     onClick={handleRetry}
-                                    className="px-6 py-3 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 rounded-lg text-white font-medium transition-all text-base"
+                                    className="px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 rounded-lg text-white font-medium text-sm"
                                 >
                                     Try Again
                                 </button>
                                 <button
                                     onClick={handleUseEmbed}
-                                    className="px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 rounded-lg text-white font-medium transition-all text-base"
+                                    className="px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 rounded-lg text-white font-medium text-sm"
                                 >
                                     Try Embed Player
                                 </button>
@@ -1885,10 +1965,10 @@ const SeriesPlayer = () => {
                 )}
 
                 {shouldShowCustomControls && (
-                    <div className={`absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/90 via-black/60 to-transparent transition-all duration-300 z-30 ${showControls ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+                    <div className={`absolute bottom-0 left-0 right-0 p-4 md:p-6 bg-gradient-to-t from-black/90 via-black/60 to-transparent transition-all duration-300 z-30 ${showControls ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
                         <div className="max-w-7xl mx-auto slider-container">
-                            {/* FIXED: Progress slider with proper event handling */}
-                            <div className="mb-4">
+                            {/* Progress slider */}
+                            <div className="mb-3">
                                 <input
                                     type="range"
                                     min="0"
@@ -1900,12 +1980,12 @@ const SeriesPlayer = () => {
                                     onChange={handleSeekChange}
                                     onMouseUp={handleSeekEnd}
                                     onTouchEnd={handleSeekEnd}
-                                    className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-gradient-to-r [&::-webkit-slider-thumb]:from-red-600 [&::-webkit-slider-thumb]:to-red-500 [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-lg hover:[&::-webkit-slider-thumb]:scale-125 transition-all"
+                                    className="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-gradient-to-r [&::-webkit-slider-thumb]:from-purple-600 [&::-webkit-slider-thumb]:to-pink-600 hover:[&::-webkit-slider-thumb]:scale-125 transition-all"
                                     onClick={(e) => e.stopPropagation()}
                                 />
-                                <div className="flex justify-between text-sm text-gray-300 mt-2">
-                                    <span className="text-base font-mono">{formatTime(currentTime)}</span>
-                                    <span className="text-base font-mono">{formatTime(duration)}</span>
+                                <div className="flex justify-between text-xs text-gray-300 mt-1">
+                                    <span className="font-mono">{formatTime(currentTime)}</span>
+                                    <span className="font-mono">{formatTime(duration)}</span>
                                 </div>
                             </div>
 
@@ -1913,12 +1993,12 @@ const SeriesPlayer = () => {
                                 <div className="flex items-center gap-2 md:gap-4">
                                     <button
                                         onClick={handlePlayPause}
-                                        className="hover:text-red-500 transition-colors p-2"
+                                        className="hover:text-purple-500 transition-colors p-1.5"
                                     >
                                         {playing ? (
-                                            <FaPause className={`${isMobile ? 'text-2xl' : 'text-4xl'}`} />
+                                            <FaPause className={`${isMobile ? 'text-xl' : 'text-2xl'}`} />
                                         ) : (
-                                            <FaPlay className={`${isMobile ? 'text-2xl ml-0.5' : 'text-4xl ml-1'}`} />
+                                            <FaPlay className={`${isMobile ? 'text-xl ml-0.5' : 'text-2xl ml-1'}`} />
                                         )}
                                     </button>
 
@@ -1926,28 +2006,27 @@ const SeriesPlayer = () => {
                                         <>
                                             <button
                                                 onClick={(e) => handleRewind(e, 10)}
-                                                className="hover:text-red-500 transition-colors p-2"
+                                                className="hover:text-purple-500 transition-colors p-1.5"
                                             >
-                                                <FaBackward className="text-3xl" />
+                                                <FaBackward className="text-xl" />
                                             </button>
                                             <button
                                                 onClick={(e) => handleForward(e, 10)}
-                                                className="hover:text-red-500 transition-colors p-2"
+                                                className="hover:text-purple-500 transition-colors p-1.5"
                                             >
-                                                <FaForward className="text-3xl" />
+                                                <FaForward className="text-xl" />
                                             </button>
                                         </>
                                     )}
 
                                     {!isMobile && (
-                                        <div className="flex items-center gap-3 ml-2">
+                                        <div className="flex items-center gap-2 ml-1">
                                             <button
                                                 onClick={handleToggleMute}
-                                                className="hover:text-red-500 transition-colors p-2"
+                                                className="hover:text-purple-500 transition-colors p-1.5"
                                             >
-                                                {muted ? <FaVolumeMute className="text-3xl" /> : <FaVolumeUp className="text-3xl" />}
+                                                {muted ? <FaVolumeMute className="text-xl" /> : <FaVolumeUp className="text-xl" />}
                                             </button>
-                                            {/* FIXED: Volume slider with proper event handling */}
                                             <input
                                                 type="range"
                                                 min="0"
@@ -1959,7 +2038,7 @@ const SeriesPlayer = () => {
                                                 onChange={handleVolumeChange}
                                                 onMouseUp={handleVolumeEnd}
                                                 onTouchEnd={handleVolumeEnd}
-                                                className="w-32 h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-gradient-to-r [&::-webkit-slider-thumb]:from-red-600 [&::-webkit-slider-thumb]:to-red-500 hover:[&::-webkit-slider-thumb]:scale-125 transition-all"
+                                                className="w-20 md:w-28 h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-gradient-to-r [&::-webkit-slider-thumb]:from-purple-600 [&::-webkit-slider-thumb]:to-pink-600 hover:[&::-webkit-slider-thumb]:scale-125 transition-all"
                                                 onClick={(e) => e.stopPropagation()}
                                             />
                                         </div>
@@ -1969,17 +2048,17 @@ const SeriesPlayer = () => {
                                 <div className="flex items-center gap-2 md:gap-4">
                                     {!isMobile && (
                                         <div className="relative group">
-                                            <button className="px-4 py-2 bg-gray-800/80 hover:bg-gray-700 rounded-lg text-base font-medium">
+                                            <button className="px-2 md:px-3 py-1 md:py-1.5 bg-gray-800/80 hover:bg-gray-700 rounded-lg text-xs md:text-sm font-medium">
                                                 {playbackRate}x
                                             </button>
-                                            <div className="absolute right-0 top-full mt-1 bg-gradient-to-br from-gray-900 to-gray-950 border border-gray-700 rounded-lg p-2 shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
-                                                <div className="text-xs text-gray-400 mb-1">Speed</div>
+                                            <div className="absolute right-0 top-full mt-1 bg-gradient-to-br from-gray-900 to-gray-950 border border-gray-700 rounded-lg p-1.5 shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-40">
+                                                <div className="text-xs text-gray-400 mb-1 px-1">Speed</div>
                                                 <div className="grid grid-cols-2 gap-1">
                                                     {[0.5, 0.75, 1.0, 1.25, 1.5, 2.0].map(rate => (
                                                         <button
                                                             key={rate}
                                                             onClick={(e) => handlePlaybackRate(rate, e)}
-                                                            className={`px-3 py-2 text-sm rounded ${playbackRate === rate ? 'bg-gradient-to-r from-red-600 to-red-700' : 'bg-gray-800 hover:bg-gray-700'}`}
+                                                            className={`px-2 py-1 text-xs rounded ${playbackRate === rate ? 'bg-gradient-to-r from-purple-600 to-pink-600' : 'bg-gray-800 hover:bg-gray-700'}`}
                                                         >
                                                             {rate}x
                                                         </button>
@@ -1991,12 +2070,12 @@ const SeriesPlayer = () => {
 
                                     <button
                                         onClick={handleFullscreen}
-                                        className="hover:text-red-500 transition-colors p-2"
+                                        className="hover:text-purple-500 transition-colors p-1.5"
                                     >
                                         {isFullscreen ? (
-                                            <FaCompress className={`${isMobile ? 'text-2xl' : 'text-3xl'}`} />
+                                            <FaCompress className={`${isMobile ? 'text-xl' : 'text-2xl'}`} />
                                         ) : (
-                                            <FaExpand className={`${isMobile ? 'text-2xl' : 'text-3xl'}`} />
+                                            <FaExpand className={`${isMobile ? 'text-xl' : 'text-2xl'}`} />
                                         )}
                                     </button>
                                 </div>
@@ -2006,10 +2085,10 @@ const SeriesPlayer = () => {
                 )}
 
                 {!shouldShowCustomControls && showControls && (
-                    <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black/80 backdrop-blur-sm rounded-lg px-4 py-2 border border-red-500/30 z-30">
-                        <div className="flex items-center gap-2">
+                    <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black/80 backdrop-blur-sm rounded-lg px-3 py-1.5 border border-purple-500/30 z-30">
+                        <div className="flex items-center gap-1.5">
                             <FaVideo className={playerType.color} />
-                            <span className="text-white text-sm">
+                            <span className="text-white text-xs">
                                 {playerType.label} Player
                             </span>
                         </div>
@@ -2018,63 +2097,65 @@ const SeriesPlayer = () => {
             </div>
 
             {!isFullscreen && (
-                <div className="max-w-7xl mx-auto px-4 py-8">
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div className="max-w-7xl mx-auto px-4 py-5 md:py-8">
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
                         <div className="lg:col-span-2">
-                            {/* Episode Info with Download Button Beside Rating and Translator Name */}
-                            <div className="mb-8">
-                                <h1 className="text-4xl md:text-5xl font-bold mb-3">{series?.title}</h1>
-                                <div className="flex flex-wrap items-center gap-3 mb-4">
-                                    <span className="px-4 py-2 bg-gradient-to-r from-red-600 to-red-700 rounded-full text-sm md:text-base font-medium">
+                            {/* Episode Info */}
+                            <div className="mb-6 md:mb-8">
+                                <h1 className="text-2xl md:text-4xl font-bold mb-2">{series?.title}</h1>
+                                <div className="flex flex-wrap items-center gap-2 md:gap-3 mb-3 md:mb-4">
+                                    <span className="px-3 md:px-4 py-1.5 md:py-2 bg-gradient-to-r from-purple-600 to-pink-600 rounded-full text-xs md:text-sm font-medium">
                                         Season {currentEpisode.seasonNumber || currentEpisode.season_number || 1}
                                     </span>
-                                    <span className="px-4 py-2 bg-gradient-to-r from-purple-600 to-purple-700 rounded-full text-sm md:text-base font-medium">
+                                    <span className="px-3 md:px-4 py-1.5 md:py-2 bg-gradient-to-r from-purple-600 to-pink-600 rounded-full text-xs md:text-sm font-medium">
                                         Episode {currentEpisode.episodeNumber || currentEpisode.episode_number || 1}
                                     </span>
                                     {series?.year && (
-                                        <span className="px-4 py-2 bg-gradient-to-r from-gray-700 to-gray-800 rounded-full text-sm md:text-base font-medium flex items-center gap-1">
-                                            <FaCalendar size={14} /> {series.year}
+                                        <span className="px-3 md:px-4 py-1.5 md:py-2 bg-gradient-to-r from-gray-700 to-gray-800 rounded-full text-xs md:text-sm font-medium flex items-center gap-1">
+                                            <FaCalendar size={12} /> {series.year}
                                         </span>
                                     )}
                                     {series?.rating && (
-                                        <span className="px-4 py-2 bg-gradient-to-r from-yellow-600 to-yellow-700 rounded-full flex items-center gap-2 text-sm md:text-base font-medium">
+                                        <span className="px-3 md:px-4 py-1.5 md:py-2 bg-gradient-to-r from-yellow-600 to-yellow-700 rounded-full flex items-center gap-1 text-xs md:text-sm font-medium">
                                             <FaStar className="text-yellow-300" /> {series.rating}
                                         </span>
                                     )}
 
-                                    {/* Translator Badge - Added next to rating */}
+                                    {/* Translator Badge */}
                                     {series?.translator && (
-                                        <span className="px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 rounded-full flex items-center gap-2 text-sm md:text-base font-medium">
+                                        <span className="px-3 md:px-4 py-1.5 md:py-2 bg-gradient-to-r from-green-600 to-emerald-600 rounded-full flex items-center gap-1 text-xs md:text-sm font-medium">
                                             <FaLanguage className="text-green-200" /> {series.translator}
                                         </span>
                                     )}
 
-                                    {/* Download Button Beside Rating - Enhanced visibility */}
+                                    {/* Download Button */}
                                     {hasDownload(currentEpisode) && (
                                         <button
                                             onClick={(e) => handleDownload(e, currentEpisode)}
-                                            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 rounded-full text-white font-medium shadow-lg shadow-green-600/30 transition-all duration-200 transform hover:scale-105 text-sm md:text-base border border-green-400/30"
+                                            className="flex items-center gap-1.5 px-3 md:px-4 py-1.5 md:py-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 rounded-full text-white font-medium shadow-lg shadow-green-600/30 transition-all duration-200 transform hover:scale-105 text-xs md:text-sm"
                                             disabled={downloading && downloadEpisodeId === currentEpisode.id}
                                         >
                                             {downloading && downloadEpisodeId === currentEpisode.id ? (
                                                 <>
-                                                    <FaSpinner className="animate-spin text-base" />
+                                                    <FaSpinner className="animate-spin" />
                                                     <span>Opening...</span>
                                                 </>
                                             ) : (
                                                 <>
-                                                    <FaCloudDownloadAlt className="text-lg" />
+                                                    <FaCloudDownloadAlt />
                                                     <span>Download</span>
                                                 </>
                                             )}
                                         </button>
                                     )}
                                 </div>
-                                <h2 className="text-3xl md:text-4xl font-bold mb-3">{currentEpisode.title}</h2>
-                                <p className="text-gray-300 text-lg md:text-xl mb-4">{currentEpisode.description || 'No description available'}</p>
+                                <h2 className="text-xl md:text-2xl font-bold mb-2">{currentEpisode.title}</h2>
+                                <p className="text-gray-300 text-sm md:text-base leading-relaxed mb-3">
+                                    {currentEpisode.description || 'No description available for this episode.'}
+                                </p>
 
                                 {/* Episode metadata */}
-                                <div className="flex flex-wrap gap-4 text-gray-400 text-base">
+                                <div className="flex flex-wrap gap-3 md:gap-4 text-gray-400 text-xs md:text-sm">
                                     {currentEpisode.duration && (
                                         <span className="flex items-center gap-1"><FaClock /> {currentEpisode.duration}</span>
                                     )}
@@ -2087,17 +2168,26 @@ const SeriesPlayer = () => {
                                 </div>
                             </div>
 
-                            {/* Season Selector */}
+                            {/* Season Selector - Mobile Friendly */}
                             {seasons.length > 0 && (
-                                <div className="mb-8">
-                                    <h3 className="text-2xl md:text-3xl font-bold mb-4">Seasons</h3>
-                                    <div className="flex gap-3 overflow-x-auto pb-3 custom-scrollbar">
+                                <div className="mb-6">
+                                    <h3 className="text-lg md:text-xl font-bold mb-3">Seasons</h3>
+                                    <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar">
                                         {seasons.map(season => (
                                             <button
                                                 key={season}
-                                                onClick={() => setSelectedSeason(season)}
-                                                className={`px-5 py-2.5 rounded-full whitespace-nowrap transition-all duration-200 text-base md:text-lg font-medium ${selectedSeason === season
-                                                    ? 'bg-gradient-to-r from-red-600 to-red-700 text-white shadow-lg shadow-red-600/30 scale-105'
+                                                onClick={() => {
+                                                    setSelectedSeason(season);
+                                                    const firstEpisode = episodesList.find(ep =>
+                                                        (parseInt(ep.seasonNumber) || parseInt(ep.season_number) || 1) === season
+                                                    );
+                                                    if (firstEpisode) {
+                                                        const index = episodesList.findIndex(ep => ep.id === firstEpisode.id);
+                                                        goToEpisode(index);
+                                                    }
+                                                }}
+                                                className={`px-4 md:px-5 py-2 rounded-full whitespace-nowrap transition-all duration-200 text-sm md:text-base font-medium ${selectedSeason === season
+                                                    ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg shadow-purple-600/30 scale-105'
                                                     : 'bg-gray-800 text-gray-300 hover:bg-gray-700 hover:scale-105'
                                                     }`}
                                             >
@@ -2109,10 +2199,10 @@ const SeriesPlayer = () => {
                             )}
 
                             {/* Episodes Grid */}
-                            {episodesList.length > 0 && (
+                            {episodesList.length > 0 && showEpisodeList && (
                                 <div className="mb-8">
-                                    <h3 className="text-2xl md:text-3xl font-bold mb-4">Episodes</h3>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <h3 className="text-lg md:text-xl font-bold mb-3">Episodes</h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                         {episodesList
                                             .filter(ep => (parseInt(ep.seasonNumber) || parseInt(ep.season_number) || 1) === selectedSeason)
                                             .map((episode) => {
@@ -2124,8 +2214,8 @@ const SeriesPlayer = () => {
                                                 return (
                                                     <div
                                                         key={episode.id}
-                                                        className={`flex items-center gap-3 p-4 rounded-xl transition-all duration-200 ${isCurrent
-                                                            ? 'bg-gradient-to-r from-red-600/20 to-red-700/10 border border-red-500/50 shadow-lg shadow-red-600/10'
+                                                        className={`flex items-center gap-3 p-3 md:p-4 rounded-xl transition-all duration-200 ${isCurrent
+                                                            ? 'bg-gradient-to-r from-purple-600/20 to-pink-600/10 border border-purple-500/50 shadow-lg shadow-purple-600/10'
                                                             : 'bg-gradient-to-br from-gray-800/30 to-gray-900/30 hover:from-gray-800/50 hover:to-gray-900/50 border border-gray-700/50 hover:border-gray-600'
                                                             }`}
                                                     >
@@ -2133,11 +2223,11 @@ const SeriesPlayer = () => {
                                                             onClick={() => goToEpisode(globalIndex)}
                                                             className="flex-1 flex items-center gap-3 text-left"
                                                         >
-                                                            <div className="w-10 h-10 bg-gradient-to-r from-red-600 to-pink-600 rounded flex items-center justify-center flex-shrink-0">
-                                                                <span className="text-sm font-bold">{epNumber}</span>
+                                                            <div className="w-8 h-8 md:w-10 md:h-10 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                                                                <span className="text-xs md:text-sm font-bold">{epNumber}</span>
                                                             </div>
-                                                            <div className="flex-1">
-                                                                <h4 className="font-medium text-white text-base md:text-lg truncate max-w-[200px]">
+                                                            <div className="flex-1 min-w-0">
+                                                                <h4 className="font-medium text-white text-sm md:text-base truncate">
                                                                     {episode.title}
                                                                 </h4>
                                                                 {episode.duration && (
@@ -2147,7 +2237,7 @@ const SeriesPlayer = () => {
                                                                 )}
                                                             </div>
                                                             {isCurrent && (
-                                                                <FaPlay size={12} className="text-red-400 flex-shrink-0" />
+                                                                <FaPlay size={10} className="text-purple-400 flex-shrink-0" />
                                                             )}
                                                         </button>
 
@@ -2160,9 +2250,9 @@ const SeriesPlayer = () => {
                                                                 disabled={downloading && downloadEpisodeId === episode.id}
                                                             >
                                                                 {downloading && downloadEpisodeId === episode.id ? (
-                                                                    <FaSpinner className="animate-spin text-green-400 text-base" />
+                                                                    <FaSpinner className="animate-spin text-green-400 text-sm" />
                                                                 ) : (
-                                                                    <FaCloudDownloadAlt className="text-green-400 text-base group-hover:scale-110 transition-transform" />
+                                                                    <FaCloudDownloadAlt className="text-green-400 text-sm group-hover:scale-110 transition-transform" />
                                                                 )}
                                                             </button>
                                                         )}
@@ -2179,9 +2269,9 @@ const SeriesPlayer = () => {
 
                         {/* Right sidebar with series info */}
                         <div className="lg:col-span-1">
-                            <div className="bg-gradient-to-br from-gray-900 to-gray-950 rounded-2xl p-6 border border-gray-800 sticky top-4">
-                                <h3 className="text-2xl font-bold mb-4 flex items-center gap-2">
-                                    <FaInfoCircle className="text-red-500" />
+                            <div className="bg-gradient-to-br from-gray-900 to-gray-950 rounded-2xl p-5 md:p-6 border border-gray-800 sticky top-4">
+                                <h3 className="text-xl md:text-2xl font-bold mb-4 flex items-center gap-2">
+                                    <FaInfoCircle className="text-purple-500" />
                                     About {series?.title}
                                 </h3>
 
@@ -2193,31 +2283,31 @@ const SeriesPlayer = () => {
                                     />
                                 )}
 
-                                <p className="text-gray-300 text-base mb-4">
-                                    {series?.description || 'No description available'}
+                                <p className="text-gray-300 text-sm md:text-base mb-4 leading-relaxed">
+                                    {series?.description || 'No description available for this series.'}
                                 </p>
 
-                                <div className="space-y-2 text-sm">
+                                <div className="space-y-2 text-xs md:text-sm">
                                     {series?.genre && (
-                                        <p><span className="text-gray-400">Genre:</span> {series.genre}</p>
+                                        <p><span className="text-gray-400">Genre:</span> <span className="text-white">{series.genre}</span></p>
                                     )}
                                     {series?.country && (
-                                        <p><span className="text-gray-400">Country:</span> {series.country}</p>
+                                        <p><span className="text-gray-400">Country:</span> <span className="text-white">{series.country}</span></p>
                                     )}
                                     {series?.language && (
-                                        <p><span className="text-gray-400">Language:</span> {series.language}</p>
+                                        <p><span className="text-gray-400">Language:</span> <span className="text-white">{series.language}</span></p>
                                     )}
                                     {series?.translator && (
                                         <p className="flex items-center gap-1"><span className="text-gray-400">Translator:</span> <span className="text-green-400">{series.translator}</span></p>
                                     )}
-                                    <p><span className="text-gray-400">Total Episodes:</span> {episodesList.length}</p>
-                                    <p><span className="text-gray-400">Seasons:</span> {seasons.length}</p>
+                                    <p><span className="text-gray-400">Total Episodes:</span> <span className="text-white">{episodesList.length}</span></p>
+                                    <p><span className="text-gray-400">Seasons:</span> <span className="text-white">{seasons.length}</span></p>
                                 </div>
 
                                 <div className="mt-6 pt-4 border-t border-gray-800">
                                     <button
                                         onClick={() => setShowComments(!showComments)}
-                                        className="w-full px-4 py-3 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 rounded-xl text-white font-medium transition-all duration-200 flex items-center justify-center gap-2"
+                                        className="w-full px-4 py-2.5 md:py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 rounded-xl text-white font-medium transition-all duration-200 flex items-center justify-center gap-2 text-sm md:text-base"
                                     >
                                         <FaComment />
                                         {showComments ? 'Hide Comments' : 'View Comments'} ({comments.length})
@@ -2232,22 +2322,22 @@ const SeriesPlayer = () => {
             {/* Custom scrollbar styles */}
             <style jsx>{`
                 .custom-scrollbar::-webkit-scrollbar {
-                    width: 8px;
-                    height: 8px;
+                    width: 6px;
+                    height: 6px;
                 }
                 
                 .custom-scrollbar::-webkit-scrollbar-track {
                     background: #1f2937;
-                    border-radius: 4px;
+                    border-radius: 3px;
                 }
                 
                 .custom-scrollbar::-webkit-scrollbar-thumb {
-                    background: #ef4444;
-                    border-radius: 4px;
+                    background: #8b5cf6;
+                    border-radius: 3px;
                 }
                 
                 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-                    background: #dc2626;
+                    background: #a78bfa;
                 }
             `}</style>
         </div>

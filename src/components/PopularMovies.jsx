@@ -41,12 +41,16 @@ import {
   FaPlayCircle,
   FaLanguage
 } from "react-icons/fa";
+import { motion, AnimatePresence } from "framer-motion";
 
-// ===== CINEMATIC LOADING ANIMATION =====
+// ===== ENHANCED CINEMATIC LOADING ANIMATION =====
 const CinematicLoading = () => {
   const [frame, setFrame] = useState(0);
   const [progress, setProgress] = useState(0);
   const [glitchEffect, setGlitchEffect] = useState(false);
+  const [logoLoaded, setLogoLoaded] = useState(false);
+  const [showTagline, setShowTagline] = useState(false);
+  const logoRef = useRef(null);
 
   // Film reel animation
   useEffect(() => {
@@ -56,18 +60,25 @@ const CinematicLoading = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // Progress animation
+  // Progress animation with smooth increments
   useEffect(() => {
     const interval = setInterval(() => {
       setProgress((prev) => {
         if (prev >= 100) {
-          return 99;
+          return 100;
         }
-        return prev + 0.5;
+        return prev + Math.random() * 1.5;
       });
     }, 40);
     return () => clearInterval(interval);
   }, []);
+
+  // Show tagline after logo appears
+  useEffect(() => {
+    if (logoLoaded) {
+      setTimeout(() => setShowTagline(true), 500);
+    }
+  }, [logoLoaded]);
 
   // Random glitch effect
   useEffect(() => {
@@ -80,52 +91,92 @@ const CinematicLoading = () => {
 
   // Cinematic quotes
   const quotes = [
-    "Lights. Camera. Action.",
-    "Where stories come to life",
-    "Experience the magic",
-    "Your premiere destination",
-    "Cinema at its finest",
-    "Unforgettable moments await",
-    "The show is about to begin",
-    "Prepare for takeoff",
-    "Rolling the film",
-    "Setting the stage"
+    "Premium Streaming Experience",
+    "Where Stories Come to Life",
+    "Your Ultimate Entertainment Hub",
+    "Cinema at Your Fingertips",
+    "Experience the Magic of Movies",
+    "Unlimited Entertainment, Unlimited Joy",
+    "Stream the Best, Watch the Rest",
+    "Your Gateway to Cinema Excellence"
   ];
 
-  const currentQuote = quotes[Math.floor(progress / 10) % quotes.length];
+  const currentQuote = quotes[Math.floor(progress / 12.5) % quotes.length];
 
   return (
     <div className="fixed inset-0 bg-black z-50 overflow-hidden">
-      {/* Background Gradient */}
-      <div className="absolute inset-0 bg-gradient-to-br from-black via-gray-900 to-black" />
+      {/* Animated Background Gradient */}
+      <div className="absolute inset-0 bg-gradient-to-br from-black via-gray-900 to-black">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-purple-900/20 via-transparent to-transparent" />
+      </div>
 
-      {/* Film Strip Pattern - Top */}
-      <div className="absolute top-0 left-0 w-full h-16 sm:h-20 opacity-10">
-        <div
+      {/* Animated Particle Effect */}
+      <div className="absolute inset-0 overflow-hidden">
+        {[...Array(50)].map((_, i) => (
+          <motion.div
+            key={i}
+            className="absolute w-0.5 h-0.5 bg-purple-500/30 rounded-full"
+            initial={{
+              x: Math.random() * window.innerWidth,
+              y: Math.random() * window.innerHeight,
+              opacity: 0
+            }}
+            animate={{
+              y: [null, -100, -200],
+              opacity: [0, 0.5, 0],
+              scale: [0, 1, 0]
+            }}
+            transition={{
+              duration: 2 + Math.random() * 3,
+              repeat: Infinity,
+              delay: Math.random() * 5,
+              ease: "linear"
+            }}
+          />
+        ))}
+      </div>
+
+      {/* Film Strip Pattern - Top with animation */}
+      <div className="absolute top-0 left-0 w-full h-20 sm:h-24 opacity-20">
+        <motion.div
           className="w-full h-full"
           style={{
-            backgroundImage: 'repeating-linear-gradient(90deg, transparent, transparent 30px, #e50914 30px, #e50914 40px, transparent 40px, transparent 70px)',
+            backgroundImage: 'repeating-linear-gradient(90deg, transparent, transparent 30px, #8b5cf6 30px, #8b5cf6 40px, transparent 40px, transparent 70px)',
             backgroundSize: '70px 100%',
-            animation: 'filmSlide 15s linear infinite'
+          }}
+          animate={{
+            backgroundPosition: ['0px', '70px']
+          }}
+          transition={{
+            duration: 15,
+            repeat: Infinity,
+            ease: "linear"
           }}
         />
       </div>
 
-      {/* Film Strip Pattern - Bottom */}
-      <div className="absolute bottom-0 left-0 w-full h-16 sm:h-20 opacity-10">
-        <div
+      {/* Film Strip Pattern - Bottom with animation */}
+      <div className="absolute bottom-0 left-0 w-full h-20 sm:h-24 opacity-20">
+        <motion.div
           className="w-full h-full"
           style={{
-            backgroundImage: 'repeating-linear-gradient(90deg, transparent, transparent 30px, #e50914 30px, #e50914 40px, transparent 40px, transparent 70px)',
+            backgroundImage: 'repeating-linear-gradient(90deg, transparent, transparent 30px, #8b5cf6 30px, #8b5cf6 40px, transparent 40px, transparent 70px)',
             backgroundSize: '70px 100%',
-            animation: 'filmSlide 15s linear infinite reverse'
+          }}
+          animate={{
+            backgroundPosition: ['70px', '0px']
+          }}
+          transition={{
+            duration: 15,
+            repeat: Infinity,
+            ease: "linear"
           }}
         />
       </div>
 
       {/* Animated Grain Texture */}
       <div
-        className="absolute inset-0 opacity-20 mix-blend-overlay"
+        className="absolute inset-0 opacity-30 mix-blend-overlay pointer-events-none"
         style={{
           backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=\'0 0 200 200\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'noise\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.65\' numOctaves=\'3\' stitchTiles=\'stitch\'/%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23noise)\' opacity=\'0.5\'/%3E%3C/svg%3E")',
           backgroundRepeat: 'repeat',
@@ -135,7 +186,7 @@ const CinematicLoading = () => {
 
       {/* Scanlines Effect */}
       <div
-        className="absolute inset-0 opacity-10 pointer-events-none"
+        className="absolute inset-0 opacity-5 pointer-events-none"
         style={{
           background: 'repeating-linear-gradient(0deg, rgba(255,255,255,0.03) 0px, rgba(255,255,255,0.03) 1px, transparent 1px, transparent 2px)',
           backgroundSize: '100% 2px'
@@ -146,193 +197,353 @@ const CinematicLoading = () => {
       <div className="relative z-10 h-full flex flex-col items-center justify-center px-4">
         {/* Center Container */}
         <div className="max-w-4xl w-full mx-auto text-center">
-          {/* Logo with Glitch Effect */}
-          <div className="relative mb-8 sm:mb-12">
-            {/* Glow Background */}
-            <div className="absolute inset-0 bg-red-600/20 rounded-full blur-3xl animate-pulse-slow" />
+          {/* Logo Container with Glow Effect */}
+          <motion.div
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ duration: 0.8, ease: "easeOut" }}
+            className="relative mb-6 sm:mb-8 md:mb-10"
+          >
+            {/* Glow Background Animation */}
+            <motion.div
+              className="absolute inset-0 bg-gradient-to-r from-purple-600 via-pink-600 to-purple-600 rounded-full blur-3xl"
+              animate={{
+                scale: [1, 1.2, 1],
+                opacity: [0.3, 0.5, 0.3]
+              }}
+              transition={{
+                duration: 3,
+                repeat: Infinity,
+                ease: "easeInOut"
+              }}
+            />
 
-            {/* Main Logo */}
-            <h1
-              className={`relative text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black tracking-tighter ${glitchEffect ? 'animate-glitch' : ''
-                }`}
-            >
-              <span className="bg-gradient-to-r from-white via-gray-300 to-white bg-clip-text text-transparent">
-                AGASOBANUYE
-              </span>
-              <span className="bg-gradient-to-r from-red-600 via-red-500 to-red-600 bg-clip-text text-transparent relative">
-                FLEX
-                {/* Sparkle Effects */}
-                <span className="absolute -top-4 -right-4 text-xs animate-ping">✨</span>
-                <span className="absolute -bottom-2 -left-2 text-xs animate-ping delay-300">✨</span>
-              </span>
-            </h1>
+            {/* Main Logo with Glitch Effect */}
+            <div className="relative">
+              {/* Logo Image */}
+              <motion.div
+                ref={logoRef}
+                className="relative inline-block"
+                initial={{ y: -50, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ duration: 0.6, delay: 0.2 }}
+                onAnimationComplete={() => setLogoLoaded(true)}
+              >
+                <div className="relative w-32 h-32 sm:w-40 sm:h-40 md:w-48 md:h-48 mx-auto">
+                  {/* Outer Ring */}
+                  <div className="absolute inset-0 rounded-full bg-gradient-to-r from-purple-600 via-pink-600 to-purple-600 animate-spin-slow" style={{ padding: '3px' }}>
+                    <div className="absolute inset-[3px] rounded-full bg-black" />
+                  </div>
 
-            {/* Tagline */}
-            <p className="text-xs sm:text-sm text-gray-500 mt-2 tracking-[0.3em] uppercase animate-fade-in">
-              {currentQuote}
-            </p>
-          </div>
+                  {/* Logo Image */}
+                  <img
+                    src="/logo192.png"
+                    alt="agasobanuyecineva Logo"
+                    className={`relative w-full h-full object-contain rounded-full transition-all duration-500 ${glitchEffect ? 'animate-glitch' : ''}`}
+                    onError={(e) => {
+                      e.target.style.display = 'none';
+                      // Fallback text logo
+                      const parent = e.target.parentElement;
+                      if (parent) {
+                        const fallback = document.createElement('div');
+                        fallback.className = 'absolute inset-0 flex items-center justify-center bg-gradient-to-br from-purple-600 to-pink-600 rounded-full';
+                        fallback.innerHTML = '<span class="text-white font-black text-3xl sm:text-4xl md:text-5xl">A</span>';
+                        parent.appendChild(fallback);
+                      }
+                    }}
+                  />
+                </div>
+
+                {/* Floating Elements Around Logo */}
+                <motion.div
+                  className="absolute -top-4 -right-4 sm:-top-6 sm:-right-6"
+                  animate={{
+                    y: [0, -10, 0],
+                    rotate: [0, 10, 0]
+                  }}
+                  transition={{
+                    duration: 2,
+                    repeat: Infinity,
+                    ease: "easeInOut"
+                  }}
+                >
+                  <FaPlayCircle className="text-purple-500 text-2xl sm:text-3xl" />
+                </motion.div>
+                <motion.div
+                  className="absolute -bottom-4 -left-4 sm:-bottom-6 sm:-left-6"
+                  animate={{
+                    y: [0, 10, 0],
+                    rotate: [0, -10, 0]
+                  }}
+                  transition={{
+                    duration: 2,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                    delay: 0.5
+                  }}
+                >
+                  <FaFilm className="text-pink-500 text-2xl sm:text-3xl" />
+                </motion.div>
+              </motion.div>
+
+              {/* Brand Name */}
+              <motion.h1
+                className={`relative text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black mt-4 ${glitchEffect ? 'animate-glitch' : ''}`}
+                initial={{ y: 50, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ duration: 0.6, delay: 0.4 }}
+              >
+                <span className="bg-gradient-to-r from-purple-400 via-pink-400 to-purple-400 bg-clip-text text-transparent">
+                  agasobanuyecineva
+                </span>
+                <motion.span
+                  className="absolute -top-2 -right-2 sm:-top-3 sm:-right-3 text-xs sm:text-sm"
+                  animate={{
+                    scale: [1, 1.2, 1],
+                    opacity: [0.5, 1, 0.5]
+                  }}
+                  transition={{
+                    duration: 1,
+                    repeat: Infinity
+                  }}
+                >
+                  ✨
+                </motion.span>
+              </motion.h1>
+
+              {/* Tagline */}
+              <AnimatePresence>
+                {showTagline && (
+                  <motion.p
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5 }}
+                    className="text-xs sm:text-sm text-gray-400 mt-2 tracking-wider"
+                  >
+                    {currentQuote}
+                  </motion.p>
+                )}
+              </AnimatePresence>
+            </div>
+          </motion.div>
 
           {/* Film Reel Animation */}
-          <div className="flex justify-center items-center gap-2 sm:gap-3 mb-8 sm:mb-12">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.6, duration: 0.5 }}
+            className="flex justify-center items-center gap-2 sm:gap-3 mb-6 sm:mb-8 md:mb-10"
+          >
             {/* Left Reel */}
             <div className="relative w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20">
-              <div className="absolute inset-0 border-2 border-red-600/30 rounded-full animate-spin-slow" />
-              <div className="absolute inset-2 border-2 border-red-600/50 rounded-full animate-spin-slower" />
-              <div className="absolute inset-4 border-2 border-red-600 rounded-full animate-spin" />
+              <motion.div
+                className="absolute inset-0 border-2 border-purple-600/30 rounded-full"
+                animate={{ rotate: 360 }}
+                transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+              />
+              <motion.div
+                className="absolute inset-2 border-2 border-purple-600/50 rounded-full"
+                animate={{ rotate: -360 }}
+                transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+              />
+              <motion.div
+                className="absolute inset-4 border-2 border-purple-600 rounded-full"
+                animate={{ rotate: 360 }}
+                transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+              />
               <div className="absolute inset-0 flex items-center justify-center">
-                <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-red-600 rounded-full animate-ping" />
+                <motion.div
+                  className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-purple-600 rounded-full"
+                  animate={{ scale: [1, 1.5, 1] }}
+                  transition={{ duration: 1, repeat: Infinity }}
+                />
               </div>
             </div>
 
-            {/* Center Film Strip - Mobile Optimized */}
+            {/* Center Film Strip */}
             <div className="flex gap-1 sm:gap-2">
               {[...Array(5)].map((_, i) => (
-                <div
+                <motion.div
                   key={i}
                   className="relative w-6 h-10 sm:w-8 sm:h-12 md:w-10 md:h-16"
-                  style={{
-                    animation: `filmStrip 1.5s ease-in-out infinite`,
-                    animationDelay: `${i * 0.1}s`,
+                  animate={{
+                    y: [0, -5, 0]
+                  }}
+                  transition={{
+                    duration: 1.5,
+                    repeat: Infinity,
+                    delay: i * 0.1,
+                    ease: "easeInOut"
                   }}
                 >
-                  {/* Film Frame */}
-                  <div className="absolute inset-0 bg-gradient-to-b from-red-600/80 to-red-800/80 rounded transform -skew-y-3 shadow-lg">
-                    {/* Perforations */}
+                  <div className="absolute inset-0 bg-gradient-to-b from-purple-600/80 to-pink-600/80 rounded transform -skew-y-3 shadow-lg">
                     <div className="absolute top-1 left-1/2 transform -translate-x-1/2 w-3 h-1 bg-white/30 rounded-full" />
                     <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-3 h-3 bg-white/20 rounded-full" />
                     <div className="absolute bottom-1 left-1/2 transform -translate-x-1/2 w-3 h-1 bg-white/30 rounded-full" />
-
-                    {/* Frame Number */}
                     <div className="absolute bottom-0 right-1 text-[4px] sm:text-[6px] text-white/40">
                       {String(i + 1).padStart(2, '0')}
                     </div>
                   </div>
-                </div>
+                </motion.div>
               ))}
             </div>
 
             {/* Right Reel */}
             <div className="relative w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20">
-              <div className="absolute inset-0 border-2 border-red-600/30 rounded-full animate-spin-slow" style={{ animationDirection: 'reverse' }} />
-              <div className="absolute inset-2 border-2 border-red-600/50 rounded-full animate-spin-slower" style={{ animationDirection: 'reverse' }} />
-              <div className="absolute inset-4 border-2 border-red-600 rounded-full animate-spin" style={{ animationDirection: 'reverse' }} />
+              <motion.div
+                className="absolute inset-0 border-2 border-purple-600/30 rounded-full"
+                animate={{ rotate: -360 }}
+                transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+              />
+              <motion.div
+                className="absolute inset-2 border-2 border-purple-600/50 rounded-full"
+                animate={{ rotate: 360 }}
+                transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+              />
+              <motion.div
+                className="absolute inset-4 border-2 border-purple-600 rounded-full"
+                animate={{ rotate: -360 }}
+                transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+              />
               <div className="absolute inset-0 flex items-center justify-center">
-                <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-red-600 rounded-full animate-ping" />
+                <motion.div
+                  className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-purple-600 rounded-full"
+                  animate={{ scale: [1, 1.5, 1] }}
+                  transition={{ duration: 1, repeat: Infinity }}
+                />
               </div>
             </div>
-          </div>
+          </motion.div>
 
           {/* Progress Section */}
-          <div className="max-w-xs sm:max-w-sm mx-auto">
-            {/* Progress Bar */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.8, duration: 0.5 }}
+            className="max-w-xs sm:max-w-sm mx-auto"
+          >
+            {/* Progress Bar with Glow */}
             <div className="relative h-0.5 sm:h-1 bg-gray-800 rounded-full overflow-hidden">
-              <div
-                className="absolute inset-0 bg-gradient-to-r from-red-600 via-red-500 to-red-600 rounded-full"
-                style={{
-                  width: `${progress}%`,
-                  transition: 'width 0.3s ease-out',
-                  boxShadow: '0 0 20px rgba(229,9,20,0.5)',
-                }}
+              <motion.div
+                className="absolute inset-0 bg-gradient-to-r from-purple-600 via-pink-600 to-purple-600 rounded-full"
+                style={{ width: `${Math.min(progress, 100)}%` }}
+                transition={{ duration: 0.3 }}
               />
-
-              {/* Progress Glow */}
-              <div
-                className="absolute inset-0 bg-red-600/20 blur-md"
-                style={{
-                  width: `${progress}%`,
-                }}
+              <motion.div
+                className="absolute inset-0 bg-purple-600/30 blur-sm"
+                style={{ width: `${Math.min(progress, 100)}%` }}
+                transition={{ duration: 0.3 }}
               />
             </div>
 
             {/* Progress Info */}
             <div className="flex justify-between items-center mt-2 sm:mt-3">
               <div className="flex items-center gap-1 sm:gap-2">
-                <div className="w-1 h-1 sm:w-1.5 sm:h-1.5 bg-red-600 rounded-full animate-pulse" />
-                <span className="text-[8px] sm:text-xs text-gray-600 tracking-wider">
-                  LOADING
+                <motion.div
+                  className="w-1 h-1 sm:w-1.5 sm:h-1.5 bg-purple-600 rounded-full"
+                  animate={{ scale: [1, 1.5, 1] }}
+                  transition={{ duration: 0.8, repeat: Infinity }}
+                />
+                <span className="text-[8px] sm:text-xs text-gray-500 tracking-wider">
+                  LOADING EXPERIENCE
                 </span>
               </div>
-              <span className="text-[8px] sm:text-xs font-mono text-red-500">
+              <motion.span
+                className="text-[8px] sm:text-xs font-mono text-purple-500"
+                animate={{ opacity: [0.5, 1, 0.5] }}
+                transition={{ duration: 1, repeat: Infinity }}
+              >
                 {Math.floor(progress)}%
-              </span>
+              </motion.span>
             </div>
 
             {/* Loading Dots */}
-            <div className="flex justify-center gap-1 mt-4 sm:mt-6">
+            <div className="flex justify-center gap-1 mt-3 sm:mt-4">
               {[...Array(3)].map((_, i) => (
-                <div
+                <motion.div
                   key={i}
-                  className="w-1 h-1 sm:w-1.5 sm:h-1.5 bg-red-600/50 rounded-full"
-                  style={{
-                    animation: 'loadingDot 1.4s ease-in-out infinite',
-                    animationDelay: `${i * 0.2}s`,
+                  className="w-1 h-1 sm:w-1.5 sm:h-1.5 bg-purple-600/50 rounded-full"
+                  animate={{
+                    scale: [1, 1.5, 1],
+                    opacity: [0.5, 1, 0.5]
+                  }}
+                  transition={{
+                    duration: 1.4,
+                    repeat: Infinity,
+                    delay: i * 0.2
                   }}
                 />
               ))}
             </div>
 
-            {/* Film Icons */}
-            <div className="flex justify-center gap-2 sm:gap-3 mt-4 sm:mt-6 text-gray-700">
-              <span className="text-xs sm:text-sm animate-bounce" style={{ animationDelay: '0s' }}>🎬</span>
-              <span className="text-xs sm:text-sm animate-bounce" style={{ animationDelay: '0.2s' }}>🎥</span>
-              <span className="text-xs sm:text-sm animate-bounce" style={{ animationDelay: '0.4s' }}>🍿</span>
-              <span className="text-xs sm:text-sm animate-bounce" style={{ animationDelay: '0.6s' }}>🎞️</span>
-              <span className="text-xs sm:text-sm animate-bounce" style={{ animationDelay: '0.8s' }}>✨</span>
-            </div>
-          </div>
+            {/* Animated Icons */}
+            <motion.div
+              className="flex justify-center gap-2 sm:gap-3 mt-4 sm:mt-6 text-gray-700"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 1 }}
+            >
+              {[
+                { icon: "🎬", delay: 0 },
+                { icon: "🎥", delay: 0.2 },
+                { icon: "🍿", delay: 0.4 },
+                { icon: "🎞️", delay: 0.6 },
+                { icon: "✨", delay: 0.8 }
+              ].map((item, index) => (
+                <motion.span
+                  key={index}
+                  className="text-xs sm:text-sm"
+                  animate={{
+                    y: [0, -8, 0],
+                    rotate: [0, 10, 0]
+                  }}
+                  transition={{
+                    duration: 1.5,
+                    repeat: Infinity,
+                    delay: item.delay,
+                    ease: "easeInOut"
+                  }}
+                >
+                  {item.icon}
+                </motion.span>
+              ))}
+            </motion.div>
+          </motion.div>
+
+          {/* Tagline Rotation Text */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 1.2 }}
+            className="mt-6 sm:mt-8"
+          >
+            <p className="text-[10px] sm:text-xs text-gray-600 max-w-md mx-auto">
+              Experience the ultimate streaming destination with the latest movies, series, and exclusive content
+            </p>
+          </motion.div>
         </div>
 
         {/* Bottom Credits */}
-        <div className="absolute bottom-4 sm:bottom-6 left-0 right-0 text-center">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 1.4, duration: 0.5 }}
+          className="absolute bottom-4 sm:bottom-6 left-0 right-0 text-center"
+        >
           <p className="text-[6px] sm:text-[8px] text-gray-700 tracking-[0.3em] uppercase">
-            PREMIUM CINEMATIC EXPERIENCE
+            PREMIUM CINEMATIC STREAMING PLATFORM
           </p>
           <p className="text-[4px] sm:text-[6px] text-gray-800 mt-1">
-            © 2024 CINEMAX STUDIOS. ALL RIGHTS RESERVED.
+            © 2024 AGASOBANUYECINEVA. ALL RIGHTS RESERVED.
           </p>
-        </div>
+        </motion.div>
       </div>
 
       {/* CSS Animations */}
       <style>{`
-        @keyframes filmSlide {
-          0% { background-position: 0 0; }
-          100% { background-position: 70px 0; }
-        }
-        
         @keyframes spin-slow {
           from { transform: rotate(0deg); }
           to { transform: rotate(360deg); }
-        }
-        
-        @keyframes spin-slower {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(-360deg); }
-        }
-        
-        @keyframes filmStrip {
-          0%, 100% { transform: skewY(-3deg) translateY(0); }
-          50% { transform: skewY(-3deg) translateY(-5px); }
-        }
-        
-        @keyframes loadingDot {
-          0%, 60%, 100% { transform: scale(1); opacity: 0.5; }
-          30% { transform: scale(1.5); opacity: 1; }
-        }
-        
-        @keyframes pulse-slow {
-          0%, 100% { opacity: 0.2; transform: scale(1); }
-          50% { opacity: 0.3; transform: scale(1.1); }
-        }
-        
-        @keyframes glitch {
-          0% { transform: translate(0); }
-          20% { transform: translate(-2px, 2px); }
-          40% { transform: translate(2px, -2px); }
-          60% { transform: translate(-2px, -2px); }
-          80% { transform: translate(2px, 2px); }
-          100% { transform: translate(0); }
         }
         
         @keyframes grain {
@@ -348,36 +559,30 @@ const CinematicLoading = () => {
           90% { transform: translate(-1%, -2%); }
         }
         
-        @keyframes fade-in {
-          from { opacity: 0; transform: translateY(10px); }
-          to { opacity: 1; transform: translateY(0); }
+        @keyframes glitch {
+          0% { transform: translate(0); }
+          20% { transform: translate(-2px, 2px); }
+          40% { transform: translate(2px, -2px); }
+          60% { transform: translate(-2px, -2px); }
+          80% { transform: translate(2px, 2px); }
+          100% { transform: translate(0); }
         }
         
         .animate-spin-slow {
           animation: spin-slow 3s linear infinite;
         }
         
-        .animate-spin-slower {
-          animation: spin-slower 4s linear infinite;
-        }
-        
-        .animate-pulse-slow {
-          animation: pulse-slow 3s ease-in-out infinite;
-        }
-        
         .animate-glitch {
           animation: glitch 0.3s ease-in-out;
-        }
-        
-        .animate-fade-in {
-          animation: fade-in 1s ease-out forwards;
         }
       `}</style>
     </div>
   );
 };
 
+// [Rest of your Movies component code remains exactly the same]
 export default function Movies() {
+  // ... (keep all your existing Movies component code)
   const {
     movies = [],
     episodes = [],
@@ -939,7 +1144,7 @@ export default function Movies() {
                 {imageLoading && index === currentHeroSlide && (
                   <div className="absolute inset-0 flex items-center justify-center bg-gray-900">
                     <div className="text-center">
-                      <FaSpinner className="text-red-600 text-3xl animate-spin mb-2" />
+                      <FaSpinner className="text-purple-600 text-3xl animate-spin mb-2" />
                       <p className="text-gray-400 text-xs">Loading...</p>
                     </div>
                   </div>
@@ -966,7 +1171,7 @@ export default function Movies() {
                   ? "bg-gradient-to-r from-purple-600 to-pink-600"
                   : currentHeroItem?.type === "series"
                     ? "bg-gradient-to-r from-purple-600 to-pink-600"
-                    : "bg-gradient-to-r from-red-600 to-orange-600"
+                    : "bg-gradient-to-r from-purple-600 to-pink-600"
                   }`}>
                   {isSeriesWithNewEpisode ? "SERIES" : currentHeroItem?.type === "series" ? "SERIES" : "MOVIE"}
                 </span>
@@ -1003,7 +1208,7 @@ export default function Movies() {
                   ? "bg-gradient-to-r from-purple-600 to-pink-600"
                   : currentHeroItem?.type === "series"
                     ? "bg-gradient-to-r from-purple-600 to-pink-600"
-                    : "bg-gradient-to-r from-red-600 to-orange-600"
+                    : "bg-gradient-to-r from-purple-600 to-pink-600"
                   }`}>
                   {isSeriesWithNewEpisode ? (
                     <><FaTv className="inline mr-1 text-[8px]" /> SERIES</>
@@ -1078,7 +1283,7 @@ export default function Movies() {
               <div className="flex sm:hidden gap-2">
                 <button
                   onClick={handleHeroPlayClick}
-                  className="px-4 py-2 bg-gradient-to-r from-red-600 to-red-700 rounded-lg text-white text-xs font-semibold flex items-center gap-1 min-w-[70px] justify-center"
+                  className="px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg text-white text-xs font-semibold flex items-center gap-1 min-w-[70px] justify-center"
                 >
                   <FaPlay className="text-[10px]" />
                   <span className="text-[10px]">{isSeriesWithNewEpisode ? 'Latest' : 'Play'}</span>
@@ -1095,7 +1300,7 @@ export default function Movies() {
               <div className="hidden sm:flex gap-3">
                 <button
                   onClick={handleHeroPlayClick}
-                  className="px-6 py-3 sm:px-8 sm:py-4 bg-gradient-to-r from-red-600 to-red-700 rounded-lg text-white text-xs sm:text-sm font-semibold flex items-center gap-2 min-w-[90px] sm:min-w-[100px] justify-center shadow-lg hover:from-red-700 hover:to-red-800 transition-all duration-300"
+                  className="px-6 py-3 sm:px-8 sm:py-4 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg text-white text-xs sm:text-sm font-semibold flex items-center gap-2 min-w-[90px] sm:min-w-[100px] justify-center shadow-lg hover:from-purple-700 hover:to-pink-700 transition-all duration-300"
                 >
                   <FaPlay className="text-xs sm:text-sm" />
                   <span>{isSeriesWithNewEpisode ? 'Watch Latest' : 'Play'}</span>
@@ -1116,7 +1321,7 @@ export default function Movies() {
             <button
               onClick={() => setHeroContentType("all")}
               className={`px-2 py-1 sm:px-3 sm:py-1.5 rounded-full text-[8px] sm:text-xs font-medium ${heroContentType === "all"
-                ? 'bg-red-600 text-white'
+                ? 'bg-purple-600 text-white'
                 : 'bg-black/50 text-gray-300 hover:bg-black/70'
                 }`}
             >
@@ -1125,7 +1330,7 @@ export default function Movies() {
             <button
               onClick={() => setHeroContentType("movies")}
               className={`px-2 py-1 sm:px-3 sm:py-1.5 rounded-full text-[8px] sm:text-xs font-medium ${heroContentType === "movies"
-                ? 'bg-red-600 text-white'
+                ? 'bg-purple-600 text-white'
                 : 'bg-black/50 text-gray-300 hover:bg-black/70'
                 }`}
             >
@@ -1155,7 +1360,7 @@ export default function Movies() {
                 className="p-1 sm:p-2 -m-1 sm:-m-2 group/dot"
               >
                 <span className={`block transition-all duration-300 rounded-full ${index === currentHeroSlide
-                  ? 'w-3 sm:w-4 md:w-6 h-0.5 sm:h-1 md:h-1.5 bg-red-600'
+                  ? 'w-3 sm:w-4 md:w-6 h-0.5 sm:h-1 md:h-1.5 bg-purple-600'
                   : 'w-0.5 sm:w-1 md:w-1.5 h-0.5 sm:h-1 md:h-1.5 bg-gray-500 group-hover/dot:bg-gray-300'
                   }`} />
               </button>
@@ -1178,9 +1383,9 @@ export default function Movies() {
             className="hidden sm:block absolute left-2 sm:left-4 top-1/2 transform -translate-y-1/2 z-30 group/arrow"
           >
             <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-r from-red-600 to-red-700 rounded-full blur-md opacity-0 group-hover/arrow:opacity-50 transition-opacity duration-300" />
-              <div className="relative w-10 h-10 sm:w-12 sm:h-12 bg-black/60 backdrop-blur-md rounded-full flex items-center justify-center border border-white/20 group-hover/arrow:border-red-500/50 transition-all duration-300 group-hover/arrow:scale-110">
-                <FaChevronLeft className="text-white text-sm sm:text-base group-hover/arrow:text-red-400 transition-colors duration-300" />
+              <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-pink-600 rounded-full blur-md opacity-0 group-hover/arrow:opacity-50 transition-opacity duration-300" />
+              <div className="relative w-10 h-10 sm:w-12 sm:h-12 bg-black/60 backdrop-blur-md rounded-full flex items-center justify-center border border-white/20 group-hover/arrow:border-purple-500/50 transition-all duration-300 group-hover/arrow:scale-110">
+                <FaChevronLeft className="text-white text-sm sm:text-base group-hover/arrow:text-purple-400 transition-colors duration-300" />
               </div>
             </div>
           </button>
@@ -1190,22 +1395,22 @@ export default function Movies() {
             className="hidden sm:block absolute right-2 sm:right-4 top-1/2 transform -translate-y-1/2 z-30 group/arrow"
           >
             <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-l from-red-600 to-red-700 rounded-full blur-md opacity-0 group-hover/arrow:opacity-50 transition-opacity duration-300" />
-              <div className="relative w-10 h-10 sm:w-12 sm:h-12 bg-black/60 backdrop-blur-md rounded-full flex items-center justify-center border border-white/20 group-hover/arrow:border-red-500/50 transition-all duration-300 group-hover/arrow:scale-110">
-                <FaChevronRight className="text-white text-sm sm:text-base group-hover/arrow:text-red-400 transition-colors duration-300" />
+              <div className="absolute inset-0 bg-gradient-to-l from-purple-600 to-pink-600 rounded-full blur-md opacity-0 group-hover/arrow:opacity-50 transition-opacity duration-300" />
+              <div className="relative w-10 h-10 sm:w-12 sm:h-12 bg-black/60 backdrop-blur-md rounded-full flex items-center justify-center border border-white/20 group-hover/arrow:border-purple-500/50 transition-all duration-300 group-hover/arrow:scale-110">
+                <FaChevronRight className="text-white text-sm sm:text-base group-hover/arrow:text-purple-400 transition-colors duration-300" />
               </div>
             </div>
           </button>
 
           {/* Slide counter */}
           <div className="absolute top-2 right-2 sm:top-4 sm:right-4 z-20 bg-black/40 px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-full text-[8px] sm:text-xs text-white border border-white/10">
-            <span className="text-red-400">{currentHeroSlide + 1}</span>/{filteredHeroContent.length}
+            <span className="text-purple-400">{currentHeroSlide + 1}</span>/{filteredHeroContent.length}
           </div>
 
           {/* Progress bar */}
           <div className="absolute bottom-0 left-0 right-0 h-0.5 sm:h-1 bg-gray-800/50 z-20">
             <div
-              className="h-full bg-gradient-to-r from-red-600 to-red-400 transition-all duration-300"
+              className="h-full bg-gradient-to-r from-purple-600 to-pink-400 transition-all duration-300"
               style={{ width: `${((currentHeroSlide + 1) / filteredHeroContent.length) * 100}%` }}
             />
           </div>
@@ -1354,7 +1559,7 @@ export default function Movies() {
           <div className="flex flex-col md:flex-row gap-2 sm:gap-3">
             {/* Search Input */}
             <div className="flex-1 relative">
-              <FaSearch className={`absolute left-3 top-1/2 transform -translate-y-1/2 text-xs sm:text-sm ${isSearchFocused ? 'text-red-400' : 'text-gray-400'
+              <FaSearch className={`absolute left-3 top-1/2 transform -translate-y-1/2 text-xs sm:text-sm ${isSearchFocused ? 'text-purple-400' : 'text-gray-400'
                 }`} />
               <input
                 type="text"
@@ -1363,7 +1568,7 @@ export default function Movies() {
                 onFocus={() => setIsSearchFocused(true)}
                 onBlur={() => setIsSearchFocused(false)}
                 placeholder="Search movies..."
-                className="w-full pl-8 sm:pl-9 pr-8 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white text-xs sm:text-sm focus:outline-none focus:border-red-500"
+                className="w-full pl-8 sm:pl-9 pr-8 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white text-xs sm:text-sm focus:outline-none focus:border-purple-500"
               />
               {globalSearchQuery && (
                 <button
@@ -1380,7 +1585,7 @@ export default function Movies() {
               onClick={() => setShowFilters(!showFilters)}
               className="flex items-center justify-center gap-2 px-3 sm:px-4 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-white text-xs sm:text-sm"
             >
-              <FaFilter className={showFilters ? 'text-red-400' : ''} />
+              <FaFilter className={showFilters ? 'text-purple-400' : ''} />
               Filters
             </button>
 
@@ -1388,7 +1593,7 @@ export default function Movies() {
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="px-3 sm:px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white text-xs sm:text-sm focus:outline-none focus:border-red-500"
+              className="px-3 sm:px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white text-xs sm:text-sm focus:outline-none focus:border-purple-500"
             >
               <option value="popular">Popular</option>
               <option value="rating">Top Rated</option>
@@ -1414,7 +1619,7 @@ export default function Movies() {
                   <div className="space-y-1 max-h-32 overflow-y-auto">
                     <button
                       onClick={() => setSelectedCategory("all")}
-                      className={`w-full text-left px-2 py-1 rounded text-[8px] sm:text-xs ${selectedCategory === "all" ? 'bg-red-600 text-white' : 'bg-gray-800 text-gray-300'
+                      className={`w-full text-left px-2 py-1 rounded text-[8px] sm:text-xs ${selectedCategory === "all" ? 'bg-purple-600 text-white' : 'bg-gray-800 text-gray-300'
                         }`}
                     >
                       All
@@ -1451,13 +1656,13 @@ export default function Movies() {
       {/* Search Results Indicator */}
       {globalSearchQuery && (
         <div className="container mx-auto px-4 mb-3 sm:mb-4">
-          <div className="bg-blue-900/20 rounded-lg border border-blue-800/30 p-2 sm:p-3">
+          <div className="bg-purple-900/20 rounded-lg border border-purple-800/30 p-2 sm:p-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <FaSearch className="text-blue-400 text-xs sm:text-sm" />
+                <FaSearch className="text-purple-400 text-xs sm:text-sm" />
                 <div>
                   <h3 className="text-xs sm:text-sm font-semibold text-white">
-                    Results: <span className="text-blue-400">"{globalSearchQuery}"</span>
+                    Results: <span className="text-purple-400">"{globalSearchQuery}"</span>
                   </h3>
                   <p className="text-[8px] sm:text-xs text-gray-400">
                     Found {filteredMovies.length} movie{filteredMovies.length !== 1 ? 's' : ''}
@@ -1480,10 +1685,10 @@ export default function Movies() {
         <section className="container mx-auto px-4 mb-4 sm:mb-6">
           <div className="flex items-center justify-between mb-2 sm:mb-3">
             <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-white flex items-center gap-2">
-              <FaFire className="text-red-500 text-sm sm:text-base" />
+              <FaFire className="text-purple-500 text-sm sm:text-base" />
               <span className="hidden xs:inline">Featured Movies</span>
               <span className="xs:hidden">Featured</span>
-              <span className="text-[8px] sm:text-xs text-red-400 ml-1 sm:ml-2 bg-red-900/30 px-1.5 sm:px-2 py-0.5 rounded-full">
+              <span className="text-[8px] sm:text-xs text-purple-400 ml-1 sm:ml-2 bg-purple-900/30 px-1.5 sm:px-2 py-0.5 rounded-full">
                 TOP
               </span>
             </h2>
@@ -1543,7 +1748,7 @@ export default function Movies() {
             <button
               onClick={() => setSelectedCategory("all")}
               className={`px-2 sm:px-3 py-1 sm:py-1.5 rounded-full text-[8px] sm:text-xs font-medium whitespace-nowrap ${selectedCategory === "all"
-                ? 'bg-red-600 text-white'
+                ? 'bg-purple-600 text-white'
                 : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
                 }`}
             >
@@ -1588,7 +1793,7 @@ export default function Movies() {
             {globalSearchQuery && (
               <button
                 onClick={handleClearSearch}
-                className="px-3 sm:px-4 py-1.5 sm:py-2 bg-red-600 rounded-lg text-white text-[8px] sm:text-xs font-medium"
+                className="px-3 sm:px-4 py-1.5 sm:py-2 bg-purple-600 rounded-lg text-white text-[8px] sm:text-xs font-medium"
               >
                 Clear Search
               </button>
@@ -1719,7 +1924,7 @@ export default function Movies() {
                     }
                     setShowQuickView(false);
                   }}
-                  className="flex-1 bg-red-600 py-1.5 sm:py-2 rounded-lg text-white text-[8px] sm:text-xs font-semibold flex items-center justify-center gap-1"
+                  className="flex-1 bg-purple-600 py-1.5 sm:py-2 rounded-lg text-white text-[8px] sm:text-xs font-semibold flex items-center justify-center gap-1"
                 >
                   <FaPlay className="text-[6px] sm:text-xs" /> {quickViewMovie.latestEpisode ? 'Watch Latest' : 'Watch'}
                 </button>
