@@ -1191,6 +1191,7 @@ const Player = () => {
                                         <FaStar className="text-xs" /> {movie.rating}
                                     </span>
                                 )}
+                                {/* Translator Badge - Added next to rating */}
                                 {movie.translator && (
                                     <span className="px-2 py-0.5 bg-green-600 rounded-full flex items-center gap-0.5 text-xs">
                                         <FaLanguage /> {movie.translator}

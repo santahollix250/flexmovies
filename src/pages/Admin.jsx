@@ -82,7 +82,7 @@ function Admin({ onLogout }) {
     }
   };
 
-  // Empty movie/series form
+  // Empty movie/series form - UPDATED with translator and nation fields
   const emptyMovie = {
     title: "",
     description: "",
@@ -93,8 +93,8 @@ function Admin({ onLogout }) {
     videoUrl: "",
     streamLink: "",
     download_link: "",
-    nation: "",
-    translator: "",
+    nation: "",           // Country field
+    translator: "",       // Translator field
     totalSeasons: "",
     totalEpisodes: "",
     videoType: VIDEO_PLATFORMS.VIMEO,
@@ -125,7 +125,7 @@ function Admin({ onLogout }) {
     streamLink: ""
   };
 
-  // Empty episode form - UPDATED to properly handle video fields
+  // Empty episode form
   const emptyEpisode = {
     id: null,
     seasonNumber: "1",
@@ -446,7 +446,7 @@ function Admin({ onLogout }) {
     }
   };
 
-  // Load episodes when series is selected - UPDATED to not force series video URL
+  // Load episodes when series is selected
   useEffect(() => {
     if (selectedSeries && typeof getEpisodesBySeries === 'function') {
       const loadedEpisodes = getEpisodesBySeries(selectedSeries.id) || [];
@@ -467,10 +467,9 @@ function Admin({ onLogout }) {
 
         // Set next episode number but don't force video URL
         setEpisodeForm(prev => ({
-          ...emptyEpisode, // Reset to empty episode
+          ...emptyEpisode,
           seasonNumber: (lastEpisode.seasonNumber || 1).toString(),
           episodeNumber: (parseInt(lastEpisode.episodeNumber || 0) + 1).toString(),
-          // Don't set videoUrl - let user enter their own
         }));
       } else {
         // First episode - completely empty form
@@ -641,7 +640,7 @@ function Admin({ onLogout }) {
     }
   }
 
-  // Start editing movie/series
+  // Start editing movie/series - UPDATED to load translator and nation
   function startEdit(movie) {
     if (!movie) return;
 
@@ -675,7 +674,7 @@ function Admin({ onLogout }) {
     addNotification("info", `Editing: ${movie.title}`);
   }
 
-  // Start editing episode - UPDATED to properly load episode data
+  // Start editing episode
   function startEditEpisode(episode) {
     if (!episode) return;
 
@@ -687,7 +686,7 @@ function Admin({ onLogout }) {
       title: episode.title || "",
       description: episode.description || "",
       duration: episode.duration || "",
-      videoUrl: episode.videoUrl || "", // Use episode's own video URL
+      videoUrl: episode.videoUrl || "",
       download_link: episode.download_link || "",
       thumbnail: episode.thumbnail || "",
       airDate: episode.airDate || new Date().toISOString().split('T')[0],
@@ -704,7 +703,7 @@ function Admin({ onLogout }) {
   // Cancel episode editing
   function cancelEpisodeEdit() {
     setEditingEpisode(null);
-    setEpisodeForm(emptyEpisode); // Reset to empty
+    setEpisodeForm(emptyEpisode);
     setShowEpisodeForm(false);
   }
 
@@ -741,7 +740,7 @@ function Admin({ onLogout }) {
     addNotification("info", "Form reset");
   }
 
-  // Add or update movie/series
+  // Add or update movie/series - UPDATED to include translator and nation
   async function handleAddOrUpdate() {
     if (!form.title) {
       addNotification("error", "Title is required");
@@ -761,6 +760,7 @@ function Admin({ onLogout }) {
       }
     }
 
+    // Prepare final data - ensure translator and nation are included
     const finalData = {
       title: form.title,
       description: form.description,
@@ -771,8 +771,8 @@ function Admin({ onLogout }) {
       videoUrl: form.videoUrl || "",
       streamLink: form.streamLink || "",
       download_link: form.download_link || "",
-      nation: form.nation || "",
-      translator: form.translator || "",
+      nation: form.nation || "",           // Country field
+      translator: form.translator || "",   // Translator field
       videoType: form.videoType,
       videoId: form.videoId || "",
       embedCode: form.embedCode || "",
@@ -826,7 +826,7 @@ function Admin({ onLogout }) {
     }
   }
 
-  // Select series for episode management - UPDATED
+  // Select series for episode management
   function selectSeriesForEpisodes(series) {
     setSelectedSeries(series);
     setActiveTab("episodes");
@@ -1055,7 +1055,7 @@ function Admin({ onLogout }) {
     }
   }
 
-  // Add or update episode - UPDATED to properly handle video URLs
+  // Add or update episode
   async function handleAddOrUpdateEpisode() {
     if (!selectedSeries) {
       addNotification("error", "No series selected");
@@ -1313,7 +1313,7 @@ function Admin({ onLogout }) {
           </div>
         </div>
 
-        {/* CONTENT MANAGEMENT TAB */}
+        {/* CONTENT MANAGEMENT TAB - UPDATED with translator and nation fields */}
         {activeTab === "series" && (
           <div className="space-y-4 sm:space-y-6">
             {/* Form */}
@@ -1474,7 +1474,7 @@ function Admin({ onLogout }) {
                 )}
               </div>
 
-              {/* Basic Fields */}
+              {/* Basic Fields - UPDATED with translator and nation */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-4 sm:mb-6">
                 <div className="sm:col-span-2">
                   <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-1 sm:mb-2">
@@ -1673,6 +1673,34 @@ function Admin({ onLogout }) {
                   />
                 </div>
 
+                {/* Translator Field - NEW */}
+                <div>
+                  <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-1 sm:mb-2 flex items-center gap-1 sm:gap-2">
+                    <FaLanguage className="text-green-400" /> Translator
+                  </label>
+                  <input
+                    name="translator"
+                    value={form.translator}
+                    onChange={handleChange}
+                    placeholder="e.g., John Doe"
+                    className="w-full p-2 sm:p-3 bg-gray-800/70 border border-gray-700 rounded-xl text-xs sm:text-sm"
+                  />
+                </div>
+
+                {/* Nation/Country Field - NEW */}
+                <div>
+                  <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-1 sm:mb-2 flex items-center gap-1 sm:gap-2">
+                    <FaGlobe className="text-blue-400" /> Country / Nation
+                  </label>
+                  <input
+                    name="nation"
+                    value={form.nation}
+                    onChange={handleChange}
+                    placeholder="e.g., USA, UK, Japan"
+                    className="w-full p-2 sm:p-3 bg-gray-800/70 border border-gray-700 rounded-xl text-xs sm:text-sm"
+                  />
+                </div>
+
                 <div className="sm:col-span-2">
                   <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-1 sm:mb-2">
                     Description
@@ -1683,6 +1711,20 @@ function Admin({ onLogout }) {
                     onChange={handleChange}
                     placeholder="Enter description"
                     rows="2"
+                    className="w-full p-2 sm:p-3 bg-gray-800/70 border border-gray-700 rounded-xl text-xs sm:text-sm"
+                  />
+                </div>
+
+                {/* Download Link Field */}
+                <div className="sm:col-span-2">
+                  <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-1 sm:mb-2 flex items-center gap-1 sm:gap-2">
+                    <FaDownload className="text-green-400" /> Download Link (Optional)
+                  </label>
+                  <input
+                    name="download_link"
+                    value={form.download_link}
+                    onChange={handleChange}
+                    placeholder="https://example.com/download/movie.mp4"
                     className="w-full p-2 sm:p-3 bg-gray-800/70 border border-gray-700 rounded-xl text-xs sm:text-sm"
                   />
                 </div>
@@ -1709,7 +1751,7 @@ function Admin({ onLogout }) {
               </div>
             </div>
 
-            {/* Content List */}
+            {/* Content List - UPDATED to show translator and nation badges */}
             <div>
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
                 <h2 className="text-lg sm:text-xl font-bold flex items-center gap-2">
@@ -1813,6 +1855,18 @@ function Admin({ onLogout }) {
                               >
                                 {platform.name}
                               </span>
+                              {/* Translator Badge */}
+                              {movie.translator && (
+                                <span className="px-1.5 py-0.5 rounded-full text-[8px] sm:text-[10px] bg-green-600/20 text-green-400 flex items-center gap-0.5">
+                                  <FaLanguage className="text-[6px] sm:text-[8px]" /> {movie.translator}
+                                </span>
+                              )}
+                              {/* Nation Badge */}
+                              {movie.nation && (
+                                <span className="px-1.5 py-0.5 rounded-full text-[8px] sm:text-[10px] bg-blue-600/20 text-blue-400 flex items-center gap-0.5">
+                                  <FaGlobe className="text-[6px] sm:text-[8px]" /> {movie.nation}
+                                </span>
+                              )}
                               {movie.type === 'series' && episodeCount > 0 && (
                                 <span className="px-1.5 py-0.5 rounded-full text-[8px] sm:text-[10px] bg-blue-500/20 text-blue-400">
                                   {episodeCount} eps
@@ -1836,7 +1890,7 @@ function Admin({ onLogout }) {
           </div>
         )}
 
-        {/* EPISODES TAB - UPDATED with proper video URL handling */}
+        {/* EPISODES TAB */}
         {activeTab === "episodes" && (
           <div className="space-y-4 sm:space-y-6">
             <div className="bg-gradient-to-br from-gray-800/50 to-gray-900/50 backdrop-blur-lg rounded-xl border border-gray-700/50 p-4 sm:p-6">
@@ -1879,7 +1933,7 @@ function Admin({ onLogout }) {
                 </div>
               ) : (
                 <>
-                  {/* Episode Form - UPDATED with proper video URL fields */}
+                  {/* Episode Form */}
                   {(showEpisodeForm || editingEpisode) && (
                     <div className="mb-4 sm:mb-6 p-4 bg-gray-800/50 rounded-xl">
                       <h3 className="text-sm sm:text-lg font-bold mb-3 sm:mb-4">
@@ -1950,7 +2004,7 @@ function Admin({ onLogout }) {
                           />
                         </div>
 
-                        {/* Video URL Field - Now fully editable */}
+                        {/* Video URL Field */}
                         <div className="sm:col-span-2">
                           <label className="block text-xs font-medium text-gray-300 mb-1">
                             Video URL * {episodeForm.videoType === VIDEO_PLATFORMS.DIRECT ? '(Direct URL)' : ''}
