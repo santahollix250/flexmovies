@@ -13,6 +13,59 @@ import {
   FaArrowLeft, FaLayerGroup, FaPlusCircle, FaCloudUploadAlt
 } from "react-icons/fa";
 
+// Country data with flags
+const countries = [
+  { code: "US", name: "United States", flag: "🇺🇸" },
+  { code: "GB", name: "United Kingdom", flag: "🇬🇧" },
+  { code: "CA", name: "Canada", flag: "🇨🇦" },
+  { code: "AU", name: "Australia", flag: "🇦🇺" },
+  { code: "IN", name: "India", flag: "🇮🇳" },
+  { code: "JP", name: "Japan", flag: "🇯🇵" },
+  { code: "KR", name: "South Korea", flag: "🇰🇷" },
+  { code: "CN", name: "China", flag: "🇨🇳" },
+  { code: "FR", name: "France", flag: "🇫🇷" },
+  { code: "DE", name: "Germany", flag: "🇩🇪" },
+  { code: "IT", name: "Italy", flag: "🇮🇹" },
+  { code: "ES", name: "Spain", flag: "🇪🇸" },
+  { code: "BR", name: "Brazil", flag: "🇧🇷" },
+  { code: "MX", name: "Mexico", flag: "🇲🇽" },
+  { code: "NG", name: "Nigeria", flag: "🇳🇬" },
+  { code: "ZA", name: "South Africa", flag: "🇿🇦" },
+  { code: "EG", name: "Egypt", flag: "🇪🇬" },
+  { code: "SA", name: "Saudi Arabia", flag: "🇸🇦" },
+  { code: "AE", name: "UAE", flag: "🇦🇪" },
+  { code: "TR", name: "Turkey", flag: "🇹🇷" },
+  { code: "RU", name: "Russia", flag: "🇷🇺" },
+  { code: "PK", name: "Pakistan", flag: "🇵🇰" },
+  { code: "BD", name: "Bangladesh", flag: "🇧🇩" },
+  { code: "ID", name: "Indonesia", flag: "🇮🇩" },
+  { code: "MY", name: "Malaysia", flag: "🇲🇾" },
+  { code: "TH", name: "Thailand", flag: "🇹🇭" },
+  { code: "VN", name: "Vietnam", flag: "🇻🇳" },
+  { code: "PH", name: "Philippines", flag: "🇵🇭" },
+  { code: "IR", name: "Iran", flag: "🇮🇷" },
+  { code: "IQ", name: "Iraq", flag: "🇮🇶" },
+  { code: "IL", name: "Israel", flag: "🇮🇱" },
+  { code: "PL", name: "Poland", flag: "🇵🇱" },
+  { code: "NL", name: "Netherlands", flag: "🇳🇱" },
+  { code: "BE", name: "Belgium", flag: "🇧🇪" },
+  { code: "SE", name: "Sweden", flag: "🇸🇪" },
+  { code: "NO", name: "Norway", flag: "🇳🇴" },
+  { code: "DK", name: "Denmark", flag: "🇩🇰" },
+  { code: "FI", name: "Finland", flag: "🇫🇮" },
+  { code: "CH", name: "Switzerland", flag: "🇨🇭" },
+  { code: "AT", name: "Austria", flag: "🇦🇹" },
+  { code: "GR", name: "Greece", flag: "🇬🇷" },
+  { code: "PT", name: "Portugal", flag: "🇵🇹" },
+  { code: "IE", name: "Ireland", flag: "🇮🇪" },
+  { code: "NZ", name: "New Zealand", flag: "🇳🇿" },
+  { code: "AR", name: "Argentina", flag: "🇦🇷" },
+  { code: "CO", name: "Colombia", flag: "🇨🇴" },
+  { code: "CL", name: "Chile", flag: "🇨🇱" },
+  { code: "PE", name: "Peru", flag: "🇵🇪" },
+  { code: "VE", name: "Venezuela", flag: "🇻🇪" },
+];
+
 function Admin({ onLogout }) {
   const context = useContext(MoviesContext);
 
@@ -82,7 +135,7 @@ function Admin({ onLogout }) {
     }
   };
 
-  // Empty movie/series form - UPDATED with translator and nation fields
+  // Empty movie/series form
   const emptyMovie = {
     title: "",
     description: "",
@@ -93,8 +146,8 @@ function Admin({ onLogout }) {
     videoUrl: "",
     streamLink: "",
     download_link: "",
-    nation: "",           // Country field
-    translator: "",       // Translator field
+    nation: "",
+    translator: "",
     totalSeasons: "",
     totalEpisodes: "",
     videoType: VIDEO_PLATFORMS.VIMEO,
@@ -122,7 +175,9 @@ function Admin({ onLogout }) {
     videoType: VIDEO_PLATFORMS.VIMEO,
     videoId: "",
     embedCode: "",
-    streamLink: ""
+    streamLink: "",
+    useMainVideo: true,
+    customVideoUrl: ""
   };
 
   // Empty episode form
@@ -140,7 +195,9 @@ function Admin({ onLogout }) {
     videoType: VIDEO_PLATFORMS.VIMEO,
     videoId: "",
     embedCode: "",
-    videoFile: null
+    videoFile: null,
+    useMainVideo: true,
+    customVideoUrl: ""
   };
 
   // States
@@ -159,6 +216,8 @@ function Admin({ onLogout }) {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadingFile, setUploadingFile] = useState(false);
   const [videoPreviewUrl, setVideoPreviewUrl] = useState("");
+  const [countrySearchTerm, setCountrySearchTerm] = useState("");
+  const [showCountryDropdown, setShowCountryDropdown] = useState(false);
 
   // Image upload states
   const [uploadingPoster, setUploadingPoster] = useState(false);
@@ -183,8 +242,8 @@ function Admin({ onLogout }) {
   const [editingEpisode, setEditingEpisode] = useState(null);
   const [showEpisodeForm, setShowEpisodeForm] = useState(false);
 
-  // Store the series video URL for reference only (not forced)
-  const [seriesVideoUrl, setSeriesVideoUrl] = useState("");
+  // Store the main video URL for reference
+  const [mainVideoUrl, setMainVideoUrl] = useState("");
 
   useEffect(() => {
     setSyncStatus(isOnline ? "Online" : "Offline");
@@ -413,15 +472,19 @@ function Admin({ onLogout }) {
       if (showPartForm) {
         setPartForm(prev => ({
           ...prev,
+          useMainVideo: false,
           videoType: VIDEO_PLATFORMS.DIRECT,
           videoFile: file,
+          customVideoUrl: previewUrl,
           videoUrl: previewUrl
         }));
       } else if (showEpisodeForm || editingEpisode) {
         setEpisodeForm(prev => ({
           ...prev,
+          useMainVideo: false,
           videoType: VIDEO_PLATFORMS.DIRECT,
           videoFile: file,
+          customVideoUrl: previewUrl,
           videoUrl: previewUrl
         }));
       } else {
@@ -453,9 +516,8 @@ function Admin({ onLogout }) {
       const sortedEpisodes = sortEpisodes(loadedEpisodes);
       setSeriesEpisodes(sortedEpisodes);
 
-      // Store series video URL for reference only
       if (selectedSeries.videoUrl) {
-        setSeriesVideoUrl(selectedSeries.videoUrl);
+        setMainVideoUrl(selectedSeries.videoUrl);
       }
 
       if (loadedEpisodes.length > 0) {
@@ -465,15 +527,21 @@ function Admin({ onLogout }) {
           return prevNum > currNum ? prev : current;
         });
 
-        // Set next episode number but don't force video URL
         setEpisodeForm(prev => ({
           ...emptyEpisode,
           seasonNumber: (lastEpisode.seasonNumber || 1).toString(),
           episodeNumber: (parseInt(lastEpisode.episodeNumber || 0) + 1).toString(),
+          useMainVideo: true,
+          customVideoUrl: "",
+          videoUrl: selectedSeries.videoUrl || ""
         }));
       } else {
-        // First episode - completely empty form
-        setEpisodeForm(emptyEpisode);
+        setEpisodeForm({
+          ...emptyEpisode,
+          useMainVideo: true,
+          customVideoUrl: "",
+          videoUrl: selectedSeries.videoUrl || ""
+        });
       }
     }
   }, [selectedSeries, getEpisodesBySeries]);
@@ -497,10 +565,17 @@ function Admin({ onLogout }) {
         }
         setMovieParts(parts.sort((a, b) => a.partNumber - b.partNumber));
 
+        if (selectedMovieForParts.videoUrl) {
+          setMainVideoUrl(selectedMovieForParts.videoUrl);
+        }
+
         setPartForm({
           ...emptyPart,
           partNumber: parts.length + 1,
-          videoType: selectedMovieForParts.videoType || VIDEO_PLATFORMS.VIMEO
+          videoType: selectedMovieForParts.videoType || VIDEO_PLATFORMS.VIMEO,
+          useMainVideo: true,
+          customVideoUrl: "",
+          videoUrl: selectedMovieForParts.videoUrl || ""
         });
       } catch (e) {
         setMovieParts([]);
@@ -560,6 +635,18 @@ function Admin({ onLogout }) {
     setNotifications(prev => prev.filter(n => n.id !== id));
   }
 
+  // Filter countries based on search term
+  const filteredCountries = countries.filter(country =>
+    country.name.toLowerCase().includes(countrySearchTerm.toLowerCase())
+  );
+
+  // Handle country selection
+  const handleCountrySelect = (countryName) => {
+    setForm(prev => ({ ...prev, nation: countryName }));
+    setShowCountryDropdown(false);
+    setCountrySearchTerm("");
+  };
+
   // Form handlers
   function handleChange(e) {
     const { name, value, type, files } = e.target;
@@ -582,13 +669,17 @@ function Admin({ onLogout }) {
         setPartForm((f) => ({
           ...f,
           [name]: value,
-          videoType: detectedPlatform
+          videoType: detectedPlatform,
+          useMainVideo: false,
+          customVideoUrl: value
         }));
       } else if (showEpisodeForm || editingEpisode) {
         setEpisodeForm((f) => ({
           ...f,
           [name]: value,
-          videoType: detectedPlatform
+          videoType: detectedPlatform,
+          useMainVideo: false,
+          customVideoUrl: value
         }));
       } else {
         setForm((f) => ({
@@ -596,6 +687,7 @@ function Admin({ onLogout }) {
           [name]: value,
           videoType: detectedPlatform
         }));
+        setMainVideoUrl(value);
       }
     } else {
       if (showPartForm) {
@@ -616,6 +708,32 @@ function Admin({ onLogout }) {
   function handlePartChange(e) {
     const { name, value } = e.target;
     setPartForm((f) => ({ ...f, [name]: value }));
+  }
+
+  // Toggle use main video for episodes
+  function toggleUseMainVideoForEpisode() {
+    setEpisodeForm(prev => {
+      const newUseMainVideo = !prev.useMainVideo;
+      return {
+        ...prev,
+        useMainVideo: newUseMainVideo,
+        videoUrl: newUseMainVideo ? mainVideoUrl : prev.customVideoUrl || "",
+        videoType: newUseMainVideo ? (selectedSeries?.videoType || VIDEO_PLATFORMS.VIMEO) : prev.videoType
+      };
+    });
+  }
+
+  // Toggle use main video for parts
+  function toggleUseMainVideoForPart() {
+    setPartForm(prev => {
+      const newUseMainVideo = !prev.useMainVideo;
+      return {
+        ...prev,
+        useMainVideo: newUseMainVideo,
+        videoUrl: newUseMainVideo ? mainVideoUrl : prev.customVideoUrl || "",
+        videoType: newUseMainVideo ? (selectedMovieForParts?.videoType || VIDEO_PLATFORMS.VIMEO) : prev.videoType
+      };
+    });
   }
 
   // Toggle image upload method
@@ -640,7 +758,7 @@ function Admin({ onLogout }) {
     }
   }
 
-  // Start editing movie/series - UPDATED to load translator and nation
+  // Start editing movie/series
   function startEdit(movie) {
     if (!movie) return;
 
@@ -662,11 +780,18 @@ function Admin({ onLogout }) {
     setForm({
       ...emptyMovie,
       ...movie,
+      category: movie.category || "",
+      nation: movie.nation || "",
+      translator: movie.translator || "",
       parts: parts
     });
 
+    if (movie.videoUrl) {
+      setMainVideoUrl(movie.videoUrl);
+    }
+
     if (movie.type === 'series') {
-      setSeriesVideoUrl(movie.videoUrl || "");
+      setMainVideoUrl(movie.videoUrl || "");
     }
 
     setPreview(true);
@@ -693,7 +818,9 @@ function Admin({ onLogout }) {
       videoType: episode.videoType || VIDEO_PLATFORMS.VIMEO,
       videoId: episode.videoId || "",
       embedCode: episode.embedCode || "",
-      videoFile: null
+      videoFile: null,
+      useMainVideo: false,
+      customVideoUrl: episode.videoUrl || ""
     });
     setShowEpisodeForm(true);
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -703,7 +830,11 @@ function Admin({ onLogout }) {
   // Cancel episode editing
   function cancelEpisodeEdit() {
     setEditingEpisode(null);
-    setEpisodeForm(emptyEpisode);
+    setEpisodeForm({
+      ...emptyEpisode,
+      useMainVideo: true,
+      videoUrl: mainVideoUrl
+    });
     setShowEpisodeForm(false);
   }
 
@@ -724,7 +855,9 @@ function Admin({ onLogout }) {
     setMovieParts([]);
     setEditingPart(null);
     setShowPartForm(false);
-    setSeriesVideoUrl("");
+    setMainVideoUrl("");
+    setShowCountryDropdown(false);
+    setCountrySearchTerm("");
 
     if (posterPreview) {
       URL.revokeObjectURL(posterPreview);
@@ -740,7 +873,7 @@ function Admin({ onLogout }) {
     addNotification("info", "Form reset");
   }
 
-  // Add or update movie/series - UPDATED to include translator and nation
+  // Add or update movie/series
   async function handleAddOrUpdate() {
     if (!form.title) {
       addNotification("error", "Title is required");
@@ -760,7 +893,6 @@ function Admin({ onLogout }) {
       }
     }
 
-    // Prepare final data - ensure translator and nation are included
     const finalData = {
       title: form.title,
       description: form.description,
@@ -771,8 +903,8 @@ function Admin({ onLogout }) {
       videoUrl: form.videoUrl || "",
       streamLink: form.streamLink || "",
       download_link: form.download_link || "",
-      nation: form.nation || "",           // Country field
-      translator: form.translator || "",   // Translator field
+      nation: form.nation || "",
+      translator: form.translator || "",
       videoType: form.videoType,
       videoId: form.videoId || "",
       embedCode: form.embedCode || "",
@@ -833,11 +965,14 @@ function Admin({ onLogout }) {
     setShowEpisodeForm(false);
     setEditingEpisode(null);
 
-    // Store series video URL for reference only
-    setSeriesVideoUrl(series.videoUrl || "");
+    setMainVideoUrl(series.videoUrl || "");
 
-    // Reset episode form to empty
-    setEpisodeForm(emptyEpisode);
+    setEpisodeForm({
+      ...emptyEpisode,
+      useMainVideo: true,
+      customVideoUrl: "",
+      videoUrl: series.videoUrl || ""
+    });
 
     const loadedEpisodes = getEpisodesBySeries(series.id) || [];
     setSeriesEpisodes(sortEpisodes(loadedEpisodes));
@@ -851,6 +986,8 @@ function Admin({ onLogout }) {
     setActiveTab("parts");
     setShowPartForm(false);
     setEditingPart(null);
+
+    setMainVideoUrl(movie.videoUrl || "");
 
     let parts = [];
     if (movie.download) {
@@ -870,7 +1007,10 @@ function Admin({ onLogout }) {
     setPartForm({
       ...emptyPart,
       partNumber: parts.length + 1,
-      videoType: movie.videoType || VIDEO_PLATFORMS.VIMEO
+      videoType: movie.videoType || VIDEO_PLATFORMS.VIMEO,
+      useMainVideo: true,
+      customVideoUrl: "",
+      videoUrl: movie.videoUrl || ""
     });
 
     addNotification("info", `Managing parts for: ${movie.title}`);
@@ -883,7 +1023,7 @@ function Admin({ onLogout }) {
     setShowEpisodeForm(false);
     setEditingEpisode(null);
     setEpisodeForm(emptyEpisode);
-    setSeriesVideoUrl("");
+    setMainVideoUrl("");
   }
 
   // Go back to movie list
@@ -894,6 +1034,7 @@ function Admin({ onLogout }) {
     setEditingPart(null);
     setPartForm(emptyPart);
     setActiveTab("series");
+    setMainVideoUrl("");
   }
 
   // Start editing part
@@ -915,7 +1056,9 @@ function Admin({ onLogout }) {
       videoType: part.videoType,
       videoId: part.videoId || "",
       embedCode: part.embedCode || "",
-      streamLink: streamLink
+      streamLink: streamLink,
+      useMainVideo: false,
+      customVideoUrl: part.videoUrl
     });
     setShowPartForm(true);
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -927,7 +1070,9 @@ function Admin({ onLogout }) {
     setEditingPart(null);
     setPartForm({
       ...emptyPart,
-      partNumber: movieParts.length + 1
+      partNumber: movieParts.length + 1,
+      useMainVideo: true,
+      videoUrl: mainVideoUrl
     });
     setShowPartForm(false);
   }
@@ -939,8 +1084,15 @@ function Admin({ onLogout }) {
       return;
     }
 
-    if (!partForm.title || !partForm.videoUrl) {
-      addNotification("error", "Part title and video are required");
+    if (!partForm.title) {
+      addNotification("error", "Part title is required");
+      return;
+    }
+
+    let finalVideoUrl = partForm.useMainVideo ? mainVideoUrl : partForm.customVideoUrl || partForm.videoUrl;
+
+    if (!finalVideoUrl) {
+      addNotification("error", "Video URL is required. Either use main video or provide a custom URL.");
       return;
     }
 
@@ -951,10 +1103,10 @@ function Admin({ onLogout }) {
       let embedCode = partForm.embedCode || '';
 
       if (partForm.videoType === VIDEO_PLATFORMS.DIRECT) {
-        videoId = partForm.videoUrl;
-        streamLink = partForm.videoUrl;
+        videoId = finalVideoUrl;
+        streamLink = finalVideoUrl;
       } else {
-        const validation = validateVideoUrl(partForm.videoUrl, partForm.videoType);
+        const validation = validateVideoUrl(finalVideoUrl, partForm.videoType);
         if (!validation.valid) {
           addNotification("error", validation.message);
           setSubmitting(false);
@@ -967,7 +1119,7 @@ function Admin({ onLogout }) {
       const partData = {
         partNumber: parseInt(partForm.partNumber) || (movieParts.length + 1),
         title: partForm.title,
-        videoUrl: partForm.videoUrl,
+        videoUrl: finalVideoUrl,
         videoType: partForm.videoType,
         videoId: videoId,
         streamLink: streamLink,
@@ -1009,7 +1161,9 @@ function Admin({ onLogout }) {
 
       setPartForm({
         ...emptyPart,
-        partNumber: updatedParts.length + 1
+        partNumber: updatedParts.length + 1,
+        useMainVideo: true,
+        videoUrl: mainVideoUrl
       });
 
       setEditingPart(null);
@@ -1044,7 +1198,9 @@ function Admin({ onLogout }) {
 
       setPartForm({
         ...emptyPart,
-        partNumber: renumberedParts.length + 1
+        partNumber: renumberedParts.length + 1,
+        useMainVideo: true,
+        videoUrl: mainVideoUrl
       });
 
       addNotification("success", `Part ${partNumber} deleted`);
@@ -1067,13 +1223,15 @@ function Admin({ onLogout }) {
       return;
     }
 
-    if (!episodeForm.videoUrl && !episodeForm.videoFile) {
-      addNotification("error", "Video URL is required");
+    let finalVideoUrl = episodeForm.useMainVideo ? mainVideoUrl : episodeForm.customVideoUrl || episodeForm.videoUrl;
+
+    if (!finalVideoUrl) {
+      addNotification("error", "Video URL is required. Either use main series video or provide a custom URL.");
       return;
     }
 
-    if (episodeForm.videoUrl) {
-      const validation = validateVideoUrl(episodeForm.videoUrl, episodeForm.videoType);
+    if (finalVideoUrl) {
+      const validation = validateVideoUrl(finalVideoUrl, episodeForm.videoType);
       if (!validation.valid && episodeForm.videoType !== VIDEO_PLATFORMS.DIRECT) {
         addNotification("error", validation.message);
         return;
@@ -1082,15 +1240,14 @@ function Admin({ onLogout }) {
 
     setSubmitting(true);
     try {
-      // Generate videoId and embedCode if needed
       let videoId = episodeForm.videoId || '';
       let embedCode = episodeForm.embedCode || '';
 
-      if (episodeForm.videoUrl && !videoId) {
+      if (finalVideoUrl && !videoId) {
         if (episodeForm.videoType !== VIDEO_PLATFORMS.DIRECT) {
-          videoId = extractVideoId(episodeForm.videoUrl, episodeForm.videoType);
+          videoId = extractVideoId(finalVideoUrl, episodeForm.videoType);
         } else {
-          videoId = episodeForm.videoUrl;
+          videoId = finalVideoUrl;
         }
       }
 
@@ -1102,7 +1259,7 @@ function Admin({ onLogout }) {
         title: episodeForm.title,
         description: episodeForm.description || "",
         duration: episodeForm.duration || "",
-        videoUrl: episodeForm.videoUrl || "",
+        videoUrl: finalVideoUrl,
         download_link: episodeForm.download_link || "",
         thumbnail: episodeForm.thumbnail || selectedSeries.poster || "",
         airDate: episodeForm.airDate || new Date().toISOString().split('T')[0],
@@ -1119,14 +1276,15 @@ function Admin({ onLogout }) {
         addNotification("success", `Episode "${episodeForm.title}" added`);
       }
 
-      // Reset form for next episode but keep season number
       setEpisodeForm({
         ...emptyEpisode,
-        seasonNumber: episodeForm.seasonNumber, // Keep same season
-        episodeNumber: (parseInt(episodeForm.episodeNumber || 1) + 1).toString() // Increment episode
+        seasonNumber: episodeForm.seasonNumber,
+        episodeNumber: (parseInt(episodeForm.episodeNumber || 1) + 1).toString(),
+        useMainVideo: true,
+        customVideoUrl: "",
+        videoUrl: mainVideoUrl
       });
 
-      // Refresh episodes list
       const updatedEpisodes = getEpisodesBySeries(selectedSeries.id) || [];
       setSeriesEpisodes(sortEpisodes(updatedEpisodes));
 
@@ -1313,7 +1471,7 @@ function Admin({ onLogout }) {
           </div>
         </div>
 
-        {/* CONTENT MANAGEMENT TAB - UPDATED with translator and nation fields */}
+        {/* CONTENT MANAGEMENT TAB */}
         {activeTab === "series" && (
           <div className="space-y-4 sm:space-y-6">
             {/* Form */}
@@ -1474,7 +1632,7 @@ function Admin({ onLogout }) {
                 )}
               </div>
 
-              {/* Basic Fields - UPDATED with translator and nation */}
+              {/* Basic Fields */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-4 sm:mb-6">
                 <div className="sm:col-span-2">
                   <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-1 sm:mb-2">
@@ -1662,18 +1820,17 @@ function Admin({ onLogout }) {
 
                 <div>
                   <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-1 sm:mb-2 flex items-center gap-1 sm:gap-2">
-                    <FaTag /> Category
+                    <FaTag className="text-yellow-400" /> Category
                   </label>
                   <input
                     name="category"
                     value={form.category}
                     onChange={handleChange}
-                    placeholder="e.g., Action"
+                    placeholder="e.g., Action, Drama, Comedy"
                     className="w-full p-2 sm:p-3 bg-gray-800/70 border border-gray-700 rounded-xl text-xs sm:text-sm"
                   />
                 </div>
 
-                {/* Translator Field - NEW */}
                 <div>
                   <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-1 sm:mb-2 flex items-center gap-1 sm:gap-2">
                     <FaLanguage className="text-green-400" /> Translator
@@ -1687,18 +1844,74 @@ function Admin({ onLogout }) {
                   />
                 </div>
 
-                {/* Nation/Country Field - NEW */}
-                <div>
+                {/* Country Field with Dropdown */}
+                <div className="relative">
                   <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-1 sm:mb-2 flex items-center gap-1 sm:gap-2">
                     <FaGlobe className="text-blue-400" /> Country / Nation
                   </label>
-                  <input
-                    name="nation"
-                    value={form.nation}
-                    onChange={handleChange}
-                    placeholder="e.g., USA, UK, Japan"
-                    className="w-full p-2 sm:p-3 bg-gray-800/70 border border-gray-700 rounded-xl text-xs sm:text-sm"
-                  />
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setShowCountryDropdown(!showCountryDropdown)}
+                      className="w-full p-2 sm:p-3 bg-gray-800/70 border border-gray-700 rounded-xl text-xs sm:text-sm flex items-center justify-between hover:bg-gray-700/70 transition-colors"
+                    >
+                      <div className="flex items-center gap-2">
+                        {form.nation ? (
+                          <>
+                            <span className="text-base sm:text-lg">
+                              {countries.find(c => c.name === form.nation)?.flag || '🌍'}
+                            </span>
+                            <span>{form.nation}</span>
+                          </>
+                        ) : (
+                          <span className="text-gray-400">Select a country...</span>
+                        )}
+                      </div>
+                      <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+
+                    {showCountryDropdown && (
+                      <>
+                        <div
+                          className="fixed inset-0 z-10"
+                          onClick={() => setShowCountryDropdown(false)}
+                        />
+                        <div className="absolute z-20 mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl shadow-lg max-h-60 overflow-auto">
+                          <div className="sticky top-0 bg-gray-800 p-2 border-b border-gray-700">
+                            <input
+                              type="text"
+                              placeholder="Search country..."
+                              value={countrySearchTerm}
+                              onChange={(e) => setCountrySearchTerm(e.target.value)}
+                              className="w-full p-2 bg-gray-700 border border-gray-600 rounded-lg text-xs sm:text-sm text-white placeholder-gray-400"
+                              autoFocus
+                            />
+                          </div>
+                          <div>
+                            {filteredCountries.length > 0 ? (
+                              filteredCountries.map((country) => (
+                                <button
+                                  key={country.code}
+                                  type="button"
+                                  onClick={() => handleCountrySelect(country.name)}
+                                  className="w-full px-3 py-2 text-left hover:bg-gray-700 transition-colors flex items-center gap-2 text-xs sm:text-sm"
+                                >
+                                  <span className="text-base sm:text-lg">{country.flag}</span>
+                                  <span>{country.name}</span>
+                                </button>
+                              ))
+                            ) : (
+                              <div className="px-3 py-2 text-gray-400 text-xs sm:text-sm">
+                                No countries found
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
                 </div>
 
                 <div className="sm:col-span-2">
@@ -1715,7 +1928,6 @@ function Admin({ onLogout }) {
                   />
                 </div>
 
-                {/* Download Link Field */}
                 <div className="sm:col-span-2">
                   <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-1 sm:mb-2 flex items-center gap-1 sm:gap-2">
                     <FaDownload className="text-green-400" /> Download Link (Optional)
@@ -1751,7 +1963,7 @@ function Admin({ onLogout }) {
               </div>
             </div>
 
-            {/* Content List - UPDATED to show translator and nation badges */}
+            {/* Content List */}
             <div>
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
                 <h2 className="text-lg sm:text-xl font-bold flex items-center gap-2">
@@ -1792,6 +2004,7 @@ function Admin({ onLogout }) {
                     const episodeCount = movie.type === 'series' ? getEpisodesBySeries(movie.id).length : 0;
                     const partsCount = movie.type === 'movie' ? getPartsCount(movie) : 0;
                     const platform = platformConfig[movie.videoType] || platformConfig[VIDEO_PLATFORMS.VIMEO];
+                    const countryFlag = countries.find(c => c.name === movie.nation)?.flag || '🌍';
 
                     return (
                       <div key={movie.id} className="bg-gradient-to-br from-gray-800/50 to-gray-900/50 backdrop-blur-lg rounded-xl border border-gray-700/50 p-3 sm:p-4">
@@ -1855,16 +2068,19 @@ function Admin({ onLogout }) {
                               >
                                 {platform.name}
                               </span>
-                              {/* Translator Badge */}
+                              {movie.category && (
+                                <span className="px-1.5 py-0.5 rounded-full text-[8px] sm:text-[10px] bg-yellow-600/20 text-yellow-400 flex items-center gap-0.5">
+                                  <FaTag className="text-[6px] sm:text-[8px]" /> {movie.category}
+                                </span>
+                              )}
                               {movie.translator && (
                                 <span className="px-1.5 py-0.5 rounded-full text-[8px] sm:text-[10px] bg-green-600/20 text-green-400 flex items-center gap-0.5">
                                   <FaLanguage className="text-[6px] sm:text-[8px]" /> {movie.translator}
                                 </span>
                               )}
-                              {/* Nation Badge */}
                               {movie.nation && (
                                 <span className="px-1.5 py-0.5 rounded-full text-[8px] sm:text-[10px] bg-blue-600/20 text-blue-400 flex items-center gap-0.5">
-                                  <FaGlobe className="text-[6px] sm:text-[8px]" /> {movie.nation}
+                                  <span className="text-[10px] sm:text-xs">{countryFlag}</span> {movie.nation}
                                 </span>
                               )}
                               {movie.type === 'series' && episodeCount > 0 && (
@@ -1940,6 +2156,28 @@ function Admin({ onLogout }) {
                         {editingEpisode ? "Edit Episode" : "Add New Episode"}
                       </h3>
 
+                      {/* Use Main Video Toggle */}
+                      {!editingEpisode && mainVideoUrl && (
+                        <div className="mb-4 p-3 bg-blue-900/20 rounded-lg border border-blue-500/30">
+                          <label className="flex items-center gap-3 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={episodeForm.useMainVideo}
+                              onChange={toggleUseMainVideoForEpisode}
+                              className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-blue-500"
+                            />
+                            <div className="flex-1">
+                              <span className="text-sm font-medium text-blue-300 flex items-center gap-2">
+                                <FaVideo className="text-xs" /> Use Main Series Video
+                              </span>
+                              <p className="text-[10px] text-gray-400 mt-1">
+                                Current main video: {mainVideoUrl}
+                              </p>
+                            </div>
+                          </label>
+                        </div>
+                      )}
+
                       {/* Platform Selection for Episode */}
                       <div className="mb-4">
                         <label className="block text-xs font-medium text-gray-300 mb-2">Video Platform:</label>
@@ -1951,7 +2189,7 @@ function Admin({ onLogout }) {
                               <button
                                 key={key}
                                 type="button"
-                                onClick={() => setEpisodeForm(prev => ({ ...prev, videoType: key, videoUrl: '' }))}
+                                onClick={() => setEpisodeForm(prev => ({ ...prev, videoType: key, videoUrl: '', useMainVideo: false }))}
                                 className={`p-2 rounded-xl flex items-center gap-2 ${isActive
                                   ? 'border-2'
                                   : 'border border-gray-700'
@@ -2004,53 +2242,69 @@ function Admin({ onLogout }) {
                           />
                         </div>
 
-                        {/* Video URL Field */}
-                        <div className="sm:col-span-2">
-                          <label className="block text-xs font-medium text-gray-300 mb-1">
-                            Video URL * {episodeForm.videoType === VIDEO_PLATFORMS.DIRECT ? '(Direct URL)' : ''}
-                          </label>
-                          <input
-                            name="videoUrl"
-                            value={episodeForm.videoUrl}
-                            onChange={handleEpisodeChange}
-                            placeholder={platformConfig[episodeForm.videoType]?.placeholder}
-                            className="w-full p-2 bg-gray-800/70 border border-gray-700 rounded-xl text-xs sm:text-sm"
-                          />
-                          {seriesVideoUrl && !editingEpisode && (
-                            <p className="text-[10px] text-gray-500 mt-1">
-                              Series video URL: {seriesVideoUrl} (you can use this or enter a different one)
-                            </p>
-                          )}
-                        </div>
-
-                        {/* File Upload for Direct Videos */}
-                        {episodeForm.videoType === VIDEO_PLATFORMS.DIRECT && (
-                          <div className="sm:col-span-2">
-                            <label className="block text-xs font-medium text-gray-300 mb-1">Or Upload Video File</label>
-                            <div className="border-2 border-dashed border-gray-700 rounded-xl p-3 text-center">
-                              <input
-                                type="file"
-                                name="videoFile"
-                                id="episodeVideoFile"
-                                accept="video/*"
-                                onChange={handleChange}
-                                className="hidden"
-                              />
-                              <label htmlFor="episodeVideoFile" className="cursor-pointer block">
-                                <FaUpload className="text-xl text-gray-400 mx-auto mb-1" />
-                                <div className="text-[10px] text-gray-300">Click to upload video</div>
-                                {uploadingFile && (
-                                  <div className="mt-2">
-                                    <div className="w-full bg-gray-700 rounded-full h-1">
-                                      <div
-                                        className="bg-blue-600 h-1 rounded-full"
-                                        style={{ width: `${uploadProgress}%` }}
-                                      ></div>
-                                    </div>
-                                  </div>
-                                )}
+                        {/* Video URL Field - Only show if not using main video */}
+                        {!episodeForm.useMainVideo && (
+                          <>
+                            <div className="sm:col-span-2">
+                              <label className="block text-xs font-medium text-gray-300 mb-1">
+                                Video URL * {episodeForm.videoType === VIDEO_PLATFORMS.DIRECT ? '(Direct URL)' : ''}
                               </label>
+                              <input
+                                name="videoUrl"
+                                value={episodeForm.customVideoUrl || episodeForm.videoUrl}
+                                onChange={(e) => {
+                                  const url = e.target.value;
+                                  setEpisodeForm(prev => ({
+                                    ...prev,
+                                    customVideoUrl: url,
+                                    videoUrl: url,
+                                    videoType: detectPlatform(url)
+                                  }));
+                                }}
+                                placeholder={platformConfig[episodeForm.videoType]?.placeholder}
+                                className="w-full p-2 bg-gray-800/70 border border-gray-700 rounded-xl text-xs sm:text-sm"
+                              />
                             </div>
+
+                            {/* File Upload for Direct Videos */}
+                            {episodeForm.videoType === VIDEO_PLATFORMS.DIRECT && (
+                              <div className="sm:col-span-2">
+                                <label className="block text-xs font-medium text-gray-300 mb-1">Or Upload Video File</label>
+                                <div className="border-2 border-dashed border-gray-700 rounded-xl p-3 text-center">
+                                  <input
+                                    type="file"
+                                    name="videoFile"
+                                    id="episodeVideoFile"
+                                    accept="video/*"
+                                    onChange={handleChange}
+                                    className="hidden"
+                                  />
+                                  <label htmlFor="episodeVideoFile" className="cursor-pointer block">
+                                    <FaUpload className="text-xl text-gray-400 mx-auto mb-1" />
+                                    <div className="text-[10px] text-gray-300">Click to upload video</div>
+                                    {uploadingFile && (
+                                      <div className="mt-2">
+                                        <div className="w-full bg-gray-700 rounded-full h-1">
+                                          <div
+                                            className="bg-blue-600 h-1 rounded-full"
+                                            style={{ width: `${uploadProgress}%` }}
+                                          ></div>
+                                        </div>
+                                      </div>
+                                    )}
+                                  </label>
+                                </div>
+                              </div>
+                            )}
+                          </>
+                        )}
+
+                        {episodeForm.useMainVideo && (
+                          <div className="sm:col-span-2 p-2 bg-green-900/20 rounded-lg border border-green-500/30">
+                            <p className="text-[10px] sm:text-xs text-green-400 flex items-center gap-2">
+                              <FaCheckCircle className="text-xs" />
+                              Using main series video: {mainVideoUrl}
+                            </p>
                           </div>
                         )}
 
@@ -2147,7 +2401,9 @@ function Admin({ onLogout }) {
                               : "1",
                             episodeNumber: seriesEpisodes.length > 0
                               ? (parseInt(seriesEpisodes[seriesEpisodes.length - 1].episodeNumber || 0) + 1).toString()
-                              : "1"
+                              : "1",
+                            useMainVideo: true,
+                            videoUrl: mainVideoUrl
                           });
                           setShowEpisodeForm(true);
                         }}
@@ -2290,6 +2546,29 @@ function Admin({ onLogout }) {
                       <h3 className="text-sm sm:text-lg font-bold mb-3 sm:mb-4">
                         {editingPart ? `Edit Part ${editingPart.partNumber}` : "Add New Part"}
                       </h3>
+
+                      {/* Use Main Video Toggle */}
+                      {!editingPart && mainVideoUrl && (
+                        <div className="mb-4 p-3 bg-blue-900/20 rounded-lg border border-blue-500/30">
+                          <label className="flex items-center gap-3 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={partForm.useMainVideo}
+                              onChange={toggleUseMainVideoForPart}
+                              className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-blue-500"
+                            />
+                            <div className="flex-1">
+                              <span className="text-sm font-medium text-blue-300 flex items-center gap-2">
+                                <FaVideo className="text-xs" /> Use Main Movie Video
+                              </span>
+                              <p className="text-[10px] text-gray-400 mt-1">
+                                Current main video: {mainVideoUrl}
+                              </p>
+                            </div>
+                          </label>
+                        </div>
+                      )}
+
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
                           <label className="block text-xs font-medium text-gray-300 mb-1">Part Number</label>
@@ -2314,49 +2593,70 @@ function Admin({ onLogout }) {
                         </div>
 
                         {/* Platform Selection for Part */}
-                        <div className="sm:col-span-2">
-                          <label className="block text-xs font-medium text-gray-300 mb-2">Video Platform:</label>
-                          <div className="grid grid-cols-2 gap-2">
-                            {Object.entries(platformConfig).map(([key, config]) => {
-                              const Icon = config.icon;
-                              const isActive = partForm.videoType === key;
-                              return (
-                                <button
-                                  key={key}
-                                  type="button"
-                                  onClick={() => setPartForm(prev => ({ ...prev, videoType: key, videoUrl: '' }))}
-                                  className={`p-2 rounded-xl flex items-center gap-2 ${isActive
-                                    ? 'border-2'
-                                    : 'border border-gray-700'
-                                    }`}
-                                  style={{
-                                    backgroundColor: isActive ? `${config.color}10` : 'rgb(31 41 55 / 0.5)',
-                                    borderColor: isActive ? config.color : ''
-                                  }}
-                                >
-                                  <Icon className={`text-base sm:text-lg flex-shrink-0 ${isActive ? '' : 'text-gray-400'}`}
-                                    style={isActive ? { color: config.color } : {}} />
-                                  <span className={`text-[10px] sm:text-xs font-medium truncate ${isActive ? 'text-white' : 'text-gray-300'}`}>
-                                    {config.name}
-                                  </span>
-                                </button>
-                              );
-                            })}
+                        {!partForm.useMainVideo && (
+                          <div className="sm:col-span-2">
+                            <label className="block text-xs font-medium text-gray-300 mb-2">Video Platform:</label>
+                            <div className="grid grid-cols-2 gap-2">
+                              {Object.entries(platformConfig).map(([key, config]) => {
+                                const Icon = config.icon;
+                                const isActive = partForm.videoType === key;
+                                return (
+                                  <button
+                                    key={key}
+                                    type="button"
+                                    onClick={() => setPartForm(prev => ({ ...prev, videoType: key, videoUrl: '' }))}
+                                    className={`p-2 rounded-xl flex items-center gap-2 ${isActive
+                                      ? 'border-2'
+                                      : 'border border-gray-700'
+                                      }`}
+                                    style={{
+                                      backgroundColor: isActive ? `${config.color}10` : 'rgb(31 41 55 / 0.5)',
+                                      borderColor: isActive ? config.color : ''
+                                    }}
+                                  >
+                                    <Icon className={`text-base sm:text-lg flex-shrink-0 ${isActive ? '' : 'text-gray-400'}`}
+                                      style={isActive ? { color: config.color } : {}} />
+                                    <span className={`text-[10px] sm:text-xs font-medium truncate ${isActive ? 'text-white' : 'text-gray-300'}`}>
+                                      {config.name}
+                                    </span>
+                                  </button>
+                                );
+                              })}
+                            </div>
                           </div>
-                        </div>
+                        )}
 
-                        <div className="sm:col-span-2">
-                          <label className="block text-xs font-medium text-gray-300 mb-1">
-                            Video URL *
-                          </label>
-                          <input
-                            name="videoUrl"
-                            value={partForm.videoUrl}
-                            onChange={handlePartChange}
-                            placeholder={platformConfig[partForm.videoType]?.placeholder}
-                            className="w-full p-2 bg-gray-800/70 border border-gray-700 rounded-xl text-xs sm:text-sm"
-                          />
-                        </div>
+                        {!partForm.useMainVideo && (
+                          <div className="sm:col-span-2">
+                            <label className="block text-xs font-medium text-gray-300 mb-1">
+                              Video URL *
+                            </label>
+                            <input
+                              name="videoUrl"
+                              value={partForm.customVideoUrl || partForm.videoUrl}
+                              onChange={(e) => {
+                                const url = e.target.value;
+                                setPartForm(prev => ({
+                                  ...prev,
+                                  customVideoUrl: url,
+                                  videoUrl: url,
+                                  videoType: detectPlatform(url)
+                                }));
+                              }}
+                              placeholder={platformConfig[partForm.videoType]?.placeholder}
+                              className="w-full p-2 bg-gray-800/70 border border-gray-700 rounded-xl text-xs sm:text-sm"
+                            />
+                          </div>
+                        )}
+
+                        {partForm.useMainVideo && (
+                          <div className="sm:col-span-2 p-2 bg-green-900/20 rounded-lg border border-green-500/30">
+                            <p className="text-[10px] sm:text-xs text-green-400 flex items-center gap-2">
+                              <FaCheckCircle className="text-xs" />
+                              Using main movie video: {mainVideoUrl}
+                            </p>
+                          </div>
+                        )}
 
                         <div className="sm:col-span-2">
                           <label className="block text-xs font-medium text-gray-300 mb-1 flex items-center gap-1">
@@ -2408,7 +2708,9 @@ function Admin({ onLogout }) {
                         onClick={() => {
                           setPartForm({
                             ...emptyPart,
-                            partNumber: movieParts.length + 1
+                            partNumber: movieParts.length + 1,
+                            useMainVideo: true,
+                            videoUrl: mainVideoUrl
                           });
                           setShowPartForm(true);
                         }}

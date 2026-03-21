@@ -18,10 +18,10 @@ export default function Navbar() {
   const location = useLocation();
   const searchTimeout = useRef(null);
 
-  // Get context values - using global search state
+  // Get context values
   const {
     globalSearchQuery,
-    globalSearchResults,
+    globalSearchFilters,
     updateGlobalSearch,
     clearGlobalSearch,
     getSuggestions,
@@ -77,7 +77,7 @@ export default function Navbar() {
   const handleKeyDown = (e) => {
     if (!showResults) return;
 
-    const totalItems = suggestions.length + (recentSearches.length > 0 && !search.trim() ? recentSearches.length : 0);
+    const totalItems = suggestions.length + (recentSearches?.length > 0 && !search.trim() ? recentSearches.length : 0);
 
     switch (e.key) {
       case 'ArrowDown':
@@ -93,7 +93,7 @@ export default function Navbar() {
         if (selectedIndex >= 0) {
           if (suggestions.length > 0 && selectedIndex < suggestions.length) {
             handleSuggestionClick(suggestions[selectedIndex]);
-          } else if (recentSearches.length > 0 && !search.trim()) {
+          } else if (recentSearches?.length > 0 && !search.trim()) {
             const recentIndex = selectedIndex - suggestions.length;
             if (recentIndex >= 0 && recentIndex < recentSearches.length) {
               handleRecentSearchClick(recentSearches[recentIndex]);
@@ -112,32 +112,53 @@ export default function Navbar() {
     }
   };
 
-  // Handle navigation
-  const handleNavigation = (path, closeMenu = false) => (e) => {
-    e.preventDefault();
-    if (location.pathname !== path) {
-      navigate(path);
-    }
-    if (closeMenu) setIsOpen(false);
-    setShowResults(false);
-  };
-
-  // Handle search submission - UPDATED to use global search
+  // Handle search submission
   const handleSearchSubmit = () => {
     if (search.trim()) {
-      // Update global search state
-      updateGlobalSearch(search.trim());
-
-      // Save to recent searches
-      saveRecentSearch({
+      // Prepare search data
+      const searchData = {
         query: search.trim(),
-        timestamp: new Date().toISOString()
+        genre: globalSearchFilters?.genre || '',
+        year: globalSearchFilters?.year || '',
+        rating: globalSearchFilters?.rating || '',
+        country: globalSearchFilters?.country || '',
+        language: globalSearchFilters?.language || '',
+        sortBy: globalSearchFilters?.sortBy || 'popular',
+        type: globalSearchFilters?.type || 'all'
+      };
+
+      // Update global search state
+      updateGlobalSearch(search.trim(), {
+        genre: searchData.genre,
+        year: searchData.year,
+        rating: searchData.rating,
+        country: searchData.country,
+        language: searchData.language,
+        sortBy: searchData.sortBy,
+        type: searchData.type
       });
 
-      // Navigate to search results page
-      if (location.pathname !== '/search') {
-        navigate(`/search?q=${encodeURIComponent(search.trim())}`);
+      // Save to recent searches
+      if (saveRecentSearch) {
+        saveRecentSearch({
+          query: search.trim(),
+          timestamp: new Date().toISOString()
+        });
       }
+
+      // Build URL with search parameters
+      const params = new URLSearchParams();
+      params.set('search', search.trim());
+      if (searchData.genre) params.set('genre', searchData.genre);
+      if (searchData.year) params.set('year', searchData.year);
+      if (searchData.rating) params.set('rating', searchData.rating);
+      if (searchData.country) params.set('country', searchData.country);
+      if (searchData.language) params.set('language', searchData.language);
+      if (searchData.sortBy && searchData.sortBy !== 'popular') params.set('sort', searchData.sortBy);
+      if (searchData.type && searchData.type !== 'all') params.set('type', searchData.type);
+
+      // Navigate to search page
+      navigate(`/search?${params.toString()}`);
 
       setIsOpen(false);
       setShowResults(false);
@@ -152,36 +173,62 @@ export default function Navbar() {
 
   // Handle suggestion click
   const handleSuggestionClick = (suggestion) => {
-    // Update global search
-    updateGlobalSearch(suggestion.title);
-
     setShowResults(false);
     setSelectedIndex(-1);
+    setIsOpen(false);
 
     switch (suggestion.type) {
       case 'movie':
-        navigate(`/movie/${suggestion.id}`);
+        navigate(`/player/${suggestion.id}`);
         break;
       case 'episode':
-        navigate(`/series/${suggestion.seriesId}?season=${suggestion.seasonNumber}&episode=${suggestion.episodeNumber}`);
+        navigate(`/series-player/${suggestion.seriesId}`, {
+          state: {
+            seriesId: suggestion.seriesId,
+            seasonNumber: suggestion.seasonNumber,
+            episodeNumber: suggestion.episodeNumber
+          }
+        });
         break;
       case 'category':
-        navigate(`/movies?category=${encodeURIComponent(suggestion.title)}`);
+        const params = new URLSearchParams();
+        params.set('genre', suggestion.title);
+        navigate(`/movies?${params.toString()}`);
+        updateGlobalSearch('', {
+          genre: suggestion.title,
+          type: 'all'
+        });
         break;
       default:
         break;
     }
-
-    setIsOpen(false);
   };
 
   // Handle recent search click
   const handleRecentSearchClick = (recent) => {
     setSearch(recent.query || '');
     if (recent.query) {
-      // Update global search
-      updateGlobalSearch(recent.query);
-      navigate(`/search?q=${encodeURIComponent(recent.query)}`);
+      const params = new URLSearchParams();
+      params.set('search', recent.query);
+      if (recent.genre) params.set('genre', recent.genre);
+      if (recent.year) params.set('year', recent.year);
+      if (recent.rating) params.set('rating', recent.rating);
+      if (recent.country) params.set('country', recent.country);
+      if (recent.language) params.set('language', recent.language);
+      if (recent.sortBy && recent.sortBy !== 'popular') params.set('sort', recent.sortBy);
+      if (recent.type && recent.type !== 'all') params.set('type', recent.type);
+
+      updateGlobalSearch(recent.query, {
+        genre: recent.genre || '',
+        year: recent.year || '',
+        rating: recent.rating || '',
+        country: recent.country || '',
+        language: recent.language || '',
+        sortBy: recent.sortBy || 'popular',
+        type: recent.type || 'all'
+      });
+
+      navigate(`/search?${params.toString()}`);
     }
     setShowResults(false);
     setSelectedIndex(-1);
@@ -194,26 +241,26 @@ export default function Navbar() {
     setSuggestions([]);
     setShowResults(false);
     setSelectedIndex(-1);
-    clearGlobalSearch();
-    inputRef.current?.focus();
 
-    // If on search page, go back to movies
     if (location.pathname === '/search') {
+      clearGlobalSearch();
       navigate('/movies');
     }
+
+    inputRef.current?.focus();
   };
 
   // Render search suggestions dropdown
   const renderSuggestions = () => {
     const hasSuggestions = suggestions.length > 0;
-    const hasRecent = recentSearches.length > 0 && !search.trim();
+    const hasRecent = recentSearches && recentSearches.length > 0 && !search.trim();
 
     return (
-      <div className="absolute top-full left-0 right-0 mt-2 bg-gray-900 border border-purple-600/30 rounded-xl shadow-2xl overflow-hidden z-50">
+      <div className="absolute top-full left-0 right-0 mt-2 bg-gray-900 border border-purple-600/30 rounded-xl shadow-2xl overflow-hidden z-50 max-h-96 overflow-y-auto">
         {/* Recent Searches */}
         {hasRecent && (
           <>
-            <div className="p-2 text-xs text-gray-400 border-b border-purple-600/30 flex items-center gap-2">
+            <div className="px-3 py-2 text-xs text-gray-400 border-b border-purple-600/30 flex items-center gap-2 sticky top-0 bg-gray-900">
               <span>🕒 Recent Searches</span>
             </div>
             {recentSearches.slice(0, 5).map((recent, index) => (
@@ -223,11 +270,11 @@ export default function Navbar() {
                 className={`w-full px-4 py-2 text-left hover:bg-purple-600/20 transition-colors flex items-center gap-3 ${selectedIndex === index ? 'bg-purple-600/30' : ''
                   }`}
               >
-                <span className="text-gray-400">🕒</span>
-                <span className="text-white flex-1">{recent.query || 'All Content'}</span>
-                {recent.type && (
+                <span className="text-gray-400 text-sm">🕒</span>
+                <span className="text-white flex-1 text-sm truncate">{recent.query || 'All Content'}</span>
+                {recent.genre && (
                   <span className="text-xs px-2 py-0.5 bg-purple-600/20 text-purple-400 rounded-full">
-                    {recent.type}
+                    {recent.genre}
                   </span>
                 )}
               </button>
@@ -238,7 +285,7 @@ export default function Navbar() {
         {/* Suggestions */}
         {hasSuggestions && (
           <>
-            <div className="p-2 text-xs text-gray-400 border-b border-purple-600/30">
+            <div className="px-3 py-2 text-xs text-gray-400 border-b border-purple-600/30 sticky top-0 bg-gray-900">
               Suggestions
             </div>
             {suggestions.map((item, index) => {
@@ -250,16 +297,14 @@ export default function Navbar() {
                   className={`w-full flex items-center gap-3 p-3 hover:bg-purple-600/20 transition-colors border-b border-purple-600/10 last:border-0 ${selectedIndex === displayIndex ? 'bg-purple-600/30' : ''
                     }`}
                 >
-                  {/* Icon based on type */}
-                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-600/30 to-pink-600/30 flex items-center justify-center">
-                    {item.type === 'movie' && <FiFilm className="text-purple-400" />}
-                    {item.type === 'episode' && <FiTv className="text-pink-400" />}
-                    {item.type === 'category' && <span className="text-blue-400">#</span>}
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-600/30 to-pink-600/30 flex items-center justify-center flex-shrink-0">
+                    {item.type === 'movie' && <FiFilm className="text-purple-400 text-sm" />}
+                    {item.type === 'episode' && <FiTv className="text-pink-400 text-sm" />}
+                    {item.type === 'category' && <span className="text-blue-400 text-sm">#</span>}
                   </div>
 
-                  {/* Info */}
                   <div className="flex-1 text-left">
-                    <h4 className="font-medium text-white">
+                    <h4 className="font-medium text-white text-sm">
                       {item.title}
                       {item.type === 'episode' && (
                         <span className="ml-2 text-xs text-gray-400">
@@ -304,13 +349,17 @@ export default function Navbar() {
       <div className="mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 md:h-20">
 
-          {/* Logo - Reduced Size */}
+          {/* Logo */}
           <Link
             to="/"
-            onClick={() => setIsOpen(false)}
+            onClick={() => {
+              setIsOpen(false);
+              if (location.pathname === '/search') {
+                clearGlobalSearch();
+              }
+            }}
             className="flex items-center gap-2 group"
           >
-            {/* Logo Image - Smaller */}
             <div className="relative">
               <div className="h-10 w-10 md:h-12 md:w-12 rounded-lg overflow-hidden ring-2 ring-purple-600/30 group-hover:ring-purple-500 transition-all duration-300 group-hover:scale-105">
                 <img
@@ -330,7 +379,6 @@ export default function Navbar() {
               <div className="absolute -inset-1 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg opacity-0 group-hover:opacity-30 blur-xl transition-opacity duration-500"></div>
             </div>
 
-            {/* Brand Name - Smaller */}
             <div className="flex flex-col">
               <h1 className="text-sm md:text-lg lg:text-xl font-bold">
                 <span className="bg-gradient-to-r from-purple-400 via-pink-400 to-purple-400 bg-clip-text text-transparent">
@@ -341,7 +389,7 @@ export default function Navbar() {
             </div>
           </Link>
 
-          {/* Desktop Navigation - Smaller */}
+          {/* Desktop Navigation */}
           <div className="hidden md:flex items-center gap-1">
             <Link
               to="/"
@@ -381,9 +429,9 @@ export default function Navbar() {
             </Link>
           </div>
 
-          {/* Right Side - Search & Admin - Smaller */}
+          {/* Right Side - Search & Admin */}
           <div className="flex items-center gap-2">
-            {/* Desktop Search - Smaller */}
+            {/* Desktop Search */}
             <div className="hidden md:block relative" ref={searchRef}>
               <form onSubmit={handleFormSubmit} className="relative">
                 <FiSearch className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm" />
@@ -394,12 +442,12 @@ export default function Navbar() {
                   onChange={(e) => setSearch(e.target.value)}
                   onKeyDown={handleKeyDown}
                   onFocus={() => {
-                    if (suggestions.length > 0 || recentSearches.length > 0 || search.trim()) {
+                    if (suggestions.length > 0 || (recentSearches && recentSearches.length > 0) || search.trim()) {
                       setShowResults(true);
                     }
                   }}
-                  placeholder="Search..."
-                  className="pl-7 pr-7 py-1.5 w-48 lg:w-56 text-xs rounded-lg bg-gray-800 border border-purple-600/30 text-white placeholder-gray-400 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
+                  placeholder="Search movies, series..."
+                  className="pl-7 pr-7 py-1.5 w-56 lg:w-64 text-xs rounded-lg bg-gray-800 border border-purple-600/30 text-white placeholder-gray-400 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
                 />
                 {search && (
                   <button
@@ -414,7 +462,7 @@ export default function Navbar() {
               {showResults && renderSuggestions()}
             </div>
 
-            {/* Admin Button - Smaller */}
+            {/* Admin Button */}
             <Link
               to="/admin"
               onClick={() => setIsOpen(false)}
@@ -436,7 +484,7 @@ export default function Navbar() {
         </div>
       </div>
 
-      {/* Mobile Menu - Compact */}
+      {/* Mobile Menu */}
       {isOpen && (
         <div className="md:hidden bg-black/95 backdrop-blur-sm border-t border-purple-600/30">
           <div className="px-4 py-3 space-y-2">
@@ -450,11 +498,11 @@ export default function Navbar() {
                   onChange={(e) => setSearch(e.target.value)}
                   onKeyDown={handleKeyDown}
                   onFocus={() => {
-                    if (suggestions.length > 0 || recentSearches.length > 0 || search.trim()) {
+                    if (suggestions.length > 0 || (recentSearches && recentSearches.length > 0) || search.trim()) {
                       setShowResults(true);
                     }
                   }}
-                  placeholder="Search..."
+                  placeholder="Search movies, series..."
                   className="w-full pl-7 pr-7 py-2 text-sm rounded-lg bg-gray-800 border border-purple-600/30 text-white placeholder-gray-400"
                 />
                 {search && (
@@ -474,7 +522,7 @@ export default function Navbar() {
               )}
             </div>
 
-            {/* Mobile Navigation Links - Compact */}
+            {/* Mobile Navigation Links */}
             <Link
               to="/"
               onClick={() => setIsOpen(false)}

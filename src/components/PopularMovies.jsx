@@ -39,18 +39,46 @@ import {
   FaUpload,
   FaPlusCircle,
   FaPlayCircle,
-  FaLanguage
+  FaLanguage,
+  FaSkull,
+  FaLaugh,
+  FaHeart as FaHeartIcon,
+  FaRobot,
+  FaDragon,
+  FaMask,
+  FaGlobe,
+  FaBabyCarriage,
+  FaGhost,
+  FaSpaceShuttle,
+  FaBrain,
+  FaTree,
+  FaMusic,
+  FaFootballBall,
+  FaGavel
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 
-// ===== ENHANCED CINEMATIC LOADING ANIMATION =====
+// ===== ENHANCED CINEMATIC LOADING ANIMATION WITH ACF LOGO =====
 const CinematicLoading = () => {
   const [frame, setFrame] = useState(0);
   const [progress, setProgress] = useState(0);
   const [glitchEffect, setGlitchEffect] = useState(false);
   const [logoLoaded, setLogoLoaded] = useState(false);
   const [showTagline, setShowTagline] = useState(false);
-  const logoRef = useRef(null);
+  const [acfLetter, setAcfLetter] = useState('A');
+  const letters = ['A', 'C', 'F'];
+
+  // Letter rotation animation
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setAcfLetter(prev => {
+        const currentIndex = letters.indexOf(prev);
+        const nextIndex = (currentIndex + 1) % letters.length;
+        return letters[nextIndex];
+      });
+    }, 800);
+    return () => clearInterval(interval);
+  }, []);
 
   // Film reel animation
   useEffect(() => {
@@ -105,29 +133,29 @@ const CinematicLoading = () => {
 
   return (
     <div className="fixed inset-0 bg-black z-50 overflow-hidden">
-      {/* Animated Background Gradient */}
-      <div className="absolute inset-0 bg-gradient-to-br from-black via-gray-900 to-black">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-purple-900/20 via-transparent to-transparent" />
+      {/* Animated Background Gradient - Black & Gold */}
+      <div className="absolute inset-0 bg-gradient-to-br from-black via-black to-yellow-950">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-yellow-900/20 via-transparent to-transparent" />
       </div>
 
-      {/* Animated Particle Effect */}
+      {/* Animated Particle Effect - Gold particles */}
       <div className="absolute inset-0 overflow-hidden">
-        {[...Array(50)].map((_, i) => (
+        {[...Array(80)].map((_, i) => (
           <motion.div
             key={i}
-            className="absolute w-0.5 h-0.5 bg-purple-500/30 rounded-full"
+            className="absolute w-0.5 h-0.5 bg-yellow-500/40 rounded-full"
             initial={{
               x: Math.random() * window.innerWidth,
               y: Math.random() * window.innerHeight,
               opacity: 0
             }}
             animate={{
-              y: [null, -100, -200],
-              opacity: [0, 0.5, 0],
-              scale: [0, 1, 0]
+              y: [null, -150, -300],
+              opacity: [0, 0.6, 0],
+              scale: [0, 1.5, 0]
             }}
             transition={{
-              duration: 2 + Math.random() * 3,
+              duration: 2 + Math.random() * 4,
               repeat: Infinity,
               delay: Math.random() * 5,
               ease: "linear"
@@ -136,38 +164,63 @@ const CinematicLoading = () => {
         ))}
       </div>
 
-      {/* Film Strip Pattern - Top with animation */}
-      <div className="absolute top-0 left-0 w-full h-20 sm:h-24 opacity-20">
+      {/* Floating Gold Dust */}
+      <div className="absolute inset-0 overflow-hidden">
+        {[...Array(40)].map((_, i) => (
+          <motion.div
+            key={`dust-${i}`}
+            className="absolute w-1 h-1 bg-yellow-400/20 rounded-full"
+            initial={{
+              x: Math.random() * window.innerWidth,
+              y: Math.random() * window.innerHeight,
+            }}
+            animate={{
+              x: [null, Math.random() * window.innerWidth],
+              y: [null, -100],
+              opacity: [0, 0.5, 0]
+            }}
+            transition={{
+              duration: 5 + Math.random() * 5,
+              repeat: Infinity,
+              delay: Math.random() * 3,
+              ease: "linear"
+            }}
+          />
+        ))}
+      </div>
+
+      {/* Film Strip Pattern - Top with gold animation */}
+      <div className="absolute top-0 left-0 w-full h-24 sm:h-28 opacity-20">
         <motion.div
           className="w-full h-full"
           style={{
-            backgroundImage: 'repeating-linear-gradient(90deg, transparent, transparent 30px, #8b5cf6 30px, #8b5cf6 40px, transparent 40px, transparent 70px)',
+            backgroundImage: 'repeating-linear-gradient(90deg, transparent, transparent 30px, #FFD700 30px, #FFD700 40px, transparent 40px, transparent 70px)',
             backgroundSize: '70px 100%',
           }}
           animate={{
             backgroundPosition: ['0px', '70px']
           }}
           transition={{
-            duration: 15,
+            duration: 12,
             repeat: Infinity,
             ease: "linear"
           }}
         />
       </div>
 
-      {/* Film Strip Pattern - Bottom with animation */}
-      <div className="absolute bottom-0 left-0 w-full h-20 sm:h-24 opacity-20">
+      {/* Film Strip Pattern - Bottom with gold animation */}
+      <div className="absolute bottom-0 left-0 w-full h-24 sm:h-28 opacity-20">
         <motion.div
           className="w-full h-full"
           style={{
-            backgroundImage: 'repeating-linear-gradient(90deg, transparent, transparent 30px, #8b5cf6 30px, #8b5cf6 40px, transparent 40px, transparent 70px)',
+            backgroundImage: 'repeating-linear-gradient(90deg, transparent, transparent 30px, #FFD700 30px, #FFD700 40px, transparent 40px, transparent 70px)',
             backgroundSize: '70px 100%',
           }}
           animate={{
             backgroundPosition: ['70px', '0px']
           }}
           transition={{
-            duration: 15,
+            duration: 12,
             repeat: Infinity,
             ease: "linear"
           }}
@@ -186,9 +239,9 @@ const CinematicLoading = () => {
 
       {/* Scanlines Effect */}
       <div
-        className="absolute inset-0 opacity-5 pointer-events-none"
+        className="absolute inset-0 opacity-10 pointer-events-none"
         style={{
-          background: 'repeating-linear-gradient(0deg, rgba(255,255,255,0.03) 0px, rgba(255,255,255,0.03) 1px, transparent 1px, transparent 2px)',
+          background: 'repeating-linear-gradient(0deg, rgba(255,215,0,0.05) 0px, rgba(255,215,0,0.05) 1px, transparent 1px, transparent 2px)',
           backgroundSize: '100% 2px'
         }}
       />
@@ -197,107 +250,149 @@ const CinematicLoading = () => {
       <div className="relative z-10 h-full flex flex-col items-center justify-center px-4">
         {/* Center Container */}
         <div className="max-w-4xl w-full mx-auto text-center">
-          {/* Logo Container with Glow Effect */}
+          {/* ACF Logo Container - Premium Design */}
           <motion.div
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
+            initial={{ scale: 0.7, opacity: 0, rotateY: 90 }}
+            animate={{ scale: 1, opacity: 1, rotateY: 0 }}
             transition={{ duration: 0.8, ease: "easeOut" }}
-            className="relative mb-6 sm:mb-8 md:mb-10"
+            className="relative mb-8 sm:mb-10 md:mb-12"
           >
-            {/* Glow Background Animation */}
+            {/* 3D Glow Effect */}
             <motion.div
-              className="absolute inset-0 bg-gradient-to-r from-purple-600 via-pink-600 to-purple-600 rounded-full blur-3xl"
+              className="absolute inset-0 bg-gradient-to-r from-yellow-500 via-yellow-400 to-yellow-500 rounded-3xl blur-2xl"
               animate={{
                 scale: [1, 1.2, 1],
-                opacity: [0.3, 0.5, 0.3]
+                opacity: [0.4, 0.7, 0.4]
               }}
               transition={{
-                duration: 3,
+                duration: 2.5,
                 repeat: Infinity,
                 ease: "easeInOut"
               }}
             />
 
-            {/* Main Logo with Glitch Effect */}
+            {/* Main Logo Container */}
             <div className="relative">
-              {/* Logo Image */}
               <motion.div
-                ref={logoRef}
                 className="relative inline-block"
-                initial={{ y: -50, opacity: 0 }}
+                initial={{ y: -30, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ duration: 0.6, delay: 0.2 }}
                 onAnimationComplete={() => setLogoLoaded(true)}
               >
-                <div className="relative w-32 h-32 sm:w-40 sm:h-40 md:w-48 md:h-48 mx-auto">
-                  {/* Outer Ring */}
-                  <div className="absolute inset-0 rounded-full bg-gradient-to-r from-purple-600 via-pink-600 to-purple-600 animate-spin-slow" style={{ padding: '3px' }}>
-                    <div className="absolute inset-[3px] rounded-full bg-black" />
-                  </div>
-
-                  {/* Logo Image */}
-                  <img
-                    src="/logo192.png"
-                    alt="agasobanuyecineva Logo"
-                    className={`relative w-full h-full object-contain rounded-full transition-all duration-500 ${glitchEffect ? 'animate-glitch' : ''}`}
-                    onError={(e) => {
-                      e.target.style.display = 'none';
-                      // Fallback text logo
-                      const parent = e.target.parentElement;
-                      if (parent) {
-                        const fallback = document.createElement('div');
-                        fallback.className = 'absolute inset-0 flex items-center justify-center bg-gradient-to-br from-purple-600 to-pink-600 rounded-full';
-                        fallback.innerHTML = '<span class="text-white font-black text-3xl sm:text-4xl md:text-5xl">A</span>';
-                        parent.appendChild(fallback);
-                      }
-                    }}
-                  />
+                {/* Animated Ring */}
+                <div className="absolute inset-0 rounded-full bg-gradient-to-r from-yellow-600 via-yellow-500 to-yellow-600 animate-spin-slow" style={{ padding: '4px' }}>
+                  <div className="absolute inset-[4px] rounded-full bg-black" />
                 </div>
 
-                {/* Floating Elements Around Logo */}
-                <motion.div
-                  className="absolute -top-4 -right-4 sm:-top-6 sm:-right-6"
-                  animate={{
-                    y: [0, -10, 0],
-                    rotate: [0, 10, 0]
-                  }}
-                  transition={{
-                    duration: 2,
-                    repeat: Infinity,
-                    ease: "easeInOut"
-                  }}
-                >
-                  <FaPlayCircle className="text-purple-500 text-2xl sm:text-3xl" />
-                </motion.div>
-                <motion.div
-                  className="absolute -bottom-4 -left-4 sm:-bottom-6 sm:-left-6"
-                  animate={{
-                    y: [0, 10, 0],
-                    rotate: [0, -10, 0]
-                  }}
-                  transition={{
-                    duration: 2,
-                    repeat: Infinity,
-                    ease: "easeInOut",
-                    delay: 0.5
-                  }}
-                >
-                  <FaFilm className="text-pink-500 text-2xl sm:text-3xl" />
-                </motion.div>
+                {/* ACF Letters Container */}
+                <div className="relative w-56 h-56 sm:w-64 sm:h-64 md:w-72 md:h-72 mx-auto flex items-center justify-center">
+                  {/* Background Glow */}
+                  <div className="absolute inset-0 bg-gradient-to-br from-yellow-600/20 to-yellow-500/20 rounded-full blur-xl" />
+
+                  {/* Main ACF Letters */}
+                  <div className="relative flex items-center justify-center gap-3 sm:gap-4 md:gap-5">
+                    {['A', 'C', 'F'].map((letter, index) => (
+                      <motion.div
+                        key={letter}
+                        className="relative"
+                        animate={{
+                          y: [0, -8, 0],
+                          scale: [1, 1.1, 1],
+                        }}
+                        transition={{
+                          duration: 1.5,
+                          repeat: Infinity,
+                          delay: index * 0.2,
+                          ease: "easeInOut"
+                        }}
+                      >
+                        <div className="relative">
+                          <div className="absolute inset-0 bg-gradient-to-r from-yellow-500 to-yellow-600 rounded-2xl blur-md opacity-50" />
+                          <div className={`relative text-7xl sm:text-8xl md:text-9xl font-black bg-gradient-to-r from-yellow-400 via-yellow-500 to-yellow-400 bg-clip-text text-transparent ${glitchEffect ? 'animate-glitch' : ''}`}
+                            style={{
+                              textShadow: '0 0 20px rgba(255,215,0,0.5)',
+                            }}
+                          >
+                            {letter}
+                          </div>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+
+                  {/* Floating Elements */}
+                  <motion.div
+                    className="absolute -top-6 -right-6 sm:-top-8 sm:-right-8"
+                    animate={{
+                      rotate: [0, 15, 0],
+                      scale: [1, 1.1, 1]
+                    }}
+                    transition={{
+                      duration: 2,
+                      repeat: Infinity,
+                      ease: "easeInOut"
+                    }}
+                  >
+                    <FaPlayCircle className="text-yellow-500 text-3xl sm:text-4xl drop-shadow-lg" />
+                  </motion.div>
+                  <motion.div
+                    className="absolute -bottom-6 -left-6 sm:-bottom-8 sm:-left-8"
+                    animate={{
+                      rotate: [0, -15, 0],
+                      scale: [1, 1.1, 1]
+                    }}
+                    transition={{
+                      duration: 2,
+                      repeat: Infinity,
+                      ease: "easeInOut",
+                      delay: 0.3
+                    }}
+                  >
+                    <FaFilm className="text-yellow-500 text-3xl sm:text-4xl drop-shadow-lg" />
+                  </motion.div>
+                  <motion.div
+                    className="absolute top-1/2 -right-8 sm:-right-10 transform -translate-y-1/2"
+                    animate={{
+                      x: [0, 5, 0],
+                      opacity: [0.5, 1, 0.5]
+                    }}
+                    transition={{
+                      duration: 1.5,
+                      repeat: Infinity
+                    }}
+                  >
+                    <FaStar className="text-yellow-400 text-xl sm:text-2xl" />
+                  </motion.div>
+                  <motion.div
+                    className="absolute top-1/2 -left-8 sm:-left-10 transform -translate-y-1/2"
+                    animate={{
+                      x: [0, -5, 0],
+                      opacity: [0.5, 1, 0.5]
+                    }}
+                    transition={{
+                      duration: 1.5,
+                      repeat: Infinity,
+                      delay: 0.5
+                    }}
+                  >
+                    <FaStar className="text-yellow-400 text-xl sm:text-2xl" />
+                  </motion.div>
+                </div>
               </motion.div>
 
               {/* Brand Name */}
               <motion.h1
-                className={`relative text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black mt-4 ${glitchEffect ? 'animate-glitch' : ''}`}
+                className={`relative text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black mt-6 ${glitchEffect ? 'animate-glitch' : ''}`}
                 initial={{ y: 50, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
-                transition={{ duration: 0.6, delay: 0.4 }}
+                transition={{ duration: 0.6, delay: 0.5 }}
               >
-                <span className="bg-gradient-to-r from-purple-400 via-pink-400 to-purple-400 bg-clip-text text-transparent">
-                  agasobanuyecineva
+                <span className="bg-gradient-to-r from-yellow-400 via-yellow-500 to-yellow-400 bg-clip-text text-transparent">
+                  AGASOBANUYE CINEVA FILMS
                 </span>
                 <motion.span
-                  className="absolute -top-2 -right-2 sm:-top-3 sm:-right-3 text-xs sm:text-sm"
+                  className="absolute -top-2 -right-2 text-sm sm:text-base"
                   animate={{
                     scale: [1, 1.2, 1],
                     opacity: [0.5, 1, 0.5]
@@ -318,7 +413,7 @@ const CinematicLoading = () => {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.5 }}
-                    className="text-xs sm:text-sm text-gray-400 mt-2 tracking-wider"
+                    className="text-xs sm:text-sm text-yellow-400/80 mt-2 tracking-wider font-light"
                   >
                     {currentQuote}
                   </motion.p>
@@ -331,29 +426,29 @@ const CinematicLoading = () => {
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.6, duration: 0.5 }}
-            className="flex justify-center items-center gap-2 sm:gap-3 mb-6 sm:mb-8 md:mb-10"
+            transition={{ delay: 0.8, duration: 0.5 }}
+            className="flex justify-center items-center gap-2 sm:gap-3 mb-8 sm:mb-10"
           >
             {/* Left Reel */}
-            <div className="relative w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20">
+            <div className="relative w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16">
               <motion.div
-                className="absolute inset-0 border-2 border-purple-600/30 rounded-full"
+                className="absolute inset-0 border-2 border-yellow-600/30 rounded-full"
                 animate={{ rotate: 360 }}
                 transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
               />
               <motion.div
-                className="absolute inset-2 border-2 border-purple-600/50 rounded-full"
+                className="absolute inset-2 border-2 border-yellow-600/50 rounded-full"
                 animate={{ rotate: -360 }}
                 transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
               />
               <motion.div
-                className="absolute inset-4 border-2 border-purple-600 rounded-full"
+                className="absolute inset-4 border-2 border-yellow-600 rounded-full"
                 animate={{ rotate: 360 }}
                 transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
               />
               <div className="absolute inset-0 flex items-center justify-center">
                 <motion.div
-                  className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-purple-600 rounded-full"
+                  className="w-2 h-2 sm:w-2.5 sm:h-2.5 bg-yellow-600 rounded-full"
                   animate={{ scale: [1, 1.5, 1] }}
                   transition={{ duration: 1, repeat: Infinity }}
                 />
@@ -365,9 +460,9 @@ const CinematicLoading = () => {
               {[...Array(5)].map((_, i) => (
                 <motion.div
                   key={i}
-                  className="relative w-6 h-10 sm:w-8 sm:h-12 md:w-10 md:h-16"
+                  className="relative w-7 h-12 sm:w-8 sm:h-14 md:w-10 md:h-16"
                   animate={{
-                    y: [0, -5, 0]
+                    y: [0, -6, 0]
                   }}
                   transition={{
                     duration: 1.5,
@@ -376,7 +471,7 @@ const CinematicLoading = () => {
                     ease: "easeInOut"
                   }}
                 >
-                  <div className="absolute inset-0 bg-gradient-to-b from-purple-600/80 to-pink-600/80 rounded transform -skew-y-3 shadow-lg">
+                  <div className="absolute inset-0 bg-gradient-to-b from-yellow-600/80 to-yellow-500/80 rounded transform -skew-y-3 shadow-lg">
                     <div className="absolute top-1 left-1/2 transform -translate-x-1/2 w-3 h-1 bg-white/30 rounded-full" />
                     <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-3 h-3 bg-white/20 rounded-full" />
                     <div className="absolute bottom-1 left-1/2 transform -translate-x-1/2 w-3 h-1 bg-white/30 rounded-full" />
@@ -389,25 +484,25 @@ const CinematicLoading = () => {
             </div>
 
             {/* Right Reel */}
-            <div className="relative w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20">
+            <div className="relative w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16">
               <motion.div
-                className="absolute inset-0 border-2 border-purple-600/30 rounded-full"
+                className="absolute inset-0 border-2 border-yellow-600/30 rounded-full"
                 animate={{ rotate: -360 }}
                 transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
               />
               <motion.div
-                className="absolute inset-2 border-2 border-purple-600/50 rounded-full"
+                className="absolute inset-2 border-2 border-yellow-600/50 rounded-full"
                 animate={{ rotate: 360 }}
                 transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
               />
               <motion.div
-                className="absolute inset-4 border-2 border-purple-600 rounded-full"
+                className="absolute inset-4 border-2 border-yellow-600 rounded-full"
                 animate={{ rotate: -360 }}
                 transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
               />
               <div className="absolute inset-0 flex items-center justify-center">
                 <motion.div
-                  className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-purple-600 rounded-full"
+                  className="w-2 h-2 sm:w-2.5 sm:h-2.5 bg-yellow-600 rounded-full"
                   animate={{ scale: [1, 1.5, 1] }}
                   transition={{ duration: 1, repeat: Infinity }}
                 />
@@ -419,37 +514,30 @@ const CinematicLoading = () => {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.8, duration: 0.5 }}
+            transition={{ delay: 1, duration: 0.5 }}
             className="max-w-xs sm:max-w-sm mx-auto"
           >
-            {/* Progress Bar with Glow */}
-            <div className="relative h-0.5 sm:h-1 bg-gray-800 rounded-full overflow-hidden">
+            <div className="relative h-1 bg-gray-800 rounded-full overflow-hidden">
               <motion.div
-                className="absolute inset-0 bg-gradient-to-r from-purple-600 via-pink-600 to-purple-600 rounded-full"
-                style={{ width: `${Math.min(progress, 100)}%` }}
-                transition={{ duration: 0.3 }}
-              />
-              <motion.div
-                className="absolute inset-0 bg-purple-600/30 blur-sm"
+                className="absolute inset-0 bg-gradient-to-r from-yellow-600 via-yellow-500 to-yellow-600 rounded-full"
                 style={{ width: `${Math.min(progress, 100)}%` }}
                 transition={{ duration: 0.3 }}
               />
             </div>
 
-            {/* Progress Info */}
-            <div className="flex justify-between items-center mt-2 sm:mt-3">
-              <div className="flex items-center gap-1 sm:gap-2">
+            <div className="flex justify-between items-center mt-3">
+              <div className="flex items-center gap-2">
                 <motion.div
-                  className="w-1 h-1 sm:w-1.5 sm:h-1.5 bg-purple-600 rounded-full"
+                  className="w-1.5 h-1.5 bg-yellow-600 rounded-full"
                   animate={{ scale: [1, 1.5, 1] }}
                   transition={{ duration: 0.8, repeat: Infinity }}
                 />
-                <span className="text-[8px] sm:text-xs text-gray-500 tracking-wider">
+                <span className="text-[10px] text-gray-500 tracking-wider">
                   LOADING EXPERIENCE
                 </span>
               </div>
               <motion.span
-                className="text-[8px] sm:text-xs font-mono text-purple-500"
+                className="text-[10px] font-mono text-yellow-500"
                 animate={{ opacity: [0.5, 1, 0.5] }}
                 transition={{ duration: 1, repeat: Infinity }}
               >
@@ -457,18 +545,17 @@ const CinematicLoading = () => {
               </motion.span>
             </div>
 
-            {/* Loading Dots */}
-            <div className="flex justify-center gap-1 mt-3 sm:mt-4">
+            <div className="flex justify-center gap-2 mt-4">
               {[...Array(3)].map((_, i) => (
                 <motion.div
                   key={i}
-                  className="w-1 h-1 sm:w-1.5 sm:h-1.5 bg-purple-600/50 rounded-full"
+                  className="w-1.5 h-1.5 bg-yellow-600/50 rounded-full"
                   animate={{
                     scale: [1, 1.5, 1],
                     opacity: [0.5, 1, 0.5]
                   }}
                   transition={{
-                    duration: 1.4,
+                    duration: 1.2,
                     repeat: Infinity,
                     delay: i * 0.2
                   }}
@@ -476,70 +563,60 @@ const CinematicLoading = () => {
               ))}
             </div>
 
-            {/* Animated Icons */}
             <motion.div
-              className="flex justify-center gap-2 sm:gap-3 mt-4 sm:mt-6 text-gray-700"
+              className="flex justify-center gap-3 mt-6"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              transition={{ delay: 1 }}
+              transition={{ delay: 1.2 }}
             >
-              {[
-                { icon: "🎬", delay: 0 },
-                { icon: "🎥", delay: 0.2 },
-                { icon: "🍿", delay: 0.4 },
-                { icon: "🎞️", delay: 0.6 },
-                { icon: "✨", delay: 0.8 }
-              ].map((item, index) => (
+              {["🎬", "🎥", "🍿", "🎞️", "✨"].map((icon, index) => (
                 <motion.span
                   key={index}
-                  className="text-xs sm:text-sm"
+                  className="text-base sm:text-lg"
                   animate={{
-                    y: [0, -8, 0],
+                    y: [0, -10, 0],
                     rotate: [0, 10, 0]
                   }}
                   transition={{
                     duration: 1.5,
                     repeat: Infinity,
-                    delay: item.delay,
+                    delay: index * 0.15,
                     ease: "easeInOut"
                   }}
                 >
-                  {item.icon}
+                  {icon}
                 </motion.span>
               ))}
             </motion.div>
           </motion.div>
 
-          {/* Tagline Rotation Text */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ delay: 1.2 }}
-            className="mt-6 sm:mt-8"
+            transition={{ delay: 1.4 }}
+            className="mt-8"
           >
-            <p className="text-[10px] sm:text-xs text-gray-600 max-w-md mx-auto">
+            <p className="text-[10px] text-gray-600 max-w-md mx-auto">
               Experience the ultimate streaming destination with the latest movies, series, and exclusive content
             </p>
           </motion.div>
         </div>
 
-        {/* Bottom Credits */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 1.4, duration: 0.5 }}
-          className="absolute bottom-4 sm:bottom-6 left-0 right-0 text-center"
+          transition={{ delay: 1.6, duration: 0.5 }}
+          className="absolute bottom-4 left-0 right-0 text-center"
         >
-          <p className="text-[6px] sm:text-[8px] text-gray-700 tracking-[0.3em] uppercase">
+          <p className="text-[8px] text-yellow-700/50 tracking-[0.3em] uppercase">
             PREMIUM CINEMATIC STREAMING PLATFORM
           </p>
-          <p className="text-[4px] sm:text-[6px] text-gray-800 mt-1">
-            © 2024 AGASOBANUYECINEVA. ALL RIGHTS RESERVED.
+          <p className="text-[6px] text-gray-800 mt-1">
+            © 2025 AGASOBANUYE CINEVA FILMS. ALL RIGHTS RESERVED.
           </p>
         </motion.div>
       </div>
 
-      {/* CSS Animations */}
       <style>{`
         @keyframes spin-slow {
           from { transform: rotate(0deg); }
@@ -580,21 +657,24 @@ const CinematicLoading = () => {
   );
 };
 
-// [Rest of your Movies component code remains exactly the same]
 export default function Movies() {
-  // ... (keep all your existing Movies component code)
   const {
     movies = [],
     episodes = [],
     loading = false,
     globalSearchQuery,
-    globalSearchResults,
-    updateGlobalSearch,
     clearGlobalSearch
   } = useContext(MoviesContext);
 
   const location = useLocation();
   const navigate = useNavigate();
+
+  // If there's a global search query, redirect to search page
+  useEffect(() => {
+    if (globalSearchQuery && location.pathname === '/movies') {
+      navigate(`/search?search=${encodeURIComponent(globalSearchQuery)}`);
+    }
+  }, [globalSearchQuery, location.pathname, navigate]);
 
   // Refs for touch handling
   const heroRef = useRef(null);
@@ -641,31 +721,21 @@ export default function Movies() {
 
     if (Math.abs(diffX) > swipeThreshold) {
       if (diffX > 0) {
-        // Swipe left - next slide
         setCurrentHeroSlide((prev) => (prev + 1) % filteredHeroContent.length);
       } else {
-        // Swipe right - previous slide
         setCurrentHeroSlide((prev) => (prev - 1 + filteredHeroContent.length) % filteredHeroContent.length);
       }
     }
 
-    // Resume auto-play after 5 seconds
     setTimeout(() => setIsAutoPlaying(true), 5000);
   };
 
-  // Sync URL with global search
-  useEffect(() => {
-    if (urlSearchQuery !== globalSearchQuery) {
-      updateGlobalSearch(urlSearchQuery);
-    }
-  }, [urlSearchQuery, globalSearchQuery, updateGlobalSearch]);
-
-  // ===== Helper function to get episodes for a series =====
+  // Helper function to get episodes for a series
   const getEpisodesForSeries = useCallback((seriesId) => {
     return episodes.filter(ep => ep.seriesId === seriesId);
   }, [episodes]);
 
-  // ===== Helper function to sort episodes =====
+  // Helper function to sort episodes
   const sortEpisodes = useCallback((episodesArray) => {
     if (!episodesArray || !Array.isArray(episodesArray)) return [];
     return [...episodesArray].sort((a, b) => {
@@ -678,22 +748,17 @@ export default function Movies() {
     });
   }, []);
 
-  // ===== Helper function to get movie parts from download field =====
+  // Helper function to get movie parts from download field
   const getMovieParts = useCallback((movie) => {
     if (!movie) return [];
-
-    // If parts already exist in the movie object
     if (movie.parts && Array.isArray(movie.parts)) {
       return movie.parts;
     }
-
-    // Try to parse from download field
     if (movie.download) {
       try {
         const parsed = typeof movie.download === 'string'
           ? JSON.parse(movie.download)
           : movie.download;
-
         if (Array.isArray(parsed)) {
           return parsed;
         } else if (parsed && parsed.parts && Array.isArray(parsed.parts)) {
@@ -703,26 +768,21 @@ export default function Movies() {
         // Not JSON, ignore
       }
     }
-
     return [];
   }, []);
 
-  // ===== Get hero content with latest episodes =====
+  // Get hero content with latest episodes
   const heroContent = useMemo(() => {
-    // Get all series that have episodes
     const seriesWithEpisodes = movies
       .filter(item => item?.type === "series")
       .map(series => {
         const seriesEpisodes = episodes.filter(ep => ep.seriesId === series.id);
-
         if (seriesEpisodes.length === 0) return null;
-
         const latestEpisode = seriesEpisodes.sort((a, b) => {
           const dateA = a?.created_at || a?.id || 0;
           const dateB = b?.created_at || b?.id || 0;
           return new Date(dateB) - new Date(dateA);
         })[0];
-
         return {
           ...series,
           latestEpisode: {
@@ -742,7 +802,6 @@ export default function Movies() {
       })
       .filter(series => series !== null);
 
-    // Get movies with backgrounds
     const moviesWithBackground = movies
       .filter(item => item?.type === "movie" && item?.background)
       .map(movie => ({
@@ -750,7 +809,6 @@ export default function Movies() {
         type: 'movie'
       }));
 
-    // Combine and sort
     const allContent = [...moviesWithBackground, ...seriesWithEpisodes]
       .sort((a, b) => {
         const dateA = a?.lastUpdated || a?.created_at || a?.id || 0;
@@ -772,20 +830,18 @@ export default function Movies() {
   const currentHeroItem = filteredHeroContent[currentHeroSlide] || {};
   const isSeriesWithNewEpisode = currentHeroItem?.latestEpisode ? true : false;
 
-  // ===== Get recently updated series (increased to 12 for better display) =====
+  // Get recently updated series
   const recentlyUpdatedSeries = useMemo(() => {
     return movies
       .filter(item => item?.type === "series")
       .map(series => {
         const seriesEpisodes = episodes.filter(ep => ep.seriesId === series.id);
         if (seriesEpisodes.length === 0) return null;
-
         const latestEpisode = seriesEpisodes.sort((a, b) => {
           const dateA = a?.created_at || a?.id || 0;
           const dateB = b?.created_at || b?.id || 0;
           return new Date(dateB) - new Date(dateA);
         })[0];
-
         return {
           ...series,
           latestEpisode,
@@ -798,7 +854,7 @@ export default function Movies() {
       .slice(0, 12);
   }, [movies, episodes]);
 
-  // ===== Latest uploads (increased to 16 for better display) =====
+  // Latest uploads
   const latestUploads = useMemo(() => {
     const moviesList = movies
       .filter(movie => movie?.type === "movie")
@@ -813,13 +869,11 @@ export default function Movies() {
       .map(series => {
         const seriesEpisodes = episodes.filter(ep => ep.seriesId === series.id);
         if (seriesEpisodes.length === 0) return null;
-
         const latestEpisode = seriesEpisodes.sort((a, b) => {
           const dateA = a?.created_at || a?.id || 0;
           const dateB = b?.created_at || b?.id || 0;
           return new Date(dateB) - new Date(dateA);
         })[0];
-
         return {
           ...series,
           uploadType: 'series',
@@ -834,49 +888,101 @@ export default function Movies() {
       .slice(0, 16);
   }, [movies, episodes]);
 
-  // ===== Handle movie click - Navigates to Player component =====
+  // ===== DYNAMIC CATEGORY EXTRACTION =====
+  // Extract all unique categories from movies
+  const dynamicCategories = useMemo(() => {
+    const categoryMap = new Map();
+
+    movies.forEach(movie => {
+      if (movie?.type === "movie" && movie?.category) {
+        const categories = movie.category.split(',').map(cat => cat.trim().toLowerCase());
+        categories.forEach(cat => {
+          if (!categoryMap.has(cat)) {
+            categoryMap.set(cat, {
+              id: cat,
+              name: cat.charAt(0).toUpperCase() + cat.slice(1),
+              count: 0,
+              movies: []
+            });
+          }
+          categoryMap.get(cat).count++;
+          categoryMap.get(cat).movies.push(movie);
+        });
+      }
+    });
+
+    // Convert to array and sort by count
+    return Array.from(categoryMap.values())
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 15); // Show top 15 categories
+  }, [movies]);
+
+  // Category icons mapping with extended support
+  const getCategoryIconAndColor = (categoryName) => {
+    const categoryLower = categoryName.toLowerCase();
+
+    const iconMap = {
+      action: { icon: <FaBolt className="text-orange-500" />, color: "from-orange-600 to-red-600", bgColor: "bg-orange-900/20", borderColor: "border-orange-500/30" },
+      horror: { icon: <FaSkull className="text-red-500" />, color: "from-red-600 to-pink-600", bgColor: "bg-red-900/20", borderColor: "border-red-500/30" },
+      comedy: { icon: <FaLaugh className="text-green-500" />, color: "from-green-600 to-teal-600", bgColor: "bg-green-900/20", borderColor: "border-green-500/30" },
+      drama: { icon: <FaTheaterMasks className="text-purple-500" />, color: "from-purple-600 to-pink-600", bgColor: "bg-purple-900/20", borderColor: "border-purple-500/30" },
+      romance: { icon: <FaHeartIcon className="text-pink-500" />, color: "from-pink-600 to-rose-600", bgColor: "bg-pink-900/20", borderColor: "border-pink-500/30" },
+      scifi: { icon: <FaRocket className="text-cyan-500" />, color: "from-cyan-600 to-blue-600", bgColor: "bg-cyan-900/20", borderColor: "border-cyan-500/30" },
+      fantasy: { icon: <FaMagic className="text-indigo-500" />, color: "from-indigo-600 to-purple-600", bgColor: "bg-indigo-900/20", borderColor: "border-indigo-500/30" },
+      thriller: { icon: <FaMask className="text-yellow-500" />, color: "from-yellow-600 to-orange-600", bgColor: "bg-yellow-900/20", borderColor: "border-yellow-500/30" },
+      cartoon: { icon: <FaBabyCarriage className="text-yellow-400" />, color: "from-yellow-500 to-orange-500", bgColor: "bg-yellow-900/20", borderColor: "border-yellow-500/30" },
+      animation: { icon: <FaBabyCarriage className="text-blue-400" />, color: "from-blue-500 to-cyan-500", bgColor: "bg-blue-900/20", borderColor: "border-blue-500/30" },
+      adventure: { icon: <FaGlobe className="text-green-400" />, color: "from-green-500 to-emerald-500", bgColor: "bg-green-900/20", borderColor: "border-green-500/30" },
+      mystery: { icon: <FaGhost className="text-purple-400" />, color: "from-purple-500 to-indigo-500", bgColor: "bg-purple-900/20", borderColor: "border-purple-500/30" },
+      crime: { icon: <FaGavel className="text-red-400" />, color: "from-red-500 to-orange-500", bgColor: "bg-red-900/20", borderColor: "border-red-500/30" },
+      documentary: { icon: <FaCamera className="text-cyan-400" />, color: "from-cyan-500 to-teal-500", bgColor: "bg-cyan-900/20", borderColor: "border-cyan-500/30" },
+      music: { icon: <FaMusic className="text-pink-400" />, color: "from-pink-500 to-rose-500", bgColor: "bg-pink-900/20", borderColor: "border-pink-500/30" },
+      sport: { icon: <FaFootballBall className="text-green-400" />, color: "from-green-500 to-lime-500", bgColor: "bg-green-900/20", borderColor: "border-green-500/30" },
+      science: { icon: <FaBrain className="text-blue-400" />, color: "from-blue-500 to-indigo-500", bgColor: "bg-blue-900/20", borderColor: "border-blue-500/30" },
+      space: { icon: <FaSpaceShuttle className="text-cyan-400" />, color: "from-cyan-500 to-blue-500", bgColor: "bg-cyan-900/20", borderColor: "border-cyan-500/30" },
+      nature: { icon: <FaTree className="text-green-400" />, color: "from-green-500 to-emerald-500", bgColor: "bg-green-900/20", borderColor: "border-green-500/30" }
+    };
+
+    const defaultStyle = { icon: <FaFilm className="text-gray-400" />, color: "from-gray-600 to-gray-500", bgColor: "bg-gray-900/20", borderColor: "border-gray-500/30" };
+
+    return iconMap[categoryLower] || defaultStyle;
+  };
+
+  // Get movies by category (dynamic)
+  const getMoviesByCategory = useCallback((categoryName) => {
+    return movies
+      .filter(movie => movie?.type === "movie" &&
+        movie?.category?.toLowerCase().split(',').map(c => c.trim()).includes(categoryName.toLowerCase()))
+      .sort((a, b) => (parseFloat(b?.rating) || 0) - (parseFloat(a?.rating) || 0))
+      .slice(0, 12);
+  }, [movies]);
+
+  // Handle movie click
   const handleMovieClick = useCallback((movie) => {
     if (!movie || !movie.id) return;
-
-    // Check if movie has parts
     const parts = getMovieParts(movie);
-
-    // Create enhanced movie object with parts
     const movieToPlay = {
       ...movie,
       parts: parts,
       hasParts: parts.length > 0,
-      // If there are parts, use the first part's video URL
       videoUrl: movie.videoUrl || (parts.length > 0 ? parts[0]?.videoUrl : null),
       streamLink: movie.streamLink || (parts.length > 0 ? parts[0]?.streamLink || parts[0]?.videoUrl : null),
       download_link: movie.download_link || movie.download,
       download: movie.download
     };
-
     navigate(`/player/${movie.id}`, {
       state: { movie: movieToPlay }
     });
   }, [navigate, getMovieParts]);
 
-  // ===== Handle series click with specific episode (for "Updated Series" section) =====
+  // Handle series click with specific episode
   const handleUpdatedSeriesClick = useCallback((series) => {
     if (!series || !series.id) return;
-
-    // Get all episodes for the series
     const allSeriesEpisodes = getEpisodesForSeries(series.id);
-
-    // Sort episodes by season and episode number
     const sortedEpisodes = sortEpisodes(allSeriesEpisodes);
-
-    // Find the latest episode (which should be the last one in the sorted list)
     const latestEpisode = sortedEpisodes.length > 0 ? sortedEpisodes[sortedEpisodes.length - 1] : null;
-
-    // Only navigate if we have a target episode
     if (latestEpisode) {
-      // Find the index of the latest episode
       const episodeIndex = sortedEpisodes.findIndex(ep => ep && ep.id === latestEpisode.id);
-
-      // Navigate to series player with all episodes but start from the LATEST episode
       navigate(`/series-player/${series.id}`, {
         state: {
           series: series,
@@ -886,25 +992,16 @@ export default function Movies() {
         }
       });
     } else {
-      console.log('No episodes available for this series');
       alert('No episodes available for this series yet.');
     }
   }, [navigate, getEpisodesForSeries, sortEpisodes]);
 
-  // ===== Handle series click - Navigates to SeriesPlayer with ALL episodes starting from episode 1 =====
+  // Handle series click
   const handleSeriesClick = useCallback((series) => {
     if (!series || !series.id) return;
-
-    // Get all episodes for the series
     const allSeriesEpisodes = getEpisodesForSeries(series.id);
-
-    // Sort episodes by season and episode number
     const sortedEpisodes = sortEpisodes(allSeriesEpisodes);
-
-    // Default to first episode (episode 1, season 1)
     const targetEpisode = sortedEpisodes.length > 0 ? sortedEpisodes[0] : null;
-
-    // Only navigate if we have a target episode
     if (targetEpisode) {
       navigate(`/series-player/${series.id}`, {
         state: {
@@ -915,24 +1012,16 @@ export default function Movies() {
         }
       });
     } else {
-      console.log('No episodes available for this series');
       alert('No episodes available for this series yet.');
     }
   }, [navigate, getEpisodesForSeries, sortEpisodes]);
 
-  // ===== Handle series click with specific episode (for hero "Watch Latest" button) =====
+  // Handle series click with specific episode
   const handleSeriesClickWithEpisode = useCallback((series, episode) => {
     if (!series || !series.id || !episode) return;
-
-    // Get all episodes for the series
     const allSeriesEpisodes = getEpisodesForSeries(series.id);
-
-    // Sort episodes by season and episode number
     const sortedEpisodes = sortEpisodes(allSeriesEpisodes);
-
-    // Find the index of the target episode
     const episodeIndex = sortedEpisodes.findIndex(ep => ep && ep.id === episode.id);
-
     navigate(`/series-player/${series.id}`, {
       state: {
         series: series,
@@ -943,10 +1032,9 @@ export default function Movies() {
     });
   }, [navigate, getEpisodesForSeries, sortEpisodes]);
 
-  // ===== Handle hero play (uses both movie and series handlers) =====
+  // Handle hero play
   const handleHeroPlayClick = useCallback(() => {
     if (!currentHeroItem || !currentHeroItem.id) return;
-
     if (isSeriesWithNewEpisode && currentHeroItem.latestEpisode) {
       handleSeriesClickWithEpisode(currentHeroItem, currentHeroItem.latestEpisode);
     } else if (currentHeroItem.type === "series") {
@@ -985,7 +1073,7 @@ export default function Movies() {
     setTimeout(() => setIsAutoPlaying(true), 10000);
   }, [filteredHeroContent.length]);
 
-  // Get categories
+  // Get all categories for filter
   const allCategories = useMemo(() => {
     const categories = new Set(['all', 'featured']);
     movies.forEach(movie => {
@@ -996,41 +1084,19 @@ export default function Movies() {
     return Array.from(categories);
   }, [movies]);
 
-  // Category icons
+  // Category icons for filter
   const getCategoryIcon = (category) => {
-    const categoryLower = category?.toLowerCase() || '';
-    const icons = {
-      action: <FaBolt className="text-orange-400" />,
-      drama: <FaTheaterMasks className="text-purple-400" />,
-      comedy: <FaFilm className="text-green-400" />,
-      scifi: <FaRocket className="text-blue-400" />,
-      fantasy: <FaMagic className="text-pink-400" />,
-      romance: <FaHeart className="text-red-400" />,
-      thriller: <FaBolt className="text-yellow-400" />,
-      horror: <FaFilm className="text-gray-400" />,
-      documentary: <FaCamera className="text-cyan-400" />,
-      featured: <FaCrown className="text-yellow-500" />,
-      popular: <FaFire className="text-orange-500" />,
-      topRated: <FaMedal className="text-yellow-500" />
-    };
-    return icons[categoryLower] || <FaVideo className="text-blue-400" />;
+    const style = getCategoryIconAndColor(category);
+    return style.icon;
   };
 
-  // Filter and sort movies (only movies, not series)
+  // Filter and sort movies
   const filteredMovies = useMemo(() => {
     let filtered = movies.filter(movie => movie?.type === "movie");
 
-    if (globalSearchQuery) {
-      filtered = filtered.filter(movie =>
-        movie?.title?.toLowerCase().includes(globalSearchQuery.toLowerCase()) ||
-        movie?.description?.toLowerCase().includes(globalSearchQuery.toLowerCase()) ||
-        movie?.category?.toLowerCase().includes(globalSearchQuery.toLowerCase())
-      );
-    }
-
     if (selectedCategory && selectedCategory !== "all" && selectedCategory !== "featured") {
       filtered = filtered.filter(movie =>
-        movie?.category?.toLowerCase().includes(selectedCategory.toLowerCase())
+        movie?.category?.toLowerCase().split(',').map(c => c.trim()).includes(selectedCategory.toLowerCase())
       );
     }
 
@@ -1054,7 +1120,7 @@ export default function Movies() {
     });
 
     return filtered;
-  }, [movies, globalSearchQuery, selectedCategory, sortBy, sortOrder]);
+  }, [movies, selectedCategory, sortBy, sortOrder]);
 
   // Pagination
   const totalPages = Math.ceil(filteredMovies.length / itemsPerPage);
@@ -1074,27 +1140,7 @@ export default function Movies() {
   // Reset page on filter change
   useEffect(() => {
     setCurrentPage(1);
-  }, [globalSearchQuery, selectedCategory, sortBy, sortOrder]);
-
-  // Handle search input change
-  const handleSearchChange = useCallback((e) => {
-    const value = e.target.value;
-
-    if (value) {
-      navigate(`?search=${encodeURIComponent(value)}`, { replace: true });
-    } else {
-      navigate('', { replace: true });
-    }
-
-    updateGlobalSearch(value);
-  }, [navigate, updateGlobalSearch]);
-
-  // Clear search
-  const handleClearSearch = useCallback(() => {
-    navigate('', { replace: true });
-    clearGlobalSearch();
-    setCurrentPage(1);
-  }, [navigate, clearGlobalSearch]);
+  }, [selectedCategory, sortBy, sortOrder]);
 
   // Format date helper
   const formatDate = useCallback((dateString) => {
@@ -1104,7 +1150,6 @@ export default function Movies() {
       const now = new Date();
       const diffTime = Math.abs(now - date);
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
       if (diffDays === 0) return 'Today';
       if (diffDays === 1) return 'Yesterday';
       if (diffDays < 7) return `${diffDays}d ago`;
@@ -1120,10 +1165,15 @@ export default function Movies() {
     return <CinematicLoading />;
   }
 
+  // Don't show movies page content if there's a search query
+  if (globalSearchQuery) {
+    return null; // Will redirect to search page via useEffect
+  }
+
   return (
-    <main className="min-h-screen bg-gradient-to-b from-black via-gray-900 to-black">
-      {/* HERO SLIDER SECTION - Original Look */}
-      {filteredHeroContent.length > 0 && !globalSearchQuery && (
+    <main className="min-h-screen bg-gradient-to-b from-black via-gray-900 to-black pt-20">
+      {/* HERO SLIDER SECTION */}
+      {filteredHeroContent.length > 0 && (
         <section
           ref={heroRef}
           className="relative h-[40vh] sm:h-[50vh] md:h-[60vh] lg:h-[70vh] xl:h-[80vh] overflow-hidden group"
@@ -1133,12 +1183,10 @@ export default function Movies() {
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
         >
-          {/* Background Images */}
           {filteredHeroContent.map((item, index) => (
             <div
               key={item?.id || index}
-              className={`absolute inset-0 transition-opacity duration-1000 ${index === currentHeroSlide ? 'opacity-100 z-10' : 'opacity-0 z-0'
-                }`}
+              className={`absolute inset-0 transition-opacity duration-1000 ${index === currentHeroSlide ? 'opacity-100 z-10' : 'opacity-0 z-0'}`}
             >
               <div className="relative w-full h-full">
                 {imageLoading && index === currentHeroSlide && (
@@ -1162,20 +1210,12 @@ export default function Movies() {
             </div>
           ))}
 
-          {/* Hero Content */}
           <div className="absolute bottom-0 left-0 right-0 p-3 pb-4 sm:p-6 sm:pb-8 z-20 bg-gradient-to-t from-black via-black/80 to-transparent">
             <div className="max-w-3xl">
-              {/* Mobile badges */}
               <div className="flex sm:hidden items-center gap-1 mb-1 flex-wrap">
-                <span className={`px-1.5 py-0.5 rounded-full text-[8px] font-semibold ${isSeriesWithNewEpisode
-                  ? "bg-gradient-to-r from-purple-600 to-pink-600"
-                  : currentHeroItem?.type === "series"
-                    ? "bg-gradient-to-r from-purple-600 to-pink-600"
-                    : "bg-gradient-to-r from-purple-600 to-pink-600"
-                  }`}>
+                <span className="px-1.5 py-0.5 rounded-full text-[8px] font-semibold bg-gradient-to-r from-purple-600 to-pink-600">
                   {isSeriesWithNewEpisode ? "SERIES" : currentHeroItem?.type === "series" ? "SERIES" : "MOVIE"}
                 </span>
-
                 {isSeriesWithNewEpisode && (
                   <>
                     <span className="px-1.5 py-0.5 rounded-full bg-green-600 text-white text-[8px] font-semibold flex items-center gap-0.5 animate-pulse">
@@ -1187,14 +1227,12 @@ export default function Movies() {
                     </span>
                   </>
                 )}
-
                 {currentHeroItem?.translator && (
                   <div className="px-1.5 py-0.5 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-[8px] font-semibold flex items-center gap-0.5 shadow-lg">
                     <FaLanguage className="text-[6px]" />
                     <span className="max-w-[40px] truncate">{currentHeroItem.translator}</span>
                   </div>
                 )}
-
                 {currentHeroItem?.rating && (
                   <span className="flex items-center gap-0.5 text-[8px] text-yellow-400 bg-yellow-900/20 px-1.5 py-0.5 rounded-lg">
                     <FaStar className="text-[6px]" /> {currentHeroItem.rating}
@@ -1202,23 +1240,10 @@ export default function Movies() {
                 )}
               </div>
 
-              {/* Desktop badges */}
               <div className="hidden sm:flex items-center gap-2 mb-2 flex-wrap">
-                <span className={`px-2 py-1 rounded-full text-[10px] sm:text-xs font-semibold ${isSeriesWithNewEpisode
-                  ? "bg-gradient-to-r from-purple-600 to-pink-600"
-                  : currentHeroItem?.type === "series"
-                    ? "bg-gradient-to-r from-purple-600 to-pink-600"
-                    : "bg-gradient-to-r from-purple-600 to-pink-600"
-                  }`}>
-                  {isSeriesWithNewEpisode ? (
-                    <><FaTv className="inline mr-1 text-[8px]" /> SERIES</>
-                  ) : currentHeroItem?.type === "series" ? (
-                    <><FaTv className="inline mr-1 text-[8px]" /> SERIES</>
-                  ) : (
-                    <><FaPlay className="inline mr-1 text-[8px]" /> MOVIE</>
-                  )}
+                <span className="px-2 py-1 rounded-full text-[10px] sm:text-xs font-semibold bg-gradient-to-r from-purple-600 to-pink-600">
+                  {isSeriesWithNewEpisode ? <><FaTv className="inline mr-1 text-[8px]" /> SERIES</> : currentHeroItem?.type === "series" ? <><FaTv className="inline mr-1 text-[8px]" /> SERIES</> : <><FaPlay className="inline mr-1 text-[8px]" /> MOVIE</>}
                 </span>
-
                 {isSeriesWithNewEpisode && (
                   <>
                     <span className="px-2 py-1 rounded-full bg-green-600 text-white text-[8px] sm:text-xs font-semibold flex items-center gap-1 animate-pulse">
@@ -1230,7 +1255,6 @@ export default function Movies() {
                     </span>
                   </>
                 )}
-
                 {currentHeroItem?.translator && (
                   <div className="px-2 py-1 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-[8px] sm:text-xs font-semibold flex items-center gap-1 shadow-lg border border-blue-400/30 hover:from-blue-700 hover:to-indigo-700 transition-all duration-300">
                     <FaLanguage className="text-[10px] sm:text-xs" />
@@ -1238,13 +1262,11 @@ export default function Movies() {
                     <span className="inline lg:hidden max-w-[60px] truncate">{currentHeroItem.translator}</span>
                   </div>
                 )}
-
                 {currentHeroItem?.rating && (
                   <span className="flex items-center gap-1 text-[10px] sm:text-xs text-yellow-400 bg-yellow-900/20 px-2 py-1 rounded-lg">
                     <FaStar className="text-[8px]" /> {currentHeroItem.rating}
                   </span>
                 )}
-
                 {currentHeroItem?.year && (
                   <span className="flex items-center gap-1 text-[10px] sm:text-xs text-gray-300 bg-gray-800/30 px-2 py-1 rounded-lg">
                     <FaCalendarAlt className="text-[8px]" /> {currentHeroItem.year}
@@ -1252,7 +1274,6 @@ export default function Movies() {
                 )}
               </div>
 
-              {/* Title */}
               <h1 className="sm:hidden text-base font-bold text-white mb-1 line-clamp-1">
                 {currentHeroItem?.title}
               </h1>
@@ -1265,21 +1286,18 @@ export default function Movies() {
                 )}
               </h1>
 
-              {/* Episode title */}
               {isSeriesWithNewEpisode && currentHeroItem.latestEpisode && (
                 <h2 className="hidden sm:block text-sm sm:text-base text-purple-300 mb-2">
                   Latest: {currentHeroItem.latestEpisode.title}
                 </h2>
               )}
 
-              {/* Description */}
               <p className="hidden sm:block text-xs sm:text-sm text-gray-300 mb-3 line-clamp-2 max-w-2xl">
                 {isSeriesWithNewEpisode && currentHeroItem.latestEpisode?.description
                   ? currentHeroItem.latestEpisode.description
                   : currentHeroItem?.description || 'Experience this amazing content.'}
               </p>
 
-              {/* Action buttons */}
               <div className="flex sm:hidden gap-2">
                 <button
                   onClick={handleHeroPlayClick}
@@ -1316,38 +1334,27 @@ export default function Movies() {
             </div>
           </div>
 
-          {/* Type Filter */}
           <div className="absolute top-2 left-2 sm:top-4 sm:left-4 z-20 flex gap-1 sm:gap-2">
             <button
               onClick={() => setHeroContentType("all")}
-              className={`px-2 py-1 sm:px-3 sm:py-1.5 rounded-full text-[8px] sm:text-xs font-medium ${heroContentType === "all"
-                ? 'bg-purple-600 text-white'
-                : 'bg-black/50 text-gray-300 hover:bg-black/70'
-                }`}
+              className={`px-2 py-1 sm:px-3 sm:py-1.5 rounded-full text-[8px] sm:text-xs font-medium ${heroContentType === "all" ? 'bg-purple-600 text-white' : 'bg-black/50 text-gray-300 hover:bg-black/70'}`}
             >
               All
             </button>
             <button
               onClick={() => setHeroContentType("movies")}
-              className={`px-2 py-1 sm:px-3 sm:py-1.5 rounded-full text-[8px] sm:text-xs font-medium ${heroContentType === "movies"
-                ? 'bg-purple-600 text-white'
-                : 'bg-black/50 text-gray-300 hover:bg-black/70'
-                }`}
+              className={`px-2 py-1 sm:px-3 sm:py-1.5 rounded-full text-[8px] sm:text-xs font-medium ${heroContentType === "movies" ? 'bg-purple-600 text-white' : 'bg-black/50 text-gray-300 hover:bg-black/70'}`}
             >
               Movies
             </button>
             <button
               onClick={() => setHeroContentType("series")}
-              className={`px-2 py-1 sm:px-3 sm:py-1.5 rounded-full text-[8px] sm:text-xs font-medium ${heroContentType === "series"
-                ? 'bg-purple-600 text-white'
-                : 'bg-black/50 text-gray-300 hover:bg-black/70'
-                }`}
+              className={`px-2 py-1 sm:px-3 sm:py-1.5 rounded-full text-[8px] sm:text-xs font-medium ${heroContentType === "series" ? 'bg-purple-600 text-white' : 'bg-black/50 text-gray-300 hover:bg-black/70'}`}
             >
               Series
             </button>
           </div>
 
-          {/* Navigation Dots */}
           <div className="absolute bottom-1 sm:bottom-2 left-1/2 transform -translate-x-1/2 flex gap-1 sm:gap-2 z-20">
             {filteredHeroContent.map((_, index) => (
               <button
@@ -1359,25 +1366,11 @@ export default function Movies() {
                 }}
                 className="p-1 sm:p-2 -m-1 sm:-m-2 group/dot"
               >
-                <span className={`block transition-all duration-300 rounded-full ${index === currentHeroSlide
-                  ? 'w-3 sm:w-4 md:w-6 h-0.5 sm:h-1 md:h-1.5 bg-purple-600'
-                  : 'w-0.5 sm:w-1 md:w-1.5 h-0.5 sm:h-1 md:h-1.5 bg-gray-500 group-hover/dot:bg-gray-300'
-                  }`} />
+                <span className={`block transition-all duration-300 rounded-full ${index === currentHeroSlide ? 'w-3 sm:w-4 md:w-6 h-0.5 sm:h-1 md:h-1.5 bg-purple-600' : 'w-0.5 sm:w-1 md:w-1.5 h-0.5 sm:h-1 md:h-1.5 bg-gray-500 group-hover/dot:bg-gray-300'}`} />
               </button>
             ))}
           </div>
 
-          {/* Mobile swipe indicator */}
-          <div className="absolute top-1/2 left-0 right-0 flex justify-between px-2 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity sm:hidden">
-            <div className="w-8 h-8 bg-black/50 rounded-full flex items-center justify-center">
-              <FaChevronLeft className="text-white text-sm" />
-            </div>
-            <div className="w-8 h-8 bg-black/50 rounded-full flex items-center justify-center">
-              <FaChevronRight className="text-white text-sm" />
-            </div>
-          </div>
-
-          {/* Desktop Navigation Arrows */}
           <button
             onClick={prevHeroSlide}
             className="hidden sm:block absolute left-2 sm:left-4 top-1/2 transform -translate-y-1/2 z-30 group/arrow"
@@ -1402,12 +1395,10 @@ export default function Movies() {
             </div>
           </button>
 
-          {/* Slide counter */}
           <div className="absolute top-2 right-2 sm:top-4 sm:right-4 z-20 bg-black/40 px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-full text-[8px] sm:text-xs text-white border border-white/10">
             <span className="text-purple-400">{currentHeroSlide + 1}</span>/{filteredHeroContent.length}
           </div>
 
-          {/* Progress bar */}
           <div className="absolute bottom-0 left-0 right-0 h-0.5 sm:h-1 bg-gray-800/50 z-20">
             <div
               className="h-full bg-gradient-to-r from-purple-600 to-pink-400 transition-all duration-300"
@@ -1417,8 +1408,8 @@ export default function Movies() {
         </section>
       )}
 
-      {/* Recently Updated Series Section - Improved with tighter grid */}
-      {!globalSearchQuery && recentlyUpdatedSeries.length > 0 && (
+      {/* Recently Updated Series Section */}
+      {recentlyUpdatedSeries.length > 0 && (
         <section className="container mx-auto px-4 py-6 sm:py-8">
           <div className="flex items-center justify-between mb-3 sm:mb-4">
             <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-white flex items-center gap-2">
@@ -1431,7 +1422,6 @@ export default function Movies() {
             </span>
           </div>
 
-          {/* Desktop Grid - Tighter gap like all movies section */}
           <div className="hidden md:grid md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-2 md:gap-3 lg:gap-4">
             {recentlyUpdatedSeries.map(series => (
               <div
@@ -1449,7 +1439,6 @@ export default function Movies() {
             ))}
           </div>
 
-          {/* Mobile Horizontal Scroll - Tighter spacing */}
           <div className="flex md:hidden gap-2 overflow-x-auto pb-4 px-1 scrollbar-hide"
             style={{
               scrollbarWidth: 'none',
@@ -1473,8 +1462,8 @@ export default function Movies() {
         </section>
       )}
 
-      {/* Latest Uploads Section - Improved with tighter grid */}
-      {!globalSearchQuery && latestUploads.length > 0 && (
+      {/* Latest Uploads Section */}
+      {latestUploads.length > 0 && (
         <section className="container mx-auto px-4 py-6 sm:py-8">
           <div className="flex items-center justify-between mb-3 sm:mb-4">
             <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-white flex items-center gap-2">
@@ -1487,7 +1476,6 @@ export default function Movies() {
             </span>
           </div>
 
-          {/* Desktop Grid - Tighter gap like all movies section */}
           <div className="hidden md:grid md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-2 md:gap-3 lg:gap-4">
             {latestUploads.map(item => (
               <div
@@ -1520,7 +1508,6 @@ export default function Movies() {
             ))}
           </div>
 
-          {/* Mobile Horizontal Scroll - Tighter spacing */}
           <div className="flex md:hidden gap-2 overflow-x-auto pb-4 px-1 scrollbar-hide"
             style={{
               scrollbarWidth: 'none',
@@ -1553,135 +1540,73 @@ export default function Movies() {
         </section>
       )}
 
-      {/* Search and Filter Bar */}
-      <div className="container mx-auto px-4 py-4">
-        <div className="bg-gray-900/80 rounded-xl border border-gray-800 p-3 sm:p-4">
-          <div className="flex flex-col md:flex-row gap-2 sm:gap-3">
-            {/* Search Input */}
-            <div className="flex-1 relative">
-              <FaSearch className={`absolute left-3 top-1/2 transform -translate-y-1/2 text-xs sm:text-sm ${isSearchFocused ? 'text-purple-400' : 'text-gray-400'
-                }`} />
-              <input
-                type="text"
-                value={globalSearchQuery}
-                onChange={handleSearchChange}
-                onFocus={() => setIsSearchFocused(true)}
-                onBlur={() => setIsSearchFocused(false)}
-                placeholder="Search movies..."
-                className="w-full pl-8 sm:pl-9 pr-8 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white text-xs sm:text-sm focus:outline-none focus:border-purple-500"
-              />
-              {globalSearchQuery && (
-                <button
-                  onClick={handleClearSearch}
-                  className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white"
-                >
-                  <FaTimes className="text-xs sm:text-sm" />
-                </button>
-              )}
-            </div>
+      {/* ===== DYNAMIC CATEGORY SECTIONS ===== */}
+      {dynamicCategories.map((category) => {
+        const categoryMovies = getMoviesByCategory(category.id);
+        if (categoryMovies.length === 0) return null;
+        const { icon, color, bgColor, borderColor } = getCategoryIconAndColor(category.id);
 
-            {/* Filter Button */}
-            <button
-              onClick={() => setShowFilters(!showFilters)}
-              className="flex items-center justify-center gap-2 px-3 sm:px-4 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-white text-xs sm:text-sm"
-            >
-              <FaFilter className={showFilters ? 'text-purple-400' : ''} />
-              Filters
-            </button>
-
-            {/* Sort Select */}
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-              className="px-3 sm:px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white text-xs sm:text-sm focus:outline-none focus:border-purple-500"
-            >
-              <option value="popular">Popular</option>
-              <option value="rating">Top Rated</option>
-              <option value="year">Year</option>
-              <option value="title">Title</option>
-            </select>
-
-            {/* Sort Order */}
-            <button
-              onClick={() => setSortOrder(sortOrder === "desc" ? "asc" : "desc")}
-              className="p-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-white"
-            >
-              {sortOrder === "desc" ? <FaSortAmountDown className="text-xs sm:text-sm" /> : <FaSortAmountUp className="text-xs sm:text-sm" />}
-            </button>
-          </div>
-
-          {/* Filter Panel */}
-          {showFilters && (
-            <div className="mt-3 sm:mt-4 p-3 sm:p-4 bg-gray-800/50 rounded-lg">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
-                <div>
-                  <label className="block text-[10px] sm:text-xs font-medium text-gray-300 mb-1 sm:mb-2">Categories</label>
-                  <div className="space-y-1 max-h-32 overflow-y-auto">
-                    <button
-                      onClick={() => setSelectedCategory("all")}
-                      className={`w-full text-left px-2 py-1 rounded text-[8px] sm:text-xs ${selectedCategory === "all" ? 'bg-purple-600 text-white' : 'bg-gray-800 text-gray-300'
-                        }`}
-                    >
-                      All
-                    </button>
-                    <button
-                      onClick={() => setSelectedCategory("featured")}
-                      className={`w-full text-left px-2 py-1 rounded text-[8px] sm:text-xs flex items-center gap-1 ${selectedCategory === "featured" ? 'bg-orange-600 text-white' : 'bg-gray-800 text-gray-300'
-                        }`}
-                    >
-                      <FaFire className="text-[6px] sm:text-xs" /> Featured
-                    </button>
-                    {allCategories
-                      .filter(cat => cat !== 'all' && cat !== 'featured')
-                      .slice(0, 8)
-                      .map(category => (
-                        <button
-                          key={category}
-                          onClick={() => setSelectedCategory(category)}
-                          className={`w-full text-left px-2 py-1 rounded text-[8px] sm:text-xs flex items-center gap-1 ${selectedCategory === category ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-300'
-                            }`}
-                        >
-                          {getCategoryIcon(category)}
-                          <span className="capitalize">{category}</span>
-                        </button>
-                      ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Search Results Indicator */}
-      {globalSearchQuery && (
-        <div className="container mx-auto px-4 mb-3 sm:mb-4">
-          <div className="bg-purple-900/20 rounded-lg border border-purple-800/30 p-2 sm:p-3">
-            <div className="flex items-center justify-between">
+        return (
+          <section key={category.id} className="container mx-auto px-4 py-6 sm:py-8">
+            <div className="flex items-center justify-between mb-4 sm:mb-5">
               <div className="flex items-center gap-2">
-                <FaSearch className="text-purple-400 text-xs sm:text-sm" />
-                <div>
-                  <h3 className="text-xs sm:text-sm font-semibold text-white">
-                    Results: <span className="text-purple-400">"{globalSearchQuery}"</span>
-                  </h3>
-                  <p className="text-[8px] sm:text-xs text-gray-400">
-                    Found {filteredMovies.length} movie{filteredMovies.length !== 1 ? 's' : ''}
-                  </p>
+                <div className={`w-8 h-8 rounded-full ${bgColor} flex items-center justify-center border ${borderColor}`}>
+                  {icon}
                 </div>
+                <h2 className={`text-xl sm:text-2xl md:text-3xl font-bold bg-gradient-to-r ${color} bg-clip-text text-transparent`}>
+                  {category.name} {category.id === 'cartoon' || category.id === 'animation' ? '🎨' : '🎬'}
+                </h2>
+                <span className="text-xs text-gray-400 bg-gray-800/50 px-2 py-1 rounded-full ml-2">
+                  {categoryMovies.length}
+                </span>
               </div>
               <button
-                onClick={handleClearSearch}
-                className="px-2 sm:px-3 py-1 sm:py-1.5 bg-gray-800 hover:bg-gray-700 rounded-lg text-white text-[8px] sm:text-xs flex items-center gap-1"
+                onClick={() => setSelectedCategory(category.id)}
+                className="text-xs text-gray-400 hover:text-white transition-colors flex items-center gap-1"
               >
-                <FaTimes /> Clear
+                View All <FaChevronRight className="text-[8px]" />
               </button>
             </div>
-          </div>
-        </div>
-      )}
+
+            {/* Desktop Grid */}
+            <div className="hidden md:grid md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 md:gap-4">
+              {categoryMovies.slice(0, 12).map(movie => (
+                <div
+                  key={movie?.id}
+                  className="cursor-pointer transform transition-all duration-300 hover:scale-105 hover:z-10"
+                  onClick={() => handleMovieClick(movie)}
+                >
+                  <div className="relative group">
+                    <div className={`absolute inset-0 bg-gradient-to-r ${color} rounded-xl opacity-0 group-hover:opacity-20 transition-opacity duration-300 blur-md`} />
+                    <MovieCard movie={movie} />
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Mobile Horizontal Scroll */}
+            <div className="flex md:hidden gap-2 overflow-x-auto pb-4 px-1 scrollbar-hide"
+              style={{
+                scrollbarWidth: 'none',
+                msOverflowStyle: 'none',
+                WebkitOverflowScrolling: 'touch'
+              }}>
+              {categoryMovies.slice(0, 8).map(movie => (
+                <div
+                  key={movie?.id}
+                  className="flex-none w-[130px] sm:w-[150px] transform transition-transform duration-300 active:scale-95"
+                  onClick={() => handleMovieClick(movie)}
+                >
+                  <MovieCard movie={movie} />
+                </div>
+              ))}
+            </div>
+          </section>
+        );
+      })}
 
       {/* Featured Movies Section */}
-      {selectedCategory === "all" && featuredMovies.length > 0 && !globalSearchQuery && (
+      {selectedCategory === "all" && featuredMovies.length > 0 && (
         <section className="container mx-auto px-4 mb-4 sm:mb-6">
           <div className="flex items-center justify-between mb-2 sm:mb-3">
             <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-white flex items-center gap-2">
@@ -1694,7 +1619,6 @@ export default function Movies() {
             </h2>
           </div>
 
-          {/* Desktop Grid */}
           <div className="hidden md:grid md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-2 md:gap-3 lg:gap-4">
             {featuredMovies.slice(0, 12).map(movie => (
               <div
@@ -1707,7 +1631,6 @@ export default function Movies() {
             ))}
           </div>
 
-          {/* Mobile Horizontal Scroll */}
           <div className="flex md:hidden gap-2 overflow-x-auto pb-4 px-1 scrollbar-hide"
             style={{
               scrollbarWidth: 'none',
@@ -1727,85 +1650,159 @@ export default function Movies() {
         </section>
       )}
 
-      {/* All Movies Section */}
-      <section className="container mx-auto px-4 pb-6 sm:pb-8">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-2 sm:mb-3">
-          <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-white">
-            {globalSearchQuery ? "Results" :
-              selectedCategory === "all" ? "All Movies" :
-                selectedCategory === "featured" ? "Featured" :
-                  `${selectedCategory}`}
-          </h2>
-          <span className="text-[8px] sm:text-xs text-gray-400 bg-gray-800 px-2 sm:px-3 py-1 rounded-full">
+      {/* Filter Bar */}
+      <div className="container mx-auto px-4 py-4">
+        <div className="bg-gray-900/80 rounded-xl border border-gray-800 p-3 sm:p-4">
+          <div className="flex flex-col md:flex-row gap-2 sm:gap-3">
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className="flex items-center justify-center gap-2 px-3 sm:px-4 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-white text-xs sm:text-sm"
+            >
+              <FaFilter className={showFilters ? 'text-purple-400' : ''} />
+              Filters
+            </button>
+
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="px-3 sm:px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white text-xs sm:text-sm focus:outline-none focus:border-purple-500"
+            >
+              <option value="popular">Popular</option>
+              <option value="rating">Top Rated</option>
+              <option value="year">Year</option>
+              <option value="title">Title</option>
+            </select>
+
+            <button
+              onClick={() => setSortOrder(sortOrder === "desc" ? "asc" : "desc")}
+              className="p-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-white"
+            >
+              {sortOrder === "desc" ? <FaSortAmountDown className="text-xs sm:text-sm" /> : <FaSortAmountUp className="text-xs sm:text-sm" />}
+            </button>
+          </div>
+
+          {showFilters && (
+            <div className="mt-3 sm:mt-4 p-3 sm:p-4 bg-gray-800/50 rounded-lg">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
+                <div>
+                  <label className="block text-[10px] sm:text-xs font-medium text-gray-300 mb-1 sm:mb-2">Categories</label>
+                  <div className="space-y-1 max-h-48 overflow-y-auto">
+                    <button
+                      onClick={() => setSelectedCategory("all")}
+                      className={`w-full text-left px-2 py-1 rounded text-[8px] sm:text-xs ${selectedCategory === "all" ? 'bg-purple-600 text-white' : 'bg-gray-800 text-gray-300'}`}
+                    >
+                      All
+                    </button>
+                    <button
+                      onClick={() => setSelectedCategory("featured")}
+                      className={`w-full text-left px-2 py-1 rounded text-[8px] sm:text-xs flex items-center gap-1 ${selectedCategory === "featured" ? 'bg-orange-600 text-white' : 'bg-gray-800 text-gray-300'}`}
+                    >
+                      <FaFire className="text-[6px] sm:text-xs" /> Featured
+                    </button>
+                    {dynamicCategories.map(cat => {
+                      const { icon: catIcon } = getCategoryIconAndColor(cat.id);
+                      return (
+                        <button
+                          key={cat.id}
+                          onClick={() => setSelectedCategory(cat.id)}
+                          className={`w-full text-left px-2 py-1 rounded text-[8px] sm:text-xs flex items-center gap-1 ${selectedCategory === cat.id ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-300'}`}
+                        >
+                          {catIcon}
+                          <span className="capitalize">{cat.name}</span>
+                          <span className="ml-auto text-[10px] text-gray-500">{cat.count}</span>
+                        </button>
+                      );
+                    })}
+                    {allCategories
+                      .filter(cat => cat !== 'all' && cat !== 'featured' && !dynamicCategories.some(c => c.id === cat))
+                      .slice(0, 8)
+                      .map(category => (
+                        <button
+                          key={category}
+                          onClick={() => setSelectedCategory(category)}
+                          className={`w-full text-left px-2 py-1 rounded text-[8px] sm:text-xs flex items-center gap-1 ${selectedCategory === category ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-300'}`}
+                        >
+                          {getCategoryIcon(category)}
+                          <span className="capitalize">{category}</span>
+                        </button>
+                      ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* All Movies Section - Final Section */}
+      <section className="container mx-auto px-4 pb-8 sm:pb-12">
+        <div className="flex items-center justify-between mb-4 sm:mb-5">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-r from-purple-600 to-pink-600 flex items-center justify-center">
+              <FaFilm className="text-white text-sm" />
+            </div>
+            <h2 className="text-xl sm:text-2xl md:text-3xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+              All Movies
+            </h2>
+          </div>
+          <span className="text-xs text-gray-400 bg-gray-800 px-2 sm:px-3 py-1 rounded-full">
             {filteredMovies.length}
           </span>
         </div>
 
-        {/* Category Chips */}
-        {!globalSearchQuery && (
-          <div className="flex gap-1 mb-3 sm:mb-4 overflow-x-auto pb-1">
-            <button
-              onClick={() => setSelectedCategory("all")}
-              className={`px-2 sm:px-3 py-1 sm:py-1.5 rounded-full text-[8px] sm:text-xs font-medium whitespace-nowrap ${selectedCategory === "all"
-                ? 'bg-purple-600 text-white'
-                : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
-                }`}
-            >
-              All
-            </button>
-            <button
-              onClick={() => setSelectedCategory("featured")}
-              className={`px-2 sm:px-3 py-1 sm:py-1.5 rounded-full text-[8px] sm:text-xs font-medium flex items-center gap-1 whitespace-nowrap ${selectedCategory === "featured"
-                ? 'bg-orange-600 text-white'
-                : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
-                }`}
-            >
-              <FaFire className="text-[6px] sm:text-xs" /> Featured
-            </button>
-            {allCategories
-              .filter(cat => cat !== 'all' && cat !== 'featured')
-              .slice(0, 8)
-              .map(category => (
-                <button
-                  key={category}
-                  onClick={() => setSelectedCategory(category)}
-                  className={`px-2 sm:px-3 py-1 sm:py-1.5 rounded-full text-[8px] sm:text-xs font-medium flex items-center gap-1 whitespace-nowrap ${selectedCategory === category
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
-                    }`}
-                >
-                  {getCategoryIcon(category)}
-                  <span className="capitalize">{category}</span>
-                </button>
-              ))}
-          </div>
-        )}
-
-        {/* Movies Grid - Tighter gap */}
-        {filteredMovies.length === 0 ? (
-          <div className="text-center py-8 sm:py-12 bg-gray-900/30 rounded-lg">
-            <div className="text-3xl sm:text-4xl mb-1 sm:mb-2">🎬</div>
-            <h3 className="text-sm sm:text-base font-bold text-white mb-1">No movies found</h3>
-            <p className="text-[8px] sm:text-xs text-gray-400 mb-2 sm:mb-3">
-              {globalSearchQuery ? `No matches for "${globalSearchQuery}"` : "No movies available"}
-            </p>
-            {globalSearchQuery && (
+        {/* Category Chips - Quick Filter */}
+        <div className="flex gap-1.5 mb-4 sm:mb-5 overflow-x-auto pb-2 scrollbar-hide">
+          <button
+            onClick={() => setSelectedCategory("all")}
+            className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-medium whitespace-nowrap transition-all duration-300 ${selectedCategory === "all"
+              ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg'
+              : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+              }`}
+          >
+            All
+          </button>
+          <button
+            onClick={() => setSelectedCategory("featured")}
+            className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-medium flex items-center gap-1 whitespace-nowrap transition-all duration-300 ${selectedCategory === "featured"
+              ? 'bg-gradient-to-r from-orange-600 to-red-600 text-white shadow-lg'
+              : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+              }`}
+          >
+            <FaFire className="text-xs" /> Featured
+          </button>
+          {dynamicCategories.slice(0, 12).map(category => {
+            const { icon: catIcon, color } = getCategoryIconAndColor(category.id);
+            return (
               <button
-                onClick={handleClearSearch}
-                className="px-3 sm:px-4 py-1.5 sm:py-2 bg-purple-600 rounded-lg text-white text-[8px] sm:text-xs font-medium"
+                key={category.id}
+                onClick={() => setSelectedCategory(category.id)}
+                className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-medium flex items-center gap-1 whitespace-nowrap transition-all duration-300 ${selectedCategory === category.id
+                  ? `bg-gradient-to-r ${color} text-white shadow-lg`
+                  : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                  }`}
               >
-                Clear Search
+                {catIcon}
+                <span className="capitalize">{category.name}</span>
               </button>
-            )}
+            );
+          })}
+        </div>
+
+        {filteredMovies.length === 0 ? (
+          <div className="text-center py-12 sm:py-16 bg-gray-900/30 rounded-xl">
+            <div className="text-4xl sm:text-5xl mb-3 sm:mb-4">🎬</div>
+            <h3 className="text-base sm:text-lg font-bold text-white mb-2">No movies found</h3>
+            <p className="text-xs sm:text-sm text-gray-400 mb-4">
+              Try different category or filter
+            </p>
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-1 sm:gap-2 md:gap-3">
+            <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 sm:gap-3 md:gap-4">
               {paginatedMovies.map(movie => (
                 <div
                   key={movie?.id}
-                  className="cursor-pointer"
+                  className="cursor-pointer transform transition-all duration-300 hover:scale-105 hover:z-10"
                   onClick={() => handleMovieClick(movie)}
                 >
                   <MovieCard movie={movie} />
@@ -1813,25 +1810,24 @@ export default function Movies() {
               ))}
             </div>
 
-            {/* Pagination */}
             {totalPages > 1 && (
-              <div className="flex items-center justify-center gap-2 mt-4 sm:mt-6">
+              <div className="flex items-center justify-center gap-2 mt-6 sm:mt-8">
                 <button
                   onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
                   disabled={currentPage === 1}
-                  className="w-6 sm:w-8 h-6 sm:h-8 rounded-lg bg-gray-800 disabled:opacity-50 text-white flex items-center justify-center"
+                  className="w-8 sm:w-10 h-8 sm:h-10 rounded-lg bg-gray-800 disabled:opacity-50 text-white flex items-center justify-center hover:bg-gray-700 transition-all duration-300"
                 >
-                  <FaChevronLeft className="text-[8px] sm:text-xs" />
+                  <FaChevronLeft className="text-xs sm:text-sm" />
                 </button>
-                <span className="text-[8px] sm:text-xs text-white bg-gray-800 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg">
+                <span className="text-xs sm:text-sm text-white bg-gray-800 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg">
                   {currentPage} / {totalPages}
                 </span>
                 <button
                   onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
                   disabled={currentPage === totalPages}
-                  className="w-6 sm:w-8 h-6 sm:h-8 rounded-lg bg-gray-800 disabled:opacity-50 text-white flex items-center justify-center"
+                  className="w-8 sm:w-10 h-8 sm:h-10 rounded-lg bg-gray-800 disabled:opacity-50 text-white flex items-center justify-center hover:bg-gray-700 transition-all duration-300"
                 >
-                  <FaChevronRight className="text-[8px] sm:text-xs" />
+                  <FaChevronRight className="text-xs sm:text-sm" />
                 </button>
               </div>
             )}
@@ -1842,7 +1838,7 @@ export default function Movies() {
       {/* Quick View Modal */}
       {showQuickView && quickViewMovie && (
         <div
-          className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/80"
+          className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/80 backdrop-blur-sm"
           onClick={() => setShowQuickView(false)}
         >
           <div
@@ -1858,43 +1854,41 @@ export default function Movies() {
               <div className="absolute inset-0 bg-gradient-to-t from-gray-900 via-transparent to-transparent" />
               <button
                 onClick={() => setShowQuickView(false)}
-                className="absolute top-2 right-2 w-6 sm:w-7 h-6 sm:h-7 bg-black/50 rounded-full flex items-center justify-center"
+                className="absolute top-2 right-2 w-7 h-7 bg-black/50 rounded-full flex items-center justify-center hover:bg-black/70 transition-all duration-300"
               >
                 <FaTimes className="text-white text-xs sm:text-sm" />
               </button>
 
-              {/* Quick View Badges */}
               {quickViewMovie.latestEpisode && (
                 <div className="absolute top-2 left-2 flex gap-1">
-                  <span className="px-1.5 sm:px-2 py-0.5 sm:py-1 bg-purple-600 text-white text-[8px] sm:text-xs rounded-full">
+                  <span className="px-2 py-1 bg-purple-600 text-white text-xs rounded-full">
                     Latest
                   </span>
-                  <span className="px-1.5 sm:px-2 py-0.5 sm:py-1 bg-blue-600 text-white text-[8px] sm:text-xs rounded-full">
+                  <span className="px-2 py-1 bg-blue-600 text-white text-xs rounded-full">
                     S{quickViewMovie.latestEpisode.seasonNumber}:E{quickViewMovie.latestEpisode.episodeNumber}
                   </span>
                 </div>
               )}
             </div>
-            <div className="p-3 sm:p-4">
-              <h2 className="text-sm sm:text-lg font-bold text-white mb-1">{quickViewMovie?.title}</h2>
+            <div className="p-4 sm:p-5">
+              <h2 className="text-base sm:text-xl font-bold text-white mb-1">{quickViewMovie?.title}</h2>
 
-              {/* Translator in Quick View */}
               {quickViewMovie?.translator && (
-                <div className="flex items-center gap-1 text-[8px] sm:text-xs text-blue-400 bg-blue-900/20 px-2 py-1 rounded-lg mb-2 inline-block">
-                  <FaLanguage className="text-[10px]" />
+                <div className="flex items-center gap-1 text-xs text-blue-400 bg-blue-900/20 px-2 py-1 rounded-lg mb-2 inline-block">
+                  <FaLanguage className="text-xs" />
                   <span>Translator: {quickViewMovie.translator}</span>
                 </div>
               )}
 
               {quickViewMovie.latestEpisode && (
-                <h3 className="text-[10px] sm:text-sm text-purple-400 mb-1 line-clamp-1">
+                <h3 className="text-sm text-purple-400 mb-1 line-clamp-1">
                   {quickViewMovie.latestEpisode.title}
                 </h3>
               )}
-              <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-[8px] sm:text-xs text-gray-400 mb-2">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs text-gray-400 mb-3">
                 {quickViewMovie?.rating && (
                   <span className="flex items-center gap-1">
-                    <FaStar className="text-yellow-500 text-[6px] sm:text-xs" /> {quickViewMovie.rating}
+                    <FaStar className="text-yellow-500 text-xs" /> {quickViewMovie.rating}
                   </span>
                 )}
                 {quickViewMovie?.year && <span>{quickViewMovie.year}</span>}
@@ -1909,7 +1903,7 @@ export default function Movies() {
                   </span>
                 )}
               </div>
-              <p className="text-[8px] sm:text-xs text-gray-300 mb-2 sm:mb-3 line-clamp-2 sm:line-clamp-3">
+              <p className="text-xs text-gray-300 mb-3 line-clamp-2 sm:line-clamp-3">
                 {quickViewMovie.latestEpisode?.description || quickViewMovie?.description}
               </p>
               <div className="flex gap-2">
@@ -1924,13 +1918,13 @@ export default function Movies() {
                     }
                     setShowQuickView(false);
                   }}
-                  className="flex-1 bg-purple-600 py-1.5 sm:py-2 rounded-lg text-white text-[8px] sm:text-xs font-semibold flex items-center justify-center gap-1"
+                  className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 py-2 rounded-lg text-white text-sm font-semibold flex items-center justify-center gap-1 hover:from-purple-700 hover:to-pink-700 transition-all duration-300"
                 >
-                  <FaPlay className="text-[6px] sm:text-xs" /> {quickViewMovie.latestEpisode ? 'Watch Latest' : 'Watch'}
+                  <FaPlay className="text-xs" /> {quickViewMovie.latestEpisode ? 'Watch Latest' : 'Watch'}
                 </button>
                 <button
                   onClick={() => setShowQuickView(false)}
-                  className="flex-1 bg-gray-800 py-1.5 sm:py-2 rounded-lg text-white text-[8px] sm:text-xs font-semibold"
+                  className="flex-1 bg-gray-800 py-2 rounded-lg text-white text-sm font-semibold hover:bg-gray-700 transition-all duration-300"
                 >
                   Close
                 </button>

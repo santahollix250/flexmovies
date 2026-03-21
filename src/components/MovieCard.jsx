@@ -1,4 +1,4 @@
-import { FaPlay, FaStar, FaLanguage, FaTv, FaHeart, FaRegHeart, FaCalendarAlt, FaClock, FaLayerGroup } from "react-icons/fa";
+import { FaPlay, FaStar, FaLanguage, FaTv, FaHeart, FaRegHeart, FaCalendarAlt, FaClock } from "react-icons/fa";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -190,16 +190,8 @@ export default function MovieCard({ movie, onSeriesClick }) {
 
         {/* Top Badges - Responsive sizing */}
         <div className="absolute top-1 sm:top-2 left-1 sm:left-2 right-1 sm:right-2 flex flex-wrap gap-0.5 sm:gap-1 z-10">
-          {/* Parts Badge - Show if movie has parts */}
-          {parts.length > 0 && (
-            <div className="px-1 sm:px-2 py-0.5 sm:py-1 bg-gradient-to-r from-green-600 to-teal-600 rounded-full text-[7px] xs:text-[8px] sm:text-[10px] text-white font-medium flex items-center gap-0.5 sm:gap-1 shadow-md sm:shadow-lg">
-              <FaLayerGroup className="text-[6px] xs:text-[7px] sm:text-[10px]" />
-              <span>{parts.length} {parts.length === 1 ? 'Part' : 'Parts'}</span>
-            </div>
-          )}
-
-          {/* Translator Badge - only show if no parts or if translator exists */}
-          {translator && !parts.length && (
+          {/* Translator Badge - Always show translator if available */}
+          {translator && (
             <div className="px-1 sm:px-2 py-0.5 sm:py-1 bg-green-600/90 rounded-full text-[7px] xs:text-[8px] sm:text-[10px] text-white font-medium flex items-center gap-0.5 sm:gap-1 shadow-md sm:shadow-lg">
               <FaLanguage className="text-[6px] xs:text-[7px] sm:text-[10px]" />
               <span className="max-w-[35px] xs:max-w-[40px] sm:max-w-[50px] truncate">{translator}</span>
@@ -288,14 +280,6 @@ export default function MovieCard({ movie, onSeriesClick }) {
             </>
           )}
         </div>
-
-        {/* Show parts count if available and no other info */}
-        {parts.length > 0 && !movie?.category && !uploadedTime && (
-          <div className="flex items-center justify-center gap-0.5 mt-0.5 xs:mt-1 text-[7px] xs:text-[8px] sm:text-[10px] text-green-400">
-            <FaLayerGroup className="text-[6px] xs:text-[7px] sm:text-[8px]" />
-            <span>{parts.length} {parts.length === 1 ? 'Part' : 'Parts'}</span>
-          </div>
-        )}
       </div>
 
       {/* Touch-friendly hover effect */}

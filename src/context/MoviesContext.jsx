@@ -1,4 +1,4 @@
-import { createContext, useEffect, useState, useCallback, useMemo } from "react";
+import { createContext, useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { supabase } from '../lib/supabase';
 
 // Supported video platforms
@@ -21,6 +21,226 @@ const IMAGE_CONFIG = {
     THUMBNAILS: 'thumbnails'
   }
 };
+
+// ===== SEARCH PERFORMANCE OPTIMIZATIONS =====
+
+// Debounce function for search input
+const debounce = (func, delay) => {
+  let timeoutId;
+  return (...args) => {
+    clearTimeout(timeoutId);
+    timeoutId = setTimeout(() => func(...args), delay);
+  };
+};
+
+// Throttle function for search execution
+const throttle = (func, limit) => {
+  let inThrottle;
+  return (...args) => {
+    if (!inThrottle) {
+      func(...args);
+      inThrottle = true;
+      setTimeout(() => inThrottle = false, limit);
+    }
+  };
+};
+
+// Pre-compiled regex patterns for faster searching
+const createSearchPattern = (query) => {
+  if (!query || query.trim() === '') return null;
+  const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(escaped, 'i');
+};
+
+// Optimized search index structure
+class SearchIndex {
+  constructor() {
+    this.titleIndex = new Map();
+    this.categoryIndex = new Map();
+    this.directorIndex = new Map();
+    this.translatorIndex = new Map();
+    this.nationIndex = new Map();
+    this.yearIndex = new Map();
+    this.descriptionIndex = new Map();
+    this.isDirty = true;
+  }
+
+  // Build search index from movies
+  buildIndex(movies) {
+    if (!movies || movies.length === 0) return;
+
+    this.titleIndex.clear();
+    this.categoryIndex.clear();
+    this.directorIndex.clear();
+    this.translatorIndex.clear();
+    this.nationIndex.clear();
+    this.yearIndex.clear();
+    this.descriptionIndex.clear();
+
+    movies.forEach(movie => {
+      // Index title
+      if (movie.title) {
+        const words = movie.title.toLowerCase().split(/\s+/);
+        words.forEach(word => {
+          if (word.length > 1) {
+            if (!this.titleIndex.has(word)) this.titleIndex.set(word, []);
+            this.titleIndex.get(word).push(movie);
+          }
+        });
+      }
+
+      // Index category
+      if (movie.category) {
+        const category = movie.category.toLowerCase();
+        if (!this.categoryIndex.has(category)) this.categoryIndex.set(category, []);
+        this.categoryIndex.get(category).push(movie);
+      }
+
+      // Index director
+      if (movie.director) {
+        const director = movie.director.toLowerCase();
+        if (!this.directorIndex.has(director)) this.directorIndex.set(director, []);
+        this.directorIndex.get(director).push(movie);
+      }
+
+      // Index translator
+      if (movie.translator) {
+        const translator = movie.translator.toLowerCase();
+        if (!this.translatorIndex.has(translator)) this.translatorIndex.set(translator, []);
+        this.translatorIndex.get(translator).push(movie);
+      }
+
+      // Index nation
+      if (movie.nation) {
+        const nation = movie.nation.toLowerCase();
+        if (!this.nationIndex.has(nation)) this.nationIndex.set(nation, []);
+        this.nationIndex.get(nation).push(movie);
+      }
+
+      // Index year
+      if (movie.year) {
+        const year = movie.year.toString();
+        if (!this.yearIndex.has(year)) this.yearIndex.set(year, []);
+        this.yearIndex.get(year).push(movie);
+      }
+    });
+
+    this.isDirty = false;
+  }
+
+  // Fast search using index
+  search(query, filters = {}) {
+    if (!query || query.trim() === '') {
+      return this.filterByFilters([...this.titleIndex.values()].flat(), filters);
+    }
+
+    const searchTerm = query.toLowerCase().trim();
+    const words = searchTerm.split(/\s+/).filter(w => w.length > 1);
+
+    if (words.length === 0) return [];
+
+    // Get results from title index (fastest)
+    let results = new Set();
+
+    words.forEach(word => {
+      if (this.titleIndex.has(word)) {
+        this.titleIndex.get(word).forEach(movie => results.add(movie));
+      }
+    });
+
+    // If no results from title, try category and other indices
+    if (results.size === 0) {
+      words.forEach(word => {
+        // Check category
+        for (const [key, movies] of this.categoryIndex) {
+          if (key.includes(word)) {
+            movies.forEach(movie => results.add(movie));
+          }
+        }
+        // Check director
+        for (const [key, movies] of this.directorIndex) {
+          if (key.includes(word)) {
+            movies.forEach(movie => results.add(movie));
+          }
+        }
+      });
+    }
+
+    let filteredResults = Array.from(results);
+
+    // Apply filters
+    if (Object.keys(filters).length > 0) {
+      filteredResults = this.filterByFilters(filteredResults, filters);
+    }
+
+    return filteredResults;
+  }
+
+  filterByFilters(items, filters) {
+    return items.filter(item => {
+      if (filters.genre && filters.genre !== '') {
+        if (item.category?.toLowerCase() !== filters.genre.toLowerCase()) return false;
+      }
+      if (filters.year && filters.year !== '') {
+        const itemYear = parseInt(item.year);
+        const filterYear = parseInt(filters.year);
+        if (itemYear !== filterYear) return false;
+      }
+      if (filters.rating && filters.rating !== '') {
+        const minRating = parseFloat(filters.rating);
+        const itemRating = parseFloat(item.rating || item.imdbRating || 0);
+        if (itemRating < minRating) return false;
+      }
+      if (filters.country && filters.country !== '') {
+        if (item.nation?.toLowerCase() !== filters.country.toLowerCase()) return false;
+      }
+      if (filters.language && filters.language !== '') {
+        if (item.language && item.language.toLowerCase() !== filters.language.toLowerCase()) return false;
+      }
+      if (filters.type && filters.type !== 'all') {
+        if (item.type !== filters.type) return false;
+      }
+      return true;
+    });
+  }
+}
+
+// Cache for search results
+class SearchCache {
+  constructor(maxSize = 100) {
+    this.cache = new Map();
+    this.maxSize = maxSize;
+  }
+
+  getKey(query, filters) {
+    return `${query}|${JSON.stringify(filters)}`;
+  }
+
+  get(query, filters) {
+    const key = this.getKey(query, filters);
+    const cached = this.cache.get(key);
+    if (cached && Date.now() - cached.timestamp < 60000) { // Cache for 60 seconds
+      return cached.results;
+    }
+    return null;
+  }
+
+  set(query, filters, results) {
+    const key = this.getKey(query, filters);
+    if (this.cache.size >= this.maxSize) {
+      const oldestKey = this.cache.keys().next().value;
+      this.cache.delete(oldestKey);
+    }
+    this.cache.set(key, {
+      results,
+      timestamp: Date.now()
+    });
+  }
+
+  clear() {
+    this.cache.clear();
+  }
+}
 
 // Helper functions for all platforms
 const extractVideoId = (url, platform) => {
@@ -160,70 +380,74 @@ const processVideoUrl = (videoUrl, videoType) => {
   };
 };
 
-// Search helper function
-const searchInContent = (items, searchQuery, filters = {}) => {
+// Optimized search function using index
+const searchInContentOptimized = (items, searchQuery, filters = {}, searchIndex) => {
   if (!items || items.length === 0) return [];
 
+  // Use search index for faster searches
+  if (searchIndex && !searchIndex.isDirty) {
+    return searchIndex.search(searchQuery, filters);
+  }
+
+  // Fallback to linear search if index is not available
+  if (!searchQuery || searchQuery.trim() === '') {
+    return filterByFiltersOptimized(items, filters);
+  }
+
+  const pattern = createSearchPattern(searchQuery);
+  if (!pattern) return filterByFiltersOptimized(items, filters);
+
   return items.filter(item => {
-    if (searchQuery && searchQuery.trim()) {
-      const query = searchQuery.toLowerCase().trim();
-      const matchesTitle = item.title?.toLowerCase().includes(query);
-      const matchesDescription = item.description?.toLowerCase().includes(query);
-      const matchesDirector = item.director?.toLowerCase().includes(query);
-      const matchesCategory = item.category?.toLowerCase().includes(query);
-      const matchesNation = item.nation?.toLowerCase().includes(query);
-      const matchesTranslator = item.translator?.toLowerCase().includes(query);
+    if (pattern) {
+      const matchesTitle = pattern.test(item.title || '');
+      const matchesDescription = pattern.test(item.description || '');
+      const matchesDirector = pattern.test(item.director || '');
+      const matchesCategory = pattern.test(item.category || '');
+      const matchesNation = pattern.test(item.nation || '');
+      const matchesTranslator = pattern.test(item.translator || '');
 
       if (!(matchesTitle || matchesDescription || matchesDirector || matchesCategory || matchesNation || matchesTranslator)) {
         return false;
       }
     }
 
-    if (filters.genre && filters.genre !== '') {
-      if (item.category?.toLowerCase() !== filters.genre.toLowerCase()) {
-        return false;
-      }
-    }
-
-    if (filters.year && filters.year !== '') {
-      const itemYear = parseInt(item.year);
-      const filterYear = parseInt(filters.year);
-      if (itemYear !== filterYear) {
-        return false;
-      }
-    }
-
-    if (filters.rating && filters.rating !== '') {
-      const minRating = parseFloat(filters.rating);
-      const itemRating = parseFloat(item.rating || item.imdbRating || 0);
-      if (itemRating < minRating) {
-        return false;
-      }
-    }
-
-    if (filters.country && filters.country !== '') {
-      if (item.nation?.toLowerCase() !== filters.country.toLowerCase()) {
-        return false;
-      }
-    }
-
-    if (filters.language && filters.language !== '') {
-      if (item.language && item.language.toLowerCase() !== filters.language.toLowerCase()) {
-        return false;
-      }
-    }
-
-    if (filters.type && filters.type !== 'all') {
-      if (item.type !== filters.type) {
-        return false;
-      }
-    }
-
-    return true;
+    return filterByFiltersOptimizedItem(item, filters);
   });
 };
 
-// Sort helper function
+// Optimized filter functions
+const filterByFiltersOptimized = (items, filters) => {
+  if (Object.keys(filters).length === 0) return items;
+  return items.filter(item => filterByFiltersOptimizedItem(item, filters));
+};
+
+const filterByFiltersOptimizedItem = (item, filters) => {
+  if (filters.genre && filters.genre !== '') {
+    if (item.category?.toLowerCase() !== filters.genre.toLowerCase()) return false;
+  }
+  if (filters.year && filters.year !== '') {
+    const itemYear = parseInt(item.year);
+    const filterYear = parseInt(filters.year);
+    if (itemYear !== filterYear) return false;
+  }
+  if (filters.rating && filters.rating !== '') {
+    const minRating = parseFloat(filters.rating);
+    const itemRating = parseFloat(item.rating || item.imdbRating || 0);
+    if (itemRating < minRating) return false;
+  }
+  if (filters.country && filters.country !== '') {
+    if (item.nation?.toLowerCase() !== filters.country.toLowerCase()) return false;
+  }
+  if (filters.language && filters.language !== '') {
+    if (item.language && item.language.toLowerCase() !== filters.language.toLowerCase()) return false;
+  }
+  if (filters.type && filters.type !== 'all') {
+    if (item.type !== filters.type) return false;
+  }
+  return true;
+};
+
+// Sort helper function with memoization
 const sortResults = (items, sortBy) => {
   const sorted = [...items];
 
@@ -252,7 +476,7 @@ export const MoviesContext = createContext({
   loadingProgress: 0,
   isOnline: true,
   error: null,
-  // Image upload functions - NEW
+  // Image upload functions
   uploadImage: () => Promise.reject(new Error("MoviesContext not initialized")),
   deleteImage: () => Promise.reject(new Error("MoviesContext not initialized")),
   // Global search state
@@ -261,7 +485,7 @@ export const MoviesContext = createContext({
   globalSearchFilters: {},
   updateGlobalSearch: () => { },
   clearGlobalSearch: () => { },
-  // Search related
+  // Search related with performance
   searchResults: [],
   searchEpisodes: [],
   searchMovies: () => { },
@@ -285,7 +509,7 @@ export const MoviesContext = createContext({
   clearAllMovies: () => Promise.reject(new Error("MoviesContext not initialized")),
   clearAllEpisodes: () => Promise.reject(new Error("MoviesContext not initialized")),
   VIDEO_PLATFORMS: VIDEO_PLATFORMS,
-  IMAGE_CONFIG: IMAGE_CONFIG // Export image config - NEW
+  IMAGE_CONFIG: IMAGE_CONFIG
 });
 
 export function MoviesProvider({ children }) {
@@ -306,43 +530,67 @@ export function MoviesProvider({ children }) {
   const [globalSearchResults, setGlobalSearchResults] = useState([]);
   const [globalSearchFilters, setGlobalSearchFilters] = useState({});
 
-  // ========== NEW: IMAGE UPLOAD FUNCTIONS ==========
+  // ===== PERFORMANCE OPTIMIZATIONS =====
 
-  /**
-   * Upload image to Supabase Storage
-   * @param {File} file - The image file to upload
-   * @param {string} bucket - Storage bucket ('posters', 'backgrounds', 'thumbnails')
-   * @param {Function} onProgress - Progress callback
-   * @returns {Promise<string>} Public URL of uploaded image
-   */
+  // Create search index instance
+  const searchIndexRef = useRef(new SearchIndex());
+
+  // Create search cache instance
+  const searchCacheRef = useRef(new SearchCache());
+
+  // Debounced search function
+  const debouncedSearchRef = useRef(null);
+
+  // Throttled search function
+  const throttledSearchRef = useRef(null);
+
+  // Abort controller for cancelling ongoing searches
+  const abortControllerRef = useRef(null);
+
+  // Update search index when movies change
+  useEffect(() => {
+    if (movies.length > 0) {
+      // Use requestIdleCallback for non-blocking index building
+      const buildIndex = () => {
+        searchIndexRef.current.buildIndex(movies);
+      };
+
+      if (typeof requestIdleCallback !== 'undefined') {
+        requestIdleCallback(buildIndex, { timeout: 2000 });
+      } else {
+        setTimeout(buildIndex, 0);
+      }
+    }
+  }, [movies]);
+
+  // Clear search cache when movies change
+  useEffect(() => {
+    searchCacheRef.current.clear();
+  }, [movies]);
+
+  // ========== IMAGE UPLOAD FUNCTIONS ==========
+
   const uploadImage = useCallback(async (file, bucket, onProgress = () => { }) => {
     if (!file) throw new Error('No file provided');
     if (!isOnline) throw new Error('You are offline. Cannot upload images.');
 
-    // Validate file type
     if (!IMAGE_CONFIG.ALLOWED_TYPES.includes(file.type)) {
       throw new Error('Invalid file type. Allowed: JPEG, PNG, WebP, GIF');
     }
 
-    // Validate file size
     if (file.size > IMAGE_CONFIG.MAX_SIZE) {
       throw new Error(`File too large. Max size: ${IMAGE_CONFIG.MAX_SIZE / (1024 * 1024)}MB`);
     }
 
-    // Validate bucket
     if (!Object.values(IMAGE_CONFIG.BUCKETS).includes(bucket)) {
       throw new Error('Invalid storage bucket');
     }
 
     try {
-      // Create unique filename
       const fileExt = file.name.split('.').pop();
       const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
-      const filePath = fileName; // Just the filename, bucket is specified separately
+      const filePath = fileName;
 
-      console.log(`📤 Uploading image to ${bucket}/${fileName}...`);
-
-      // Upload to Supabase Storage
       const { data, error } = await supabase.storage
         .from(bucket)
         .upload(filePath, file, {
@@ -352,16 +600,11 @@ export function MoviesProvider({ children }) {
 
       if (error) throw error;
 
-      // Get public URL
       const { data: { publicUrl } } = supabase.storage
         .from(bucket)
         .getPublicUrl(filePath);
 
-      console.log(`✅ Image uploaded successfully: ${publicUrl}`);
-
-      // Call progress callback with 100%
       onProgress(100);
-
       return publicUrl;
 
     } catch (error) {
@@ -370,11 +613,6 @@ export function MoviesProvider({ children }) {
     }
   }, [isOnline]);
 
-  /**
-   * Delete image from Supabase Storage
-   * @param {string} imageUrl - Full URL or path of image to delete
-   * @returns {Promise<boolean>} Success status
-   */
   const deleteImage = useCallback(async (imageUrl) => {
     if (!imageUrl) return false;
     if (!isOnline) {
@@ -383,31 +621,19 @@ export function MoviesProvider({ children }) {
     }
 
     try {
-      // Extract bucket and path from URL
       let bucket = null;
       let path = null;
 
-      // Try to extract from full URL
       for (const [key, value] of Object.entries(IMAGE_CONFIG.BUCKETS)) {
         if (imageUrl.includes(value)) {
           bucket = value;
-          // Extract filename from URL
           const urlParts = imageUrl.split('/');
           path = urlParts[urlParts.length - 1];
           break;
         }
       }
 
-      // If it's just a path (not full URL)
-      if (!bucket && !path) {
-        // Assume it's just a filename, try to determine bucket from context
-        // This is a fallback - better to pass full URL
-        return false;
-      }
-
       if (!bucket || !path) return false;
-
-      console.log(`🗑️ Deleting image from ${bucket}/${path}...`);
 
       const { error } = await supabase.storage
         .from(bucket)
@@ -415,7 +641,6 @@ export function MoviesProvider({ children }) {
 
       if (error) throw error;
 
-      console.log('✅ Image deleted successfully');
       return true;
 
     } catch (error) {
@@ -504,8 +729,6 @@ export function MoviesProvider({ children }) {
     updateProgress(60);
 
     try {
-      console.log("🔄 Fetching movies from Supabase...");
-
       const { data: moviesData, error: moviesError } = await supabase
         .from('movies')
         .select('*')
@@ -517,8 +740,6 @@ export function MoviesProvider({ children }) {
         console.error('Movies fetch error:', moviesError);
         setError(moviesError.message);
       } else {
-        console.log(`✅ Fetched ${moviesData?.length || 0} movies from Supabase`);
-
         const transformedMovies = (moviesData || []).map(movie => {
           const videoInfo = processVideoUrl(movie.video_url, movie.video_type);
 
@@ -614,21 +835,87 @@ export function MoviesProvider({ children }) {
     }
   }, [isOnline, updateProgress]);
 
-  // SEARCH FUNCTIONS
+  // ===== OPTIMIZED SEARCH FUNCTIONS =====
+
+  // Core search function with caching and index
+  const performSearch = useCallback((query, filters = {}) => {
+    // Cancel any ongoing search
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    abortControllerRef.current = new AbortController();
+
+    // Check cache first
+    const cachedResults = searchCacheRef.current.get(query, filters);
+    if (cachedResults) {
+      return cachedResults;
+    }
+
+    // Perform search using optimized method
+    let results = searchInContentOptimized(movies, query, filters, searchIndexRef.current);
+
+    // Apply sorting
+    if (filters.sortBy) {
+      results = sortResults(results, filters.sortBy);
+    }
+
+    // Cache results
+    searchCacheRef.current.set(query, filters, results);
+
+    return results;
+  }, [movies]);
+
+  // Debounced search for real-time typing
+  const createDebouncedSearch = useCallback((delay = 300) => {
+    return debounce((query, filters, callback) => {
+      const results = performSearch(query, filters);
+      callback(results);
+    }, delay);
+  }, [performSearch]);
+
+  // Throttled search for rapid updates
+  const createThrottledSearch = useCallback((limit = 150) => {
+    return throttle((query, filters, callback) => {
+      const results = performSearch(query, filters);
+      callback(results);
+    }, limit);
+  }, [performSearch]);
+
+  // Initialize debounced search
+  useEffect(() => {
+    if (!debouncedSearchRef.current) {
+      debouncedSearchRef.current = createDebouncedSearch(300);
+    }
+    if (!throttledSearchRef.current) {
+      throttledSearchRef.current = createThrottledSearch(150);
+    }
+  }, [createDebouncedSearch, createThrottledSearch]);
+
+  // Update global search with performance optimizations
   const updateGlobalSearch = useCallback((query, filters = {}) => {
     setGlobalSearchQuery(query);
     setGlobalSearchFilters(filters);
 
     if (query.trim() || Object.keys(filters).length > 0) {
-      const movieResults = searchInContent(movies, query, filters);
-      const sortedMovies = sortResults(movieResults, filters.sortBy || 'popular');
+      // Use debounced search for better performance
+      if (debouncedSearchRef.current) {
+        debouncedSearchRef.current(query, filters, (movieResults) => {
+          setGlobalSearchResults(movieResults);
+          setSearchResults(movieResults);
 
-      const episodeResults = searchInContent(episodes, query, filters);
-      const sortedEpisodes = sortResults(episodeResults, filters.sortBy || 'popular');
+          // Search episodes separately
+          const episodeResults = searchInContentOptimized(episodes, query, filters);
+          setSearchEpisodes(episodeResults);
+        });
+      } else {
+        // Fallback direct search
+        const movieResults = performSearch(query, filters);
+        setGlobalSearchResults(movieResults);
+        setSearchResults(movieResults);
 
-      setGlobalSearchResults(sortedMovies);
-      setSearchResults(sortedMovies);
-      setSearchEpisodes(sortedEpisodes);
+        const episodeResults = searchInContentOptimized(episodes, query, filters);
+        setSearchEpisodes(episodeResults);
+      }
 
       if (query.trim()) {
         saveRecentSearch({
@@ -642,7 +929,7 @@ export function MoviesProvider({ children }) {
       setSearchResults([]);
       setSearchEpisodes([]);
     }
-  }, [movies, episodes, saveRecentSearch]);
+  }, [episodes, performSearch, saveRecentSearch]);
 
   const clearGlobalSearch = useCallback(() => {
     setGlobalSearchQuery('');
@@ -650,33 +937,37 @@ export function MoviesProvider({ children }) {
     setGlobalSearchFilters({});
     setSearchResults([]);
     setSearchEpisodes([]);
+    searchCacheRef.current.clear();
+
+    // Cancel any ongoing search
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
   }, []);
 
+  // Optimized searchMovies function
   const searchMovies = useCallback((query, filters = {}) => {
-    const results = searchInContent(movies, query, filters);
-    const sorted = sortResults(results, filters.sortBy || 'popular');
-    setSearchResults(sorted);
-    return sorted;
-  }, [movies]);
+    const results = performSearch(query, filters);
+    setSearchResults(results);
+    return results;
+  }, [performSearch]);
 
+  // Optimized search episodes function
   const searchEpisodesOnly = useCallback((query, filters = {}) => {
-    const results = searchInContent(episodes, query, filters);
-    const sorted = sortResults(results, filters.sortBy || 'popular');
-    setSearchEpisodes(sorted);
-    return sorted;
+    const results = searchInContentOptimized(episodes, query, filters);
+    setSearchEpisodes(results);
+    return results;
   }, [episodes]);
 
+  // Optimized search all
   const searchAll = useCallback((searchData) => {
     const { query, ...filters } = searchData;
 
-    const movieResults = searchInContent(movies, query, filters);
-    const sortedMovies = sortResults(movieResults, filters.sortBy || 'popular');
+    const movieResults = performSearch(query, filters);
+    const episodeResults = searchInContentOptimized(episodes, query, filters);
 
-    const episodeResults = searchInContent(episodes, query, filters);
-    const sortedEpisodes = sortResults(episodeResults, filters.sortBy || 'popular');
-
-    setSearchResults(sortedMovies);
-    setSearchEpisodes(sortedEpisodes);
+    setSearchResults(movieResults);
+    setSearchEpisodes(episodeResults);
 
     saveRecentSearch({
       query,
@@ -685,19 +976,27 @@ export function MoviesProvider({ children }) {
     });
 
     return {
-      movies: sortedMovies,
-      episodes: sortedEpisodes
+      movies: movieResults,
+      episodes: episodeResults
     };
-  }, [movies, episodes, saveRecentSearch]);
+  }, [episodes, performSearch, saveRecentSearch]);
 
+  // Optimized suggestions with prefix matching
   const getSuggestions = useCallback((query, limit = 5) => {
     if (!query || query.trim().length < 2) return [];
 
     const searchTerm = query.toLowerCase().trim();
     const suggestions = [];
+    const seen = new Set();
 
-    movies.forEach(movie => {
-      if (movie.title?.toLowerCase().includes(searchTerm)) {
+    // Use search index for faster suggestions
+    const indexResults = searchIndexRef.current.search(searchTerm, {});
+
+    // Add movies from index results
+    indexResults.slice(0, limit).forEach(movie => {
+      const key = `movie-${movie.id}`;
+      if (!seen.has(key)) {
+        seen.add(key);
         suggestions.push({
           type: 'movie',
           id: movie.id,
@@ -709,21 +1008,7 @@ export function MoviesProvider({ children }) {
       }
     });
 
-    episodes.forEach(episode => {
-      if (episode.title?.toLowerCase().includes(searchTerm)) {
-        suggestions.push({
-          type: 'episode',
-          id: episode.id,
-          seriesId: episode.seriesId,
-          seriesTitle: episode.seriesTitle,
-          title: episode.title,
-          thumbnail: episode.thumbnail,
-          seasonNumber: episode.seasonNumber,
-          episodeNumber: episode.episodeNumber
-        });
-      }
-    });
-
+    // Add categories that match
     const categories = new Set();
     movies.forEach(movie => {
       if (movie.category?.toLowerCase().includes(searchTerm)) {
@@ -731,33 +1016,32 @@ export function MoviesProvider({ children }) {
       }
     });
 
-    categories.forEach(category => {
-      suggestions.push({
-        type: 'category',
-        title: category,
-        query: category
-      });
+    Array.from(categories).slice(0, 3).forEach(category => {
+      const key = `category-${category}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        suggestions.push({
+          type: 'category',
+          title: category,
+          query: category
+        });
+      }
     });
 
     return suggestions.slice(0, limit);
-  }, [movies, episodes]);
+  }, [movies]);
 
   const clearSearch = useCallback(() => {
     setSearchResults([]);
     setSearchEpisodes([]);
     setGlobalSearchResults([]);
     setGlobalSearchQuery('');
+    searchCacheRef.current.clear();
   }, []);
 
   // Add movie with multi-platform support
   const addMovie = useCallback(async (movie) => {
     try {
-      console.log("📤 Adding movie to Supabase:", {
-        title: movie.title,
-        videoUrl: movie.videoUrl,
-        videoType: movie.videoType
-      });
-
       const videoInfo = processVideoUrl(movie.videoUrl, movie.videoType);
 
       const movieData = {
@@ -830,7 +1114,11 @@ export function MoviesProvider({ children }) {
       setMovies(updatedMovies);
       localStorage.setItem('simba-movies', JSON.stringify(updatedMovies));
 
-      console.log("✅ Movie added successfully:", newMovie);
+      // Mark search index as dirty
+      searchIndexRef.current.isDirty = true;
+      // Clear search cache
+      searchCacheRef.current.clear();
+
       return newMovie;
 
     } catch (err) {
@@ -871,6 +1159,9 @@ export function MoviesProvider({ children }) {
       setMovies(updatedMovies);
       localStorage.setItem('simba-movies', JSON.stringify(updatedMovies));
 
+      searchIndexRef.current.isDirty = true;
+      searchCacheRef.current.clear();
+
       return localMovie;
     }
   }, [movies]);
@@ -878,13 +1169,6 @@ export function MoviesProvider({ children }) {
   // Update movie with multi-platform support
   const updateMovie = useCallback(async (id, updates) => {
     try {
-      console.log("📤 Updating movie in Supabase:", {
-        id: id,
-        title: updates.title,
-        videoUrl: updates.videoUrl,
-        videoType: updates.videoType
-      });
-
       const videoInfo = processVideoUrl(updates.videoUrl, updates.videoType);
 
       const supabaseUpdates = {
@@ -937,7 +1221,8 @@ export function MoviesProvider({ children }) {
       setMovies(updatedMovies);
       localStorage.setItem('simba-movies', JSON.stringify(updatedMovies));
 
-      console.log("✅ Movie updated successfully");
+      searchIndexRef.current.isDirty = true;
+      searchCacheRef.current.clear();
 
     } catch (err) {
       console.error("Error updating movie:", err);
@@ -958,6 +1243,9 @@ export function MoviesProvider({ children }) {
       setMovies(updatedMovies);
       localStorage.setItem('simba-movies', JSON.stringify(updatedMovies));
 
+      searchIndexRef.current.isDirty = true;
+      searchCacheRef.current.clear();
+
       throw err;
     }
   }, [movies]);
@@ -976,12 +1264,18 @@ export function MoviesProvider({ children }) {
       setMovies(updatedMovies);
       localStorage.setItem('simba-movies', JSON.stringify(updatedMovies));
 
+      searchIndexRef.current.isDirty = true;
+      searchCacheRef.current.clear();
+
     } catch (err) {
       console.error("Error deleting movie:", err);
 
       const updatedMovies = movies.filter(movie => movie.id !== id);
       setMovies(updatedMovies);
       localStorage.setItem('simba-movies', JSON.stringify(updatedMovies));
+
+      searchIndexRef.current.isDirty = true;
+      searchCacheRef.current.clear();
 
       throw err;
     }
@@ -1049,6 +1343,8 @@ export function MoviesProvider({ children }) {
       setEpisodes(updatedEpisodes);
       localStorage.setItem('simba-episodes', JSON.stringify(updatedEpisodes));
 
+      searchCacheRef.current.clear();
+
       return newEpisode;
 
     } catch (error) {
@@ -1068,6 +1364,8 @@ export function MoviesProvider({ children }) {
       const updatedEpisodes = [...episodes, localEpisode];
       setEpisodes(updatedEpisodes);
       localStorage.setItem('simba-episodes', JSON.stringify(updatedEpisodes));
+
+      searchCacheRef.current.clear();
 
       return localEpisode;
     }
@@ -1118,6 +1416,8 @@ export function MoviesProvider({ children }) {
       setEpisodes(updatedEpisodes);
       localStorage.setItem('simba-episodes', JSON.stringify(updatedEpisodes));
 
+      searchCacheRef.current.clear();
+
       return data;
 
     } catch (error) {
@@ -1139,6 +1439,8 @@ export function MoviesProvider({ children }) {
       setEpisodes(updatedEpisodes);
       localStorage.setItem('simba-episodes', JSON.stringify(updatedEpisodes));
 
+      searchCacheRef.current.clear();
+
       throw error;
     }
   }, [episodes]);
@@ -1157,12 +1459,16 @@ export function MoviesProvider({ children }) {
       setEpisodes(updatedEpisodes);
       localStorage.setItem('simba-episodes', JSON.stringify(updatedEpisodes));
 
+      searchCacheRef.current.clear();
+
     } catch (error) {
       console.error('Error deleting episode:', error);
 
       const updatedEpisodes = episodes.filter(ep => ep.id !== episodeId);
       setEpisodes(updatedEpisodes);
       localStorage.setItem('simba-episodes', JSON.stringify(updatedEpisodes));
+
+      searchCacheRef.current.clear();
 
       throw error;
     }
@@ -1216,6 +1522,9 @@ export function MoviesProvider({ children }) {
       setMovies([]);
       localStorage.removeItem('simba-movies');
 
+      searchIndexRef.current.isDirty = true;
+      searchCacheRef.current.clear();
+
     } catch (err) {
       console.error('Clear movies error:', err);
       throw err;
@@ -1239,6 +1548,8 @@ export function MoviesProvider({ children }) {
       setEpisodes([]);
       localStorage.removeItem('simba-episodes');
 
+      searchCacheRef.current.clear();
+
     } catch (err) {
       console.error('Clear episodes error:', err);
       throw err;
@@ -1261,7 +1572,7 @@ export function MoviesProvider({ children }) {
     loadingProgress,
     isOnline,
     error,
-    // Image upload functions - NEW
+    // Image upload functions
     uploadImage,
     deleteImage,
     IMAGE_CONFIG,
@@ -1271,7 +1582,7 @@ export function MoviesProvider({ children }) {
     globalSearchFilters,
     updateGlobalSearch,
     clearGlobalSearch,
-    // Search related
+    // Search related with performance
     searchResults,
     searchEpisodes,
     searchMovies,

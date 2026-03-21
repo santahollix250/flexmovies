@@ -58,7 +58,6 @@ const Player = () => {
     // Movie parts
     const [movieParts, setMovieParts] = useState([]);
     const [selectedPart, setSelectedPart] = useState(null);
-    const [showPartsList, setShowPartsList] = useState(false);
 
     // Comments
     const [comments, setComments] = useState([]);
@@ -560,8 +559,6 @@ const Player = () => {
         return item?.download_link || item?.download || item?.videoUrl;
     };
 
-    const mainDownloadAvailable = canDownload(selectedPart) || (!selectedPart && canDownload(movie));
-
     // Render video player
     const renderVideo = () => {
         if (useEmbed) {
@@ -656,72 +653,61 @@ const Player = () => {
         );
     };
 
-    // Render parts list
+    // Render parts list - With download buttons for each part
     const renderPartsList = () => (
         <div className="mb-5 bg-gradient-to-r from-gray-900/80 to-gray-800/80 rounded-xl p-4 border border-purple-500/30">
-            <div className="flex items-center justify-between mb-3">
-                <h3 className="text-base font-bold flex items-center gap-2">
-                    <FaLayerGroup className="text-purple-500 text-base" />
-                    <span>Movie Parts ({movieParts.length})</span>
-                </h3>
-                <button
-                    onClick={() => setShowPartsList(!showPartsList)}
-                    className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 rounded-lg text-sm flex items-center gap-2 transition-all"
-                >
-                    <FaList className="text-xs" />
-                    {showPartsList ? 'Hide' : 'Show'}
-                </button>
+            <div className="flex items-center gap-2 mb-3">
+                <FaLayerGroup className="text-purple-500 text-base" />
+                <h3 className="text-base font-bold">Movie Parts ({movieParts.length})</h3>
             </div>
 
-            {showPartsList && (
-                <div className="space-y-2 max-h-60 overflow-y-auto">
-                    {movieParts.map((part) => {
-                        const isSelected = selectedPart?.partNumber === part.partNumber;
-                        const canDownloadPart = canDownload(part);
+            <div className="space-y-2">
+                {movieParts.map((part) => {
+                    const isSelected = selectedPart?.partNumber === part.partNumber;
+                    const canDownloadPart = canDownload(part);
 
-                        return (
-                            <div
-                                key={part.partNumber}
-                                onClick={() => { setSelectedPart(part); setShowPartsList(false); }}
-                                className={`p-3 rounded-xl cursor-pointer transition-all ${isSelected
-                                    ? 'bg-gradient-to-r from-purple-600/30 to-pink-600/30 border border-purple-500'
-                                    : 'bg-gray-800/50 hover:bg-gray-800 border border-gray-700'
-                                    }`}
-                            >
-                                <div className="flex items-center justify-between">
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex items-center gap-2 mb-1">
-                                            <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${isSelected ? 'bg-purple-600' : 'bg-purple-600/20 text-purple-400'}`}>
-                                                Part {part.partNumber}
-                                            </span>
-                                            <span className="font-semibold text-sm truncate">{part.title}</span>
-                                        </div>
-                                        {part.duration && (
-                                            <div className="flex items-center gap-1.5 text-xs text-gray-400">
-                                                <FaClock className="text-xs" />
-                                                <span>{part.duration}</span>
-                                            </div>
-                                        )}
+                    return (
+                        <div
+                            key={part.partNumber}
+                            onClick={() => { setSelectedPart(part); }}
+                            className={`p-3 rounded-xl cursor-pointer transition-all ${isSelected
+                                ? 'bg-gradient-to-r from-purple-600/30 to-pink-600/30 border border-purple-500'
+                                : 'bg-gray-800/50 hover:bg-gray-800 border border-gray-700'
+                                }`}
+                        >
+                            <div className="flex items-center justify-between">
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${isSelected ? 'bg-purple-600' : 'bg-purple-600/20 text-purple-400'}`}>
+                                            Part {part.partNumber}
+                                        </span>
+                                        <span className="font-semibold text-sm truncate">{part.title}</span>
                                     </div>
-
-                                    {canDownloadPart && (
-                                        <button
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleDownload(getDownloadLink(part), part);
-                                            }}
-                                            className="ml-3 p-2.5 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 rounded-xl text-white transition-all transform hover:scale-105 shadow-lg shadow-purple-600/30"
-                                            disabled={downloading}
-                                        >
-                                            <FaDownload className="text-sm" />
-                                        </button>
+                                    {part.duration && (
+                                        <div className="flex items-center gap-1.5 text-xs text-gray-400">
+                                            <FaClock className="text-xs" />
+                                            <span>{part.duration}</span>
+                                        </div>
                                     )}
                                 </div>
+
+                                {canDownloadPart && (
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleDownload(getDownloadLink(part), part);
+                                        }}
+                                        className="ml-3 p-2.5 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 rounded-xl text-white transition-all transform hover:scale-105 shadow-lg shadow-purple-600/30"
+                                        disabled={downloading}
+                                    >
+                                        <FaDownload className="text-sm" />
+                                    </button>
+                                )}
                             </div>
-                        );
-                    })}
-                </div>
-            )}
+                        </div>
+                    );
+                })}
+            </div>
         </div>
     );
 
@@ -1251,33 +1237,8 @@ const Player = () => {
                                 </p>
                             </div>
 
-                            {/* Parts list */}
+                            {/* Parts list - With download buttons for each part */}
                             {movieParts.length > 0 && renderPartsList()}
-
-                            {/* Download button - Prominent but not overwhelming */}
-                            {mainDownloadAvailable && (
-                                <div className="mb-5">
-                                    <button
-                                        onClick={() => handleDownload(getDownloadLink(selectedPart) || getDownloadLink(movie), selectedPart)}
-                                        className="w-full flex items-center justify-center gap-2 px-5 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 rounded-xl text-white font-semibold text-sm shadow-lg shadow-purple-600/30 transition-all transform hover:scale-[1.02]"
-                                        disabled={downloading}
-                                    >
-                                        {downloading ? (
-                                            <>
-                                                <FaSpinner className="animate-spin" />
-                                                <span>{downloadProgress < 100 ? `Preparing... ${downloadProgress}%` : 'Starting...'}</span>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <FaDownload className="text-sm" />
-                                                <span>{selectedPart ? `Download Part ${selectedPart.partNumber}` : 'Download Movie'}</span>
-                                                {movie.quality && <span className="text-xs opacity-80 ml-1">({movie.quality})</span>}
-                                            </>
-                                        )}
-                                    </button>
-                                    <p className="text-xs text-gray-500 mt-2 text-center">Click to download • Direct link • No registration required</p>
-                                </div>
-                            )}
 
                             {/* Related movies */}
                             {renderRelated()}
