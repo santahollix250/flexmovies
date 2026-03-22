@@ -9,7 +9,7 @@ export default function Footer() {
   // Social Links
   const socialLinks = {
     youtube: "https://youtube.com/@irakabahodjabiri?si=P5Ste_J9oYDkGcqG",
-    instagram: "https://www.instagram.com/santa_lamaer",
+    instagram: "https://www.instagram.com/osicardjabir9/",
     twitter: "https://twitter.com/agasobanuyeflex",
     facebook: "https://facebook.com/agasobanuyeflex",
     tiktok: "https://www.tiktok.com/@flxemov",
@@ -24,7 +24,7 @@ export default function Footer() {
     whatsapp: "250783948792",
     email: "irakabahodjabiri@gmail.com",
     address: "Bugesera Heights, Kigali",
-    website: "https://agasobanuyeflex.com"
+    website: "https://agasobanuyecineva.com"
   };
 
   // Developer Info
