@@ -1172,11 +1172,11 @@ export default function Movies() {
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-black via-gray-900 to-black pt-20">
-      {/* ENHANCED HERO SLIDER SECTION - OPTIMIZED FOR PC WITH LEFT-ALIGNED CONTENT */}
+      {/* ENHANCED HERO SLIDER SECTION - OPTIMIZED WITH LARGER SIZE AND REDUCED BOTTOM SHADOW */}
       {filteredHeroContent.length > 0 && (
         <section
           ref={heroRef}
-          className="relative h-[60vh] sm:h-[70vh] md:h-[80vh] lg:h-[85vh] xl:h-[90vh] 2xl:h-[95vh] overflow-hidden group"
+          className="relative h-[65vh] md:h-[75vh] lg:h-[80vh] xl:h-[85vh] overflow-hidden group"
           onMouseEnter={() => setIsHoveringHero(true)}
           onMouseLeave={() => setIsHoveringHero(false)}
           onTouchStart={handleTouchStart}
@@ -1197,32 +1197,29 @@ export default function Movies() {
                     </div>
                   </div>
                 )}
-                {/* Optimized image for PC - better quality and positioning */}
                 <img
                   src={item?.background || item?.poster}
                   alt={item?.title}
-                  className="w-full h-full object-cover object-center md:object-top"
+                  className="w-full h-full object-cover object-center"
                   style={{
-                    objectPosition: 'center 30%',
-                    transform: 'scale(1.01)',
-                    transition: 'transform 0.3s ease-out'
+                    objectPosition: 'center 30%'
                   }}
                   onLoad={() => setImageLoading(false)}
                   onError={() => setImageLoading(false)}
                 />
-                {/* Enhanced gradient overlay - reduced bottom shadow for PC */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
-                <div className="absolute inset-0 bg-gradient-to-r from-black/50 via-transparent to-transparent hidden md:block" />
+                {/* REDUCED BOTTOM SHADOW - Much lighter gradient */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-black/10 to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-r from-black/30 via-transparent to-transparent hidden md:block" />
               </div>
             </div>
           ))}
 
-          {/* Enhanced content overlay - LEFT ALIGNED for PC with reduced bottom padding */}
-          <div className="absolute bottom-0 left-0 right-0 p-4 md:p-6 lg:p-8 xl:p-10 z-20">
-            <div className="max-w-4xl lg:max-w-5xl xl:max-w-6xl mx-auto w-full">
+          {/* Content overlay - LEFT ALIGNED with proper sizing */}
+          <div className="absolute bottom-0 left-0 right-0 p-4 md:p-6 lg:p-8 z-20">
+            <div className="max-w-7xl mx-auto w-full">
               {/* Left-aligned content container */}
-              <div className="md:max-w-2xl lg:max-w-3xl xl:max-w-4xl text-left">
-                {/* Badges - Larger and more visible on PC */}
+              <div className="md:max-w-2xl lg:max-w-3xl text-left">
+                {/* Badges */}
                 <div className="hidden md:flex items-center gap-3 mb-4 flex-wrap">
                   <span className="px-3 py-1.5 rounded-full text-sm font-semibold bg-gradient-to-r from-purple-600 to-pink-600 shadow-lg">
                     {isSeriesWithNewEpisode ? <><FaTv className="inline mr-2 text-sm" /> SERIES</> : currentHeroItem?.type === "series" ? <><FaTv className="inline mr-2 text-sm" /> SERIES</> : <><FaPlay className="inline mr-2 text-sm" /> MOVIE</>}
@@ -1239,24 +1236,15 @@ export default function Movies() {
                     </>
                   )}
                   {currentHeroItem?.translator && (
-                    <div className="px-3 py-1.5 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-xs font-semibold flex items-center gap-2 shadow-lg border border-blue-400/30">
+                    <div className="px-3 py-1.5 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-xs font-semibold flex items-center gap-2 shadow-lg">
                       <FaLanguage className="text-sm" />
-                      <span>Translator: {currentHeroItem.translator}</span>
+                      <span className="hidden lg:inline">Translator: {currentHeroItem.translator}</span>
+                      <span className="inline lg:hidden max-w-[60px] truncate">{currentHeroItem.translator}</span>
                     </div>
                   )}
                   {currentHeroItem?.rating && (
                     <span className="flex items-center gap-2 text-sm text-yellow-400 bg-yellow-900/30 px-3 py-1.5 rounded-lg backdrop-blur-sm">
                       <FaStar className="text-sm" /> {currentHeroItem.rating}
-                    </span>
-                  )}
-                  {currentHeroItem?.year && (
-                    <span className="flex items-center gap-2 text-sm text-gray-300 bg-gray-800/50 px-3 py-1.5 rounded-lg backdrop-blur-sm">
-                      <FaCalendarAlt className="text-sm" /> {currentHeroItem.year}
-                    </span>
-                  )}
-                  {currentHeroItem?.duration && (
-                    <span className="flex items-center gap-2 text-sm text-gray-300 bg-gray-800/50 px-3 py-1.5 rounded-lg backdrop-blur-sm">
-                      <FaRegClock className="text-sm" /> {currentHeroItem.duration}
                     </span>
                   )}
                 </div>
@@ -1279,7 +1267,7 @@ export default function Movies() {
                   )}
                 </div>
 
-                {/* Title - Larger and left-aligned on PC */}
+                {/* Title - Larger for PC */}
                 <h1 className="text-2xl md:text-4xl lg:text-5xl xl:text-6xl font-bold text-white mb-3 md:mb-4 leading-tight">
                   {currentHeroItem?.title}
                   {isSeriesWithNewEpisode && (
@@ -1296,14 +1284,14 @@ export default function Movies() {
                   </h2>
                 )}
 
-                {/* Description - More lines on PC */}
+                {/* Description */}
                 <p className="text-xs md:text-sm lg:text-base text-gray-300 mb-4 md:mb-6 line-clamp-2 md:line-clamp-3 max-w-2xl lg:max-w-3xl">
                   {isSeriesWithNewEpisode && currentHeroItem.latestEpisode?.description
                     ? currentHeroItem.latestEpisode.description
                     : currentHeroItem?.description || 'Experience this amazing content. Watch now and enjoy the ultimate cinematic experience.'}
                 </p>
 
-                {/* Action buttons - Larger on PC */}
+                {/* Action buttons */}
                 <div className="flex gap-3 md:gap-4">
                   <button
                     onClick={handleHeroPlayClick}
@@ -1324,7 +1312,7 @@ export default function Movies() {
             </div>
           </div>
 
-          {/* Content type filters - Positioned top left with better styling */}
+          {/* Content type filters */}
           <div className="absolute top-4 md:top-6 lg:top-8 left-4 md:left-6 lg:left-8 z-20 flex gap-2 md:gap-3">
             <button
               onClick={() => setHeroContentType("all")}
@@ -1352,7 +1340,7 @@ export default function Movies() {
             </button>
           </div>
 
-          {/* Slide indicators - Better positioned */}
+          {/* Slide indicators */}
           <div className="absolute bottom-4 md:bottom-6 left-1/2 transform -translate-x-1/2 flex gap-2 md:gap-3 z-20">
             {filteredHeroContent.map((_, index) => (
               <button
@@ -1371,7 +1359,7 @@ export default function Movies() {
             ))}
           </div>
 
-          {/* Navigation arrows - Only visible on PC and on hover */}
+          {/* Navigation arrows */}
           <button
             onClick={prevHeroSlide}
             className="hidden md:flex absolute left-4 lg:left-6 top-1/2 transform -translate-y-1/2 z-30 group/arrow opacity-0 group-hover:opacity-100 transition-opacity duration-300"
@@ -1401,8 +1389,8 @@ export default function Movies() {
             <span className="text-purple-400 font-bold">{currentHeroSlide + 1}</span>/{filteredHeroContent.length}
           </div>
 
-          {/* Progress bar - Thinner for PC */}
-          <div className="absolute bottom-0 left-0 right-0 h-0.5 md:h-1 bg-gray-800/30 z-20">
+          {/* Progress bar - Thinner for cleaner look */}
+          <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gray-800/30 z-20">
             <div
               className="h-full bg-gradient-to-r from-purple-600 to-pink-400 transition-all duration-300"
               style={{ width: `${((currentHeroSlide + 1) / filteredHeroContent.length) * 100}%` }}
