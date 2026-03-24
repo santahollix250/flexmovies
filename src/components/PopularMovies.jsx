@@ -771,6 +771,22 @@ export default function Movies() {
     return [];
   }, []);
 
+  // Function to get optimized image URL
+  const getOptimizedImageUrl = useCallback((url, isBackground = true) => {
+    if (!url) return null;
+
+    if (isBackground && window.innerWidth > 1024) {
+      if (url.includes('tmdb.org') || url.includes('themoviedb')) {
+        return url.replace(/w[0-9]+/, 'original');
+      }
+      if (url.includes('cloudinary.com')) {
+        return url.includes('?') ? `${url}&q_auto:best&c_fill&g_auto` : `${url}?q_auto:best&c_fill&g_auto`;
+      }
+    }
+
+    return url;
+  }, []);
+
   // Get hero content with latest episodes
   const heroContent = useMemo(() => {
     const seriesWithEpisodes = movies
@@ -889,7 +905,6 @@ export default function Movies() {
   }, [movies, episodes]);
 
   // ===== DYNAMIC CATEGORY EXTRACTION =====
-  // Extract all unique categories from movies
   const dynamicCategories = useMemo(() => {
     const categoryMap = new Map();
 
@@ -911,13 +926,12 @@ export default function Movies() {
       }
     });
 
-    // Convert to array and sort by count
     return Array.from(categoryMap.values())
       .sort((a, b) => b.count - a.count)
-      .slice(0, 15); // Show top 15 categories
+      .slice(0, 15);
   }, [movies]);
 
-  // Category icons mapping with extended support
+  // Category icons mapping
   const getCategoryIconAndColor = (categoryName) => {
     const categoryLower = categoryName.toLowerCase();
 
@@ -948,7 +962,7 @@ export default function Movies() {
     return iconMap[categoryLower] || defaultStyle;
   };
 
-  // Get movies by category (dynamic)
+  // Get movies by category
   const getMoviesByCategory = useCallback((categoryName) => {
     return movies
       .filter(movie => movie?.type === "movie" &&
@@ -975,7 +989,7 @@ export default function Movies() {
     });
   }, [navigate, getMovieParts]);
 
-  // Handle series click with specific episode
+  // Handle series click
   const handleUpdatedSeriesClick = useCallback((series) => {
     if (!series || !series.id) return;
     const allSeriesEpisodes = getEpisodesForSeries(series.id);
@@ -1084,7 +1098,6 @@ export default function Movies() {
     return Array.from(categories);
   }, [movies]);
 
-  // Category icons for filter
   const getCategoryIcon = (category) => {
     const style = getCategoryIconAndColor(category);
     return style.icon;
@@ -1167,12 +1180,12 @@ export default function Movies() {
 
   // Don't show movies page content if there's a search query
   if (globalSearchQuery) {
-    return null; // Will redirect to search page via useEffect
+    return null;
   }
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-black via-gray-900 to-black pt-20">
-      {/* ENHANCED HERO SLIDER SECTION - OPTIMIZED WITH LARGER SIZE AND REDUCED BOTTOM SHADOW */}
+      {/* Hero Slider Section */}
       {filteredHeroContent.length > 0 && (
         <section
           ref={heroRef}
@@ -1190,34 +1203,46 @@ export default function Movies() {
             >
               <div className="relative w-full h-full">
                 {imageLoading && index === currentHeroSlide && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-gray-900">
+                  <div className="absolute inset-0 flex items-center justify-center bg-gray-900 z-10">
                     <div className="text-center">
                       <FaSpinner className="text-purple-600 text-4xl animate-spin mb-3" />
                       <p className="text-gray-400 text-sm">Loading cinematic experience...</p>
                     </div>
                   </div>
                 )}
+
                 <img
-                  src={item?.background || item?.poster}
+                  src={getOptimizedImageUrl(item?.background || item?.poster, true)}
                   alt={item?.title}
                   className="w-full h-full object-cover object-center"
                   style={{
-                    objectPosition: 'center 30%'
+                    objectPosition: 'center 25%'
                   }}
-                  onLoad={() => setImageLoading(false)}
-                  onError={() => setImageLoading(false)}
+                  loading={index === currentHeroSlide ? "eager" : "lazy"}
+                  onLoad={() => {
+                    if (index === currentHeroSlide) {
+                      setImageLoading(false);
+                    }
+                  }}
+                  onError={(e) => {
+                    if (index === currentHeroSlide) {
+                      setImageLoading(false);
+                    }
+                    if (e.target.src !== item?.poster && item?.poster) {
+                      e.target.src = getOptimizedImageUrl(item?.poster, true);
+                    }
+                  }}
                 />
-                {/* REDUCED BOTTOM SHADOW - Much lighter gradient */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-black/10 to-transparent" />
-                <div className="absolute inset-0 bg-gradient-to-r from-black/30 via-transparent to-transparent hidden md:block" />
+
+                <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-black/20 to-transparent z-[2]" />
+                <div className="absolute inset-0 bg-gradient-to-r from-black/30 via-transparent to-transparent hidden md:block z-[2]" />
               </div>
             </div>
           ))}
 
-          {/* Content overlay - LEFT ALIGNED with proper sizing */}
+          {/* Content overlay */}
           <div className="absolute bottom-0 left-0 right-0 p-4 md:p-6 lg:p-8 z-20">
             <div className="max-w-7xl mx-auto w-full">
-              {/* Left-aligned content container */}
               <div className="md:max-w-2xl lg:max-w-3xl text-left">
                 {/* Badges */}
                 <div className="hidden md:flex items-center gap-3 mb-4 flex-wrap">
@@ -1249,7 +1274,6 @@ export default function Movies() {
                   )}
                 </div>
 
-                {/* Mobile badges */}
                 <div className="flex md:hidden items-center gap-1 mb-2 flex-wrap">
                   <span className="px-2 py-1 rounded-full text-[10px] font-semibold bg-gradient-to-r from-purple-600 to-pink-600">
                     {isSeriesWithNewEpisode ? "SERIES" : currentHeroItem?.type === "series" ? "SERIES" : "MOVIE"}
@@ -1267,7 +1291,6 @@ export default function Movies() {
                   )}
                 </div>
 
-                {/* Title - Larger for PC */}
                 <h1 className="text-2xl md:text-4xl lg:text-5xl xl:text-6xl font-bold text-white mb-3 md:mb-4 leading-tight">
                   {currentHeroItem?.title}
                   {isSeriesWithNewEpisode && (
@@ -1277,21 +1300,18 @@ export default function Movies() {
                   )}
                 </h1>
 
-                {/* Episode title for series */}
                 {isSeriesWithNewEpisode && currentHeroItem.latestEpisode && (
                   <h2 className="text-sm md:text-lg lg:text-xl text-purple-300 mb-3 md:mb-4 font-medium">
                     Latest: {currentHeroItem.latestEpisode.title}
                   </h2>
                 )}
 
-                {/* Description */}
                 <p className="text-xs md:text-sm lg:text-base text-gray-300 mb-4 md:mb-6 line-clamp-2 md:line-clamp-3 max-w-2xl lg:max-w-3xl">
                   {isSeriesWithNewEpisode && currentHeroItem.latestEpisode?.description
                     ? currentHeroItem.latestEpisode.description
-                    : currentHeroItem?.description || 'Experience this amazing content. Watch now and enjoy the ultimate cinematic experience.'}
+                    : currentHeroItem?.description || 'Experience this amazing content.'}
                 </p>
 
-                {/* Action buttons */}
                 <div className="flex gap-3 md:gap-4">
                   <button
                     onClick={handleHeroPlayClick}
@@ -1312,7 +1332,7 @@ export default function Movies() {
             </div>
           </div>
 
-          {/* Content type filters */}
+          {/* Filters */}
           <div className="absolute top-4 md:top-6 lg:top-8 left-4 md:left-6 lg:left-8 z-20 flex gap-2 md:gap-3">
             <button
               onClick={() => setHeroContentType("all")}
@@ -1389,7 +1409,7 @@ export default function Movies() {
             <span className="text-purple-400 font-bold">{currentHeroSlide + 1}</span>/{filteredHeroContent.length}
           </div>
 
-          {/* Progress bar - Thinner for cleaner look */}
+          {/* Progress bar */}
           <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gray-800/30 z-20">
             <div
               className="h-full bg-gradient-to-r from-purple-600 to-pink-400 transition-all duration-300"
@@ -1430,12 +1450,7 @@ export default function Movies() {
             ))}
           </div>
 
-          <div className="flex md:hidden gap-2 overflow-x-auto pb-4 px-1 scrollbar-hide"
-            style={{
-              scrollbarWidth: 'none',
-              msOverflowStyle: 'none',
-              WebkitOverflowScrolling: 'touch'
-            }}>
+          <div className="flex md:hidden gap-2 overflow-x-auto pb-4 px-1 scrollbar-hide">
             {recentlyUpdatedSeries.map(series => (
               <div
                 key={series?.id}
@@ -1499,12 +1514,7 @@ export default function Movies() {
             ))}
           </div>
 
-          <div className="flex md:hidden gap-2 overflow-x-auto pb-4 px-1 scrollbar-hide"
-            style={{
-              scrollbarWidth: 'none',
-              msOverflowStyle: 'none',
-              WebkitOverflowScrolling: 'touch'
-            }}>
+          <div className="flex md:hidden gap-2 overflow-x-auto pb-4 px-1 scrollbar-hide">
             {latestUploads.map(item => (
               <div
                 key={item?.id}
@@ -1531,7 +1541,7 @@ export default function Movies() {
         </section>
       )}
 
-      {/* ===== DYNAMIC CATEGORY SECTIONS ===== */}
+      {/* Dynamic Category Sections */}
       {dynamicCategories.map((category) => {
         const categoryMovies = getMoviesByCategory(category.id);
         if (categoryMovies.length === 0) return null;
@@ -1545,7 +1555,7 @@ export default function Movies() {
                   {icon}
                 </div>
                 <h2 className={`text-xl sm:text-2xl md:text-3xl font-bold bg-gradient-to-r ${color} bg-clip-text text-transparent`}>
-                  {category.name} {category.id === 'cartoon' || category.id === 'animation' ? '🎨' : '🎬'}
+                  {category.name}
                 </h2>
                 <span className="text-xs text-gray-400 bg-gray-800/50 px-2 py-1 rounded-full ml-2">
                   {categoryMovies.length}
@@ -1559,7 +1569,6 @@ export default function Movies() {
               </button>
             </div>
 
-            {/* Desktop Grid */}
             <div className="hidden md:grid md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 md:gap-4">
               {categoryMovies.slice(0, 12).map(movie => (
                 <div
@@ -1575,13 +1584,7 @@ export default function Movies() {
               ))}
             </div>
 
-            {/* Mobile Horizontal Scroll */}
-            <div className="flex md:hidden gap-2 overflow-x-auto pb-4 px-1 scrollbar-hide"
-              style={{
-                scrollbarWidth: 'none',
-                msOverflowStyle: 'none',
-                WebkitOverflowScrolling: 'touch'
-              }}>
+            <div className="flex md:hidden gap-2 overflow-x-auto pb-4 px-1 scrollbar-hide">
               {categoryMovies.slice(0, 8).map(movie => (
                 <div
                   key={movie?.id}
@@ -1604,9 +1607,6 @@ export default function Movies() {
               <FaFire className="text-purple-500 text-sm sm:text-base" />
               <span className="hidden xs:inline">Featured Movies</span>
               <span className="xs:hidden">Featured</span>
-              <span className="text-[8px] sm:text-xs text-purple-400 ml-1 sm:ml-2 bg-purple-900/30 px-1.5 sm:px-2 py-0.5 rounded-full">
-                TOP
-              </span>
             </h2>
           </div>
 
@@ -1622,12 +1622,7 @@ export default function Movies() {
             ))}
           </div>
 
-          <div className="flex md:hidden gap-2 overflow-x-auto pb-4 px-1 scrollbar-hide"
-            style={{
-              scrollbarWidth: 'none',
-              msOverflowStyle: 'none',
-              WebkitOverflowScrolling: 'touch'
-            }}>
+          <div className="flex md:hidden gap-2 overflow-x-auto pb-4 px-1 scrollbar-hide">
             {featuredMovies.slice(0, 8).map(movie => (
               <div
                 key={movie?.id}
@@ -1704,19 +1699,6 @@ export default function Movies() {
                         </button>
                       );
                     })}
-                    {allCategories
-                      .filter(cat => cat !== 'all' && cat !== 'featured' && !dynamicCategories.some(c => c.id === cat))
-                      .slice(0, 8)
-                      .map(category => (
-                        <button
-                          key={category}
-                          onClick={() => setSelectedCategory(category)}
-                          className={`w-full text-left px-2 py-1 rounded text-[8px] sm:text-xs flex items-center gap-1 ${selectedCategory === category ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-300'}`}
-                        >
-                          {getCategoryIcon(category)}
-                          <span className="capitalize">{category}</span>
-                        </button>
-                      ))}
                   </div>
                 </div>
               </div>
@@ -1725,7 +1707,7 @@ export default function Movies() {
         </div>
       </div>
 
-      {/* All Movies Section - Final Section */}
+      {/* All Movies Section */}
       <section className="container mx-auto px-4 pb-8 sm:pb-12">
         <div className="flex items-center justify-between mb-4 sm:mb-5">
           <div className="flex items-center gap-2">
@@ -1741,7 +1723,6 @@ export default function Movies() {
           </span>
         </div>
 
-        {/* Category Chips - Quick Filter */}
         <div className="flex gap-1.5 mb-4 sm:mb-5 overflow-x-auto pb-2 scrollbar-hide">
           <button
             onClick={() => setSelectedCategory("all")}
@@ -1838,7 +1819,7 @@ export default function Movies() {
           >
             <div className="relative h-32 md:h-56">
               <img
-                src={quickViewMovie?.background || quickViewMovie?.poster}
+                src={getOptimizedImageUrl(quickViewMovie?.background || quickViewMovie?.poster, true)}
                 alt={quickViewMovie?.title}
                 className="w-full h-full object-cover"
               />
