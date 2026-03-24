@@ -1185,11 +1185,11 @@ export default function Movies() {
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-black via-gray-900 to-black pt-20">
-      {/* Hero Slider Section */}
+      {/* Hero Slider Section - Fixed for mobile */}
       {filteredHeroContent.length > 0 && (
         <section
           ref={heroRef}
-          className="relative h-[65vh] md:h-[75vh] lg:h-[80vh] xl:h-[85vh] overflow-hidden group"
+          className="relative h-[70vh] md:h-[75vh] lg:h-[80vh] xl:h-[85vh] overflow-hidden group"
           onMouseEnter={() => setIsHoveringHero(true)}
           onMouseLeave={() => setIsHoveringHero(false)}
           onTouchStart={handleTouchStart}
@@ -1211,132 +1211,121 @@ export default function Movies() {
                   </div>
                 )}
 
-                <img
-                  src={getOptimizedImageUrl(item?.background || item?.poster, true)}
-                  alt={item?.title}
-                  className="w-full h-full object-cover object-center"
-                  style={{
-                    objectPosition: 'center 25%'
-                  }}
-                  loading={index === currentHeroSlide ? "eager" : "lazy"}
-                  onLoad={() => {
-                    if (index === currentHeroSlide) {
-                      setImageLoading(false);
-                    }
-                  }}
-                  onError={(e) => {
-                    if (index === currentHeroSlide) {
-                      setImageLoading(false);
-                    }
-                    if (e.target.src !== item?.poster && item?.poster) {
-                      e.target.src = getOptimizedImageUrl(item?.poster, true);
-                    }
-                  }}
-                />
+                {/* Improved image container for mobile */}
+                <div className="absolute inset-0">
+                  <img
+                    src={getOptimizedImageUrl(item?.background || item?.poster, true)}
+                    alt={item?.title}
+                    className="w-full h-full object-cover md:object-cover"
+                    style={{
+                      objectPosition: 'center 20%', // Better positioning for mobile
+                      transform: 'scale(1)',
+                    }}
+                    loading={index === currentHeroSlide ? "eager" : "lazy"}
+                    onLoad={() => {
+                      if (index === currentHeroSlide) {
+                        setImageLoading(false);
+                      }
+                    }}
+                    onError={(e) => {
+                      if (index === currentHeroSlide) {
+                        setImageLoading(false);
+                      }
+                      if (e.target.src !== item?.poster && item?.poster) {
+                        e.target.src = getOptimizedImageUrl(item?.poster, true);
+                      }
+                    }}
+                  />
+                </div>
 
-                <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-black/20 to-transparent z-[2]" />
-                <div className="absolute inset-0 bg-gradient-to-r from-black/30 via-transparent to-transparent hidden md:block z-[2]" />
+                {/* Enhanced gradient overlay for better text visibility */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent z-[2]" />
+                <div className="absolute inset-0 bg-gradient-to-r from-black/50 via-transparent to-transparent hidden md:block z-[2]" />
+                <div className="absolute inset-0 bg-gradient-to-l from-transparent via-transparent to-black/30 hidden md:block z-[2]" />
               </div>
             </div>
           ))}
 
-          {/* Content overlay */}
+          {/* Content overlay - Improved positioning for mobile */}
           <div className="absolute bottom-0 left-0 right-0 p-4 md:p-6 lg:p-8 z-20">
             <div className="max-w-7xl mx-auto w-full">
               <div className="md:max-w-2xl lg:max-w-3xl text-left">
-                {/* Badges */}
-                <div className="hidden md:flex items-center gap-3 mb-4 flex-wrap">
-                  <span className="px-3 py-1.5 rounded-full text-sm font-semibold bg-gradient-to-r from-purple-600 to-pink-600 shadow-lg">
-                    {isSeriesWithNewEpisode ? <><FaTv className="inline mr-2 text-sm" /> SERIES</> : currentHeroItem?.type === "series" ? <><FaTv className="inline mr-2 text-sm" /> SERIES</> : <><FaPlay className="inline mr-2 text-sm" /> MOVIE</>}
+                {/* Badges - Visible on both mobile and desktop */}
+                <div className="flex items-center gap-2 md:gap-3 mb-2 md:mb-4 flex-wrap">
+                  <span className="px-2 md:px-3 py-1 md:py-1.5 rounded-full text-[10px] md:text-sm font-semibold bg-gradient-to-r from-purple-600 to-pink-600 shadow-lg">
+                    {isSeriesWithNewEpisode ? <><FaTv className="inline mr-1 md:mr-2 text-[10px] md:text-sm" /> SERIES</> : currentHeroItem?.type === "series" ? <><FaTv className="inline mr-1 md:mr-2 text-[10px] md:text-sm" /> SERIES</> : <><FaPlay className="inline mr-1 md:mr-2 text-[10px] md:text-sm" /> MOVIE</>}
                   </span>
                   {isSeriesWithNewEpisode && (
                     <>
-                      <span className="px-3 py-1.5 rounded-full bg-green-600 text-white text-xs font-semibold flex items-center gap-2 animate-pulse shadow-lg">
-                        <FaPlusCircle className="text-sm" />
+                      <span className="px-2 md:px-3 py-1 md:py-1.5 rounded-full bg-green-600 text-white text-[10px] md:text-xs font-semibold flex items-center gap-1 md:gap-2 animate-pulse shadow-lg">
+                        <FaPlusCircle className="text-[8px] md:text-sm" />
                         NEW EPISODE
                       </span>
-                      <span className="px-3 py-1.5 rounded-full bg-purple-600/90 text-white text-xs font-semibold shadow-lg">
+                      <span className="px-2 md:px-3 py-1 md:py-1.5 rounded-full bg-purple-600/90 text-white text-[10px] md:text-xs font-semibold shadow-lg">
                         S{currentHeroItem.latestEpisode.seasonNumber}:E{currentHeroItem.latestEpisode.episodeNumber}
                       </span>
                     </>
                   )}
                   {currentHeroItem?.translator && (
-                    <div className="px-3 py-1.5 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-xs font-semibold flex items-center gap-2 shadow-lg">
-                      <FaLanguage className="text-sm" />
+                    <div className="px-2 md:px-3 py-1 md:py-1.5 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-[10px] md:text-xs font-semibold flex items-center gap-1 md:gap-2 shadow-lg">
+                      <FaLanguage className="text-[8px] md:text-sm" />
                       <span className="hidden lg:inline">Translator: {currentHeroItem.translator}</span>
                       <span className="inline lg:hidden max-w-[60px] truncate">{currentHeroItem.translator}</span>
                     </div>
                   )}
                   {currentHeroItem?.rating && (
-                    <span className="flex items-center gap-2 text-sm text-yellow-400 bg-yellow-900/30 px-3 py-1.5 rounded-lg backdrop-blur-sm">
-                      <FaStar className="text-sm" /> {currentHeroItem.rating}
+                    <span className="flex items-center gap-1 md:gap-2 text-[10px] md:text-sm text-yellow-400 bg-yellow-900/30 px-2 md:px-3 py-1 md:py-1.5 rounded-lg backdrop-blur-sm">
+                      <FaStar className="text-[8px] md:text-sm" /> {currentHeroItem.rating}
                     </span>
                   )}
                 </div>
 
-                <div className="flex md:hidden items-center gap-1 mb-2 flex-wrap">
-                  <span className="px-2 py-1 rounded-full text-[10px] font-semibold bg-gradient-to-r from-purple-600 to-pink-600">
-                    {isSeriesWithNewEpisode ? "SERIES" : currentHeroItem?.type === "series" ? "SERIES" : "MOVIE"}
-                  </span>
-                  {isSeriesWithNewEpisode && (
-                    <>
-                      <span className="px-2 py-1 rounded-full bg-green-600 text-white text-[10px] font-semibold flex items-center gap-1 animate-pulse">
-                        <FaPlusCircle className="text-[8px]" />
-                        NEW
-                      </span>
-                      <span className="px-2 py-1 rounded-full bg-purple-600/80 text-white text-[10px] font-semibold">
-                        S{currentHeroItem.latestEpisode.seasonNumber}:E{currentHeroItem.latestEpisode.episodeNumber}
-                      </span>
-                    </>
-                  )}
-                </div>
-
-                <h1 className="text-2xl md:text-4xl lg:text-5xl xl:text-6xl font-bold text-white mb-3 md:mb-4 leading-tight">
+                <h1 className="text-xl sm:text-2xl md:text-4xl lg:text-5xl xl:text-6xl font-bold text-white mb-2 md:mb-4 leading-tight drop-shadow-lg">
                   {currentHeroItem?.title}
                   {isSeriesWithNewEpisode && (
-                    <span className="text-lg md:text-2xl lg:text-3xl ml-3 text-purple-400">
+                    <span className="text-sm md:text-2xl lg:text-3xl ml-2 md:ml-3 text-purple-400">
                       - New Episode
                     </span>
                   )}
                 </h1>
 
                 {isSeriesWithNewEpisode && currentHeroItem.latestEpisode && (
-                  <h2 className="text-sm md:text-lg lg:text-xl text-purple-300 mb-3 md:mb-4 font-medium">
+                  <h2 className="text-xs md:text-lg lg:text-xl text-purple-300 mb-2 md:mb-4 font-medium drop-shadow-md">
                     Latest: {currentHeroItem.latestEpisode.title}
                   </h2>
                 )}
 
-                <p className="text-xs md:text-sm lg:text-base text-gray-300 mb-4 md:mb-6 line-clamp-2 md:line-clamp-3 max-w-2xl lg:max-w-3xl">
+                <p className="text-xs md:text-sm lg:text-base text-gray-200 mb-3 md:mb-6 line-clamp-2 md:line-clamp-3 max-w-2xl lg:max-w-3xl drop-shadow-md">
                   {isSeriesWithNewEpisode && currentHeroItem.latestEpisode?.description
                     ? currentHeroItem.latestEpisode.description
                     : currentHeroItem?.description || 'Experience this amazing content.'}
                 </p>
 
-                <div className="flex gap-3 md:gap-4">
+                <div className="flex gap-2 md:gap-3 lg:gap-4">
                   <button
                     onClick={handleHeroPlayClick}
-                    className="px-6 md:px-8 lg:px-10 py-2.5 md:py-3 lg:py-4 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg text-white text-sm md:text-base lg:text-lg font-semibold flex items-center gap-2 md:gap-3 shadow-xl hover:from-purple-700 hover:to-pink-700 transition-all duration-300 transform hover:scale-105"
+                    className="px-4 md:px-6 lg:px-8 py-2 md:py-2.5 lg:py-3 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg text-white text-xs md:text-sm lg:text-base font-semibold flex items-center gap-1 md:gap-2 shadow-xl hover:from-purple-700 hover:to-pink-700 transition-all duration-300 transform hover:scale-105"
                   >
-                    <FaPlay className="text-xs md:text-sm lg:text-base" />
-                    <span>{isSeriesWithNewEpisode ? 'Watch Latest Episode' : 'Watch Now'}</span>
+                    <FaPlay className="text-[10px] md:text-xs lg:text-sm" />
+                    <span>{isSeriesWithNewEpisode ? 'Watch Latest' : 'Watch Now'}</span>
                   </button>
                   <button
                     onClick={handleHeroInfoClick}
-                    className="px-6 md:px-8 lg:px-10 py-2.5 md:py-3 lg:py-4 bg-gray-800/90 backdrop-blur-sm rounded-lg text-white text-sm md:text-base lg:text-lg font-semibold flex items-center gap-2 md:gap-3 border border-gray-700 hover:bg-gray-700/90 transition-all duration-300 transform hover:scale-105"
+                    className="px-4 md:px-6 lg:px-8 py-2 md:py-2.5 lg:py-3 bg-gray-800/90 backdrop-blur-sm rounded-lg text-white text-xs md:text-sm lg:text-base font-semibold flex items-center gap-1 md:gap-2 border border-gray-700 hover:bg-gray-700/90 transition-all duration-300 transform hover:scale-105"
                   >
-                    <FaInfoCircle className="text-xs md:text-sm lg:text-base" />
-                    <span>More Info</span>
+                    <FaInfoCircle className="text-[10px] md:text-xs lg:text-sm" />
+                    <span>Info</span>
                   </button>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Filters */}
-          <div className="absolute top-4 md:top-6 lg:top-8 left-4 md:left-6 lg:left-8 z-20 flex gap-2 md:gap-3">
+          {/* Filters - Made more compact for mobile */}
+          <div className="absolute top-2 md:top-4 lg:top-6 left-2 md:left-4 lg:left-6 z-20 flex gap-1 md:gap-2">
             <button
               onClick={() => setHeroContentType("all")}
-              className={`px-3 md:px-4 lg:px-5 py-1.5 md:py-2 rounded-full text-xs md:text-sm font-medium transition-all duration-300 ${heroContentType === "all"
+              className={`px-2 md:px-3 lg:px-4 py-1 md:py-1.5 rounded-full text-[10px] md:text-xs lg:text-sm font-medium transition-all duration-300 ${heroContentType === "all"
                 ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg'
                 : 'bg-black/60 backdrop-blur-sm text-gray-300 hover:bg-black/80 border border-white/20'}`}
             >
@@ -1344,7 +1333,7 @@ export default function Movies() {
             </button>
             <button
               onClick={() => setHeroContentType("movies")}
-              className={`px-3 md:px-4 lg:px-5 py-1.5 md:py-2 rounded-full text-xs md:text-sm font-medium transition-all duration-300 ${heroContentType === "movies"
+              className={`px-2 md:px-3 lg:px-4 py-1 md:py-1.5 rounded-full text-[10px] md:text-xs lg:text-sm font-medium transition-all duration-300 ${heroContentType === "movies"
                 ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg'
                 : 'bg-black/60 backdrop-blur-sm text-gray-300 hover:bg-black/80 border border-white/20'}`}
             >
@@ -1352,7 +1341,7 @@ export default function Movies() {
             </button>
             <button
               onClick={() => setHeroContentType("series")}
-              className={`px-3 md:px-4 lg:px-5 py-1.5 md:py-2 rounded-full text-xs md:text-sm font-medium transition-all duration-300 ${heroContentType === "series"
+              className={`px-2 md:px-3 lg:px-4 py-1 md:py-1.5 rounded-full text-[10px] md:text-xs lg:text-sm font-medium transition-all duration-300 ${heroContentType === "series"
                 ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg'
                 : 'bg-black/60 backdrop-blur-sm text-gray-300 hover:bg-black/80 border border-white/20'}`}
             >
@@ -1360,8 +1349,8 @@ export default function Movies() {
             </button>
           </div>
 
-          {/* Slide indicators */}
-          <div className="absolute bottom-4 md:bottom-6 left-1/2 transform -translate-x-1/2 flex gap-2 md:gap-3 z-20">
+          {/* Slide indicators - Made more compact for mobile */}
+          <div className="absolute bottom-2 md:bottom-4 left-1/2 transform -translate-x-1/2 flex gap-1 md:gap-2 z-20">
             {filteredHeroContent.map((_, index) => (
               <button
                 key={index}
@@ -1373,39 +1362,39 @@ export default function Movies() {
                 className="group/dot"
               >
                 <span className={`block transition-all duration-300 rounded-full ${index === currentHeroSlide
-                  ? 'w-6 md:w-8 lg:w-10 h-1 md:h-1.5 bg-gradient-to-r from-purple-600 to-pink-600'
-                  : 'w-1.5 md:w-2 h-1 md:h-1.5 bg-gray-500 group-hover/dot:bg-gray-300'}`} />
+                  ? 'w-4 md:w-6 lg:w-8 h-0.5 md:h-1 bg-gradient-to-r from-purple-600 to-pink-600'
+                  : 'w-1 md:w-1.5 h-0.5 md:h-1 bg-gray-500 group-hover/dot:bg-gray-300'}`} />
               </button>
             ))}
           </div>
 
-          {/* Navigation arrows */}
+          {/* Navigation arrows - Hidden on mobile for better touch experience */}
           <button
             onClick={prevHeroSlide}
-            className="hidden md:flex absolute left-4 lg:left-6 top-1/2 transform -translate-y-1/2 z-30 group/arrow opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+            className="hidden md:flex absolute left-2 lg:left-4 top-1/2 transform -translate-y-1/2 z-30 group/arrow opacity-0 group-hover:opacity-100 transition-opacity duration-300"
           >
             <div className="relative">
               <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-pink-600 rounded-full blur-md opacity-0 group-hover/arrow:opacity-50 transition-opacity duration-300" />
-              <div className="relative w-10 h-10 lg:w-12 lg:h-12 bg-black/60 backdrop-blur-md rounded-full flex items-center justify-center border border-white/20 group-hover/arrow:border-purple-500/50 transition-all duration-300 group-hover/arrow:scale-110">
-                <FaChevronLeft className="text-white text-sm lg:text-base group-hover/arrow:text-purple-400 transition-colors duration-300" />
+              <div className="relative w-8 h-8 lg:w-10 lg:h-10 bg-black/60 backdrop-blur-md rounded-full flex items-center justify-center border border-white/20 group-hover/arrow:border-purple-500/50 transition-all duration-300 group-hover/arrow:scale-110">
+                <FaChevronLeft className="text-white text-xs lg:text-sm group-hover/arrow:text-purple-400 transition-colors duration-300" />
               </div>
             </div>
           </button>
 
           <button
             onClick={nextHeroSlide}
-            className="hidden md:flex absolute right-4 lg:right-6 top-1/2 transform -translate-y-1/2 z-30 group/arrow opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+            className="hidden md:flex absolute right-2 lg:right-4 top-1/2 transform -translate-y-1/2 z-30 group/arrow opacity-0 group-hover:opacity-100 transition-opacity duration-300"
           >
             <div className="relative">
               <div className="absolute inset-0 bg-gradient-to-l from-purple-600 to-pink-600 rounded-full blur-md opacity-0 group-hover/arrow:opacity-50 transition-opacity duration-300" />
-              <div className="relative w-10 h-10 lg:w-12 lg:h-12 bg-black/60 backdrop-blur-md rounded-full flex items-center justify-center border border-white/20 group-hover/arrow:border-purple-500/50 transition-all duration-300 group-hover/arrow:scale-110">
-                <FaChevronRight className="text-white text-sm lg:text-base group-hover/arrow:text-purple-400 transition-colors duration-300" />
+              <div className="relative w-8 h-8 lg:w-10 lg:h-10 bg-black/60 backdrop-blur-md rounded-full flex items-center justify-center border border-white/20 group-hover/arrow:border-purple-500/50 transition-all duration-300 group-hover/arrow:scale-110">
+                <FaChevronRight className="text-white text-xs lg:text-sm group-hover/arrow:text-purple-400 transition-colors duration-300" />
               </div>
             </div>
           </button>
 
-          {/* Slide counter */}
-          <div className="absolute top-4 md:top-6 lg:top-8 right-4 md:right-6 lg:right-8 z-20 bg-black/60 backdrop-blur-sm px-2 md:px-3 py-1 md:py-1.5 rounded-full text-xs md:text-sm text-white border border-white/20">
+          {/* Slide counter - Made more compact for mobile */}
+          <div className="absolute top-2 md:top-4 lg:top-6 right-2 md:right-4 lg:right-6 z-20 bg-black/60 backdrop-blur-sm px-1.5 md:px-2 py-0.5 md:py-1 rounded-full text-[10px] md:text-xs text-white border border-white/20">
             <span className="text-purple-400 font-bold">{currentHeroSlide + 1}</span>/{filteredHeroContent.length}
           </div>
 
