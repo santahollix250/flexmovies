@@ -685,65 +685,31 @@ export default function Movies() {
   const searchParams = new URLSearchParams(location.search);
   const urlSearchQuery = searchParams.get('search') || '';
 
+  // Filter State - Moved up before it's used
+  const [selectedCategory, setSelectedCategory] = useState("all");
+  const [sortBy, setSortBy] = useState("popular");
+  const [sortOrder, setSortOrder] = useState("desc");
+  const [showFilters, setShowFilters] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [hoveredMovie, setHoveredMovie] = useState(null);
+  const [likedMovies, setLikedMovies] = useState([]);
+  const [showQuickView, setShowQuickView] = useState(false);
+  const [quickViewMovie, setQuickViewMovie] = useState(null);
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const itemsPerPage = 24;
+
   // Hero Slider State
   const [currentHeroSlide, setCurrentHeroSlide] = useState(0);
   const [isAutoPlaying, setIsAutoPlaying] = useState(true);
   const [heroContentType, setHeroContentType] = useState("all");
   const [isHoveringHero, setIsHoveringHero] = useState(false);
-
-  // Remove image loading state - we want images to show immediately
   const [imagesPreloaded, setImagesPreloaded] = useState(false);
 
-  // Preload hero images for smoother experience
-  useEffect(() => {
-    if (filteredHeroContent.length > 0) {
-      const preloadImages = async () => {
-        const imagePromises = filteredHeroContent.map((item) => {
-          return new Promise((resolve) => {
-            const img = new Image();
-            img.src = item?.background || item?.poster;
-            img.onload = resolve;
-            img.onerror = resolve;
-          });
-        });
-        await Promise.all(imagePromises);
-        setImagesPreloaded(true);
-      };
-      preloadImages();
-    }
-  }, [filteredHeroContent]);
-
-  // Touch handlers for mobile hero slider
-  const handleTouchStart = (e) => {
-    touchStartX.current = e.touches[0].clientX;
-    setIsAutoPlaying(false);
-  };
-
-  const handleTouchMove = (e) => {
-    touchEndX.current = e.touches[0].clientX;
-  };
-
-  const handleTouchEnd = () => {
-    const swipeThreshold = 50;
-    const diffX = touchStartX.current - touchEndX.current;
-
-    if (Math.abs(diffX) > swipeThreshold) {
-      if (diffX > 0) {
-        setCurrentHeroSlide((prev) => (prev + 1) % filteredHeroContent.length);
-      } else {
-        setCurrentHeroSlide((prev) => (prev - 1 + filteredHeroContent.length) % filteredHeroContent.length);
-      }
-    }
-
-    setTimeout(() => setIsAutoPlaying(true), 5000);
-  };
-
-  // Helper function to get episodes for a series
+  // Helper functions - Define these first
   const getEpisodesForSeries = useCallback((seriesId) => {
     return episodes.filter(ep => ep.seriesId === seriesId);
   }, [episodes]);
 
-  // Helper function to sort episodes
   const sortEpisodes = useCallback((episodesArray) => {
     if (!episodesArray || !Array.isArray(episodesArray)) return [];
     return [...episodesArray].sort((a, b) => {
@@ -756,7 +722,6 @@ export default function Movies() {
     });
   }, []);
 
-  // Helper function to get movie parts from download field
   const getMovieParts = useCallback((movie) => {
     if (!movie) return [];
     if (movie.parts && Array.isArray(movie.parts)) {
@@ -779,11 +744,9 @@ export default function Movies() {
     return [];
   }, []);
 
-  // Function to get optimized image URL
   const getOptimizedImageUrl = useCallback((url, isBackground = true) => {
     if (!url) return null;
 
-    // For mobile, use smaller images for faster loading
     if (window.innerWidth <= 768) {
       if (url.includes('tmdb.org') || url.includes('themoviedb')) {
         return url.replace(/w[0-9]+/, 'w500');
@@ -863,6 +826,50 @@ export default function Movies() {
 
   const currentHeroItem = filteredHeroContent[currentHeroSlide] || {};
   const isSeriesWithNewEpisode = currentHeroItem?.latestEpisode ? true : false;
+
+  // Preload hero images for smoother experience - Now after filteredHeroContent is defined
+  useEffect(() => {
+    if (filteredHeroContent.length > 0) {
+      const preloadImages = async () => {
+        const imagePromises = filteredHeroContent.map((item) => {
+          return new Promise((resolve) => {
+            const img = new Image();
+            img.src = item?.background || item?.poster;
+            img.onload = resolve;
+            img.onerror = resolve;
+          });
+        });
+        await Promise.all(imagePromises);
+        setImagesPreloaded(true);
+      };
+      preloadImages();
+    }
+  }, [filteredHeroContent]);
+
+  // Touch handlers for mobile hero slider
+  const handleTouchStart = (e) => {
+    touchStartX.current = e.touches[0].clientX;
+    setIsAutoPlaying(false);
+  };
+
+  const handleTouchMove = (e) => {
+    touchEndX.current = e.touches[0].clientX;
+  };
+
+  const handleTouchEnd = () => {
+    const swipeThreshold = 50;
+    const diffX = touchStartX.current - touchEndX.current;
+
+    if (Math.abs(diffX) > swipeThreshold) {
+      if (diffX > 0) {
+        setCurrentHeroSlide((prev) => (prev + 1) % filteredHeroContent.length);
+      } else {
+        setCurrentHeroSlide((prev) => (prev - 1 + filteredHeroContent.length) % filteredHeroContent.length);
+      }
+    }
+
+    setTimeout(() => setIsAutoPlaying(true), 5000);
+  };
 
   // Get recently updated series
   const recentlyUpdatedSeries = useMemo(() => {
@@ -1190,19 +1197,6 @@ export default function Movies() {
       return 'Recently';
     }
   }, []);
-
-  // Filter State
-  const [selectedCategory, setSelectedCategory] = useState("all");
-  const [sortBy, setSortBy] = useState("popular");
-  const [sortOrder, setSortOrder] = useState("desc");
-  const [showFilters, setShowFilters] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [hoveredMovie, setHoveredMovie] = useState(null);
-  const [likedMovies, setLikedMovies] = useState([]);
-  const [showQuickView, setShowQuickView] = useState(false);
-  const [quickViewMovie, setQuickViewMovie] = useState(null);
-  const [isSearchFocused, setIsSearchFocused] = useState(false);
-  const itemsPerPage = 24;
 
   // Loading state
   if (loading) {
