@@ -691,19 +691,27 @@ export default function Movies() {
   const [heroContentType, setHeroContentType] = useState("all");
   const [isHoveringHero, setIsHoveringHero] = useState(false);
 
-  // Filter State
-  const [selectedCategory, setSelectedCategory] = useState("all");
-  const [sortBy, setSortBy] = useState("popular");
-  const [sortOrder, setSortOrder] = useState("desc");
-  const [showFilters, setShowFilters] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [hoveredMovie, setHoveredMovie] = useState(null);
-  const [likedMovies, setLikedMovies] = useState([]);
-  const [showQuickView, setShowQuickView] = useState(false);
-  const [quickViewMovie, setQuickViewMovie] = useState(null);
-  const [isSearchFocused, setIsSearchFocused] = useState(false);
-  const [imageLoading, setImageLoading] = useState(true);
-  const itemsPerPage = 24;
+  // Remove image loading state - we want images to show immediately
+  const [imagesPreloaded, setImagesPreloaded] = useState(false);
+
+  // Preload hero images for smoother experience
+  useEffect(() => {
+    if (filteredHeroContent.length > 0) {
+      const preloadImages = async () => {
+        const imagePromises = filteredHeroContent.map((item) => {
+          return new Promise((resolve) => {
+            const img = new Image();
+            img.src = item?.background || item?.poster;
+            img.onload = resolve;
+            img.onerror = resolve;
+          });
+        });
+        await Promise.all(imagePromises);
+        setImagesPreloaded(true);
+      };
+      preloadImages();
+    }
+  }, [filteredHeroContent]);
 
   // Touch handlers for mobile hero slider
   const handleTouchStart = (e) => {
@@ -774,6 +782,16 @@ export default function Movies() {
   // Function to get optimized image URL
   const getOptimizedImageUrl = useCallback((url, isBackground = true) => {
     if (!url) return null;
+
+    // For mobile, use smaller images for faster loading
+    if (window.innerWidth <= 768) {
+      if (url.includes('tmdb.org') || url.includes('themoviedb')) {
+        return url.replace(/w[0-9]+/, 'w500');
+      }
+      if (url.includes('cloudinary.com')) {
+        return url.includes('?') ? `${url}&q_auto:good&c_fill&w=500` : `${url}?q_auto:good&c_fill&w=500`;
+      }
+    }
 
     if (isBackground && window.innerWidth > 1024) {
       if (url.includes('tmdb.org') || url.includes('themoviedb')) {
@@ -1173,6 +1191,19 @@ export default function Movies() {
     }
   }, []);
 
+  // Filter State
+  const [selectedCategory, setSelectedCategory] = useState("all");
+  const [sortBy, setSortBy] = useState("popular");
+  const [sortOrder, setSortOrder] = useState("desc");
+  const [showFilters, setShowFilters] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [hoveredMovie, setHoveredMovie] = useState(null);
+  const [likedMovies, setLikedMovies] = useState([]);
+  const [showQuickView, setShowQuickView] = useState(false);
+  const [quickViewMovie, setQuickViewMovie] = useState(null);
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const itemsPerPage = 24;
+
   // Loading state
   if (loading) {
     return <CinematicLoading />;
@@ -1185,7 +1216,7 @@ export default function Movies() {
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-black via-gray-900 to-black pt-20">
-      {/* Hero Slider Section - Fixed for mobile */}
+      {/* Hero Slider Section - No loading spinner */}
       {filteredHeroContent.length > 0 && (
         <section
           ref={heroRef}
@@ -1202,35 +1233,17 @@ export default function Movies() {
               className={`absolute inset-0 transition-opacity duration-1000 ${index === currentHeroSlide ? 'opacity-100 z-10' : 'opacity-0 z-0'}`}
             >
               <div className="relative w-full h-full">
-                {imageLoading && index === currentHeroSlide && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-gray-900 z-10">
-                    <div className="text-center">
-                      <FaSpinner className="text-purple-600 text-4xl animate-spin mb-3" />
-                      <p className="text-gray-400 text-sm">Loading cinematic experience...</p>
-                    </div>
-                  </div>
-                )}
-
-                {/* Improved image container for mobile */}
+                {/* Image with immediate display - no loading overlay */}
                 <div className="absolute inset-0">
                   <img
                     src={getOptimizedImageUrl(item?.background || item?.poster, true)}
                     alt={item?.title}
-                    className="w-full h-full object-cover md:object-cover"
+                    className="w-full h-full object-cover"
                     style={{
-                      objectPosition: 'center 20%', // Better positioning for mobile
-                      transform: 'scale(1)',
+                      objectPosition: 'center 20%',
                     }}
                     loading={index === currentHeroSlide ? "eager" : "lazy"}
-                    onLoad={() => {
-                      if (index === currentHeroSlide) {
-                        setImageLoading(false);
-                      }
-                    }}
                     onError={(e) => {
-                      if (index === currentHeroSlide) {
-                        setImageLoading(false);
-                      }
                       if (e.target.src !== item?.poster && item?.poster) {
                         e.target.src = getOptimizedImageUrl(item?.poster, true);
                       }
@@ -1239,18 +1252,17 @@ export default function Movies() {
                 </div>
 
                 {/* Enhanced gradient overlay for better text visibility */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent z-[2]" />
-                <div className="absolute inset-0 bg-gradient-to-r from-black/50 via-transparent to-transparent hidden md:block z-[2]" />
-                <div className="absolute inset-0 bg-gradient-to-l from-transparent via-transparent to-black/30 hidden md:block z-[2]" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent z-[2]" />
+                <div className="absolute inset-0 bg-gradient-to-r from-black/40 via-transparent to-transparent hidden md:block z-[2]" />
               </div>
             </div>
           ))}
 
-          {/* Content overlay - Improved positioning for mobile */}
+          {/* Content overlay */}
           <div className="absolute bottom-0 left-0 right-0 p-4 md:p-6 lg:p-8 z-20">
             <div className="max-w-7xl mx-auto w-full">
               <div className="md:max-w-2xl lg:max-w-3xl text-left">
-                {/* Badges - Visible on both mobile and desktop */}
+                {/* Badges */}
                 <div className="flex items-center gap-2 md:gap-3 mb-2 md:mb-4 flex-wrap">
                   <span className="px-2 md:px-3 py-1 md:py-1.5 rounded-full text-[10px] md:text-sm font-semibold bg-gradient-to-r from-purple-600 to-pink-600 shadow-lg">
                     {isSeriesWithNewEpisode ? <><FaTv className="inline mr-1 md:mr-2 text-[10px] md:text-sm" /> SERIES</> : currentHeroItem?.type === "series" ? <><FaTv className="inline mr-1 md:mr-2 text-[10px] md:text-sm" /> SERIES</> : <><FaPlay className="inline mr-1 md:mr-2 text-[10px] md:text-sm" /> MOVIE</>}
@@ -1262,7 +1274,7 @@ export default function Movies() {
                         NEW EPISODE
                       </span>
                       <span className="px-2 md:px-3 py-1 md:py-1.5 rounded-full bg-purple-600/90 text-white text-[10px] md:text-xs font-semibold shadow-lg">
-                        S{currentHeroItem.latestEpisode.seasonNumber}:E{currentHeroItem.latestEpisode.episodeNumber}
+                        S{currentHeroItem.latestEpisode?.seasonNumber}:E{currentHeroItem.latestEpisode?.episodeNumber}
                       </span>
                     </>
                   )}
@@ -1321,7 +1333,7 @@ export default function Movies() {
             </div>
           </div>
 
-          {/* Filters - Made more compact for mobile */}
+          {/* Filters */}
           <div className="absolute top-2 md:top-4 lg:top-6 left-2 md:left-4 lg:left-6 z-20 flex gap-1 md:gap-2">
             <button
               onClick={() => setHeroContentType("all")}
@@ -1349,7 +1361,7 @@ export default function Movies() {
             </button>
           </div>
 
-          {/* Slide indicators - Made more compact for mobile */}
+          {/* Slide indicators */}
           <div className="absolute bottom-2 md:bottom-4 left-1/2 transform -translate-x-1/2 flex gap-1 md:gap-2 z-20">
             {filteredHeroContent.map((_, index) => (
               <button
@@ -1368,7 +1380,7 @@ export default function Movies() {
             ))}
           </div>
 
-          {/* Navigation arrows - Hidden on mobile for better touch experience */}
+          {/* Navigation arrows */}
           <button
             onClick={prevHeroSlide}
             className="hidden md:flex absolute left-2 lg:left-4 top-1/2 transform -translate-y-1/2 z-30 group/arrow opacity-0 group-hover:opacity-100 transition-opacity duration-300"
@@ -1393,7 +1405,7 @@ export default function Movies() {
             </div>
           </button>
 
-          {/* Slide counter - Made more compact for mobile */}
+          {/* Slide counter */}
           <div className="absolute top-2 md:top-4 lg:top-6 right-2 md:right-4 lg:right-6 z-20 bg-black/60 backdrop-blur-sm px-1.5 md:px-2 py-0.5 md:py-1 rounded-full text-[10px] md:text-xs text-white border border-white/20">
             <span className="text-purple-400 font-bold">{currentHeroSlide + 1}</span>/{filteredHeroContent.length}
           </div>
@@ -1811,6 +1823,11 @@ export default function Movies() {
                 src={getOptimizedImageUrl(quickViewMovie?.background || quickViewMovie?.poster, true)}
                 alt={quickViewMovie?.title}
                 className="w-full h-full object-cover"
+                onError={(e) => {
+                  if (e.target.src !== quickViewMovie?.poster && quickViewMovie?.poster) {
+                    e.target.src = quickViewMovie.poster;
+                  }
+                }}
               />
               <div className="absolute inset-0 bg-gradient-to-t from-gray-900 via-transparent to-transparent" />
               <button
