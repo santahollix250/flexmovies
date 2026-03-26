@@ -58,178 +58,47 @@ import {
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 
-// ===== ENHANCED CINEMATIC LOADING ANIMATION WITH ACF LOGO =====
+// ===== PROFESSIONAL NETFLIX-STYLE SPLASH SCREEN =====
 const CinematicLoading = () => {
-  const [frame, setFrame] = useState(0);
   const [progress, setProgress] = useState(0);
-  const [glitchEffect, setGlitchEffect] = useState(false);
-  const [logoLoaded, setLogoLoaded] = useState(false);
-  const [showTagline, setShowTagline] = useState(false);
-  const [acfLetter, setAcfLetter] = useState('A');
-  const letters = ['A', 'C', 'F'];
+  const [showText, setShowText] = useState(false);
+  const [showSubtext, setShowSubtext] = useState(false);
+  const [animationComplete, setAnimationComplete] = useState(false);
 
-  // Letter rotation animation
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setAcfLetter(prev => {
-        const currentIndex = letters.indexOf(prev);
-        const nextIndex = (currentIndex + 1) % letters.length;
-        return letters[nextIndex];
-      });
-    }, 800);
-    return () => clearInterval(interval);
-  }, []);
-
-  // Film reel animation
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setFrame((prev) => (prev + 1) % 12);
-    }, 100);
-    return () => clearInterval(interval);
-  }, []);
-
-  // Progress animation with smooth increments
+  // Progress animation
   useEffect(() => {
     const interval = setInterval(() => {
       setProgress((prev) => {
         if (prev >= 100) {
+          clearInterval(interval);
           return 100;
         }
-        return prev + Math.random() * 1.5;
+        return prev + Math.random() * 2;
       });
-    }, 40);
+    }, 30);
     return () => clearInterval(interval);
   }, []);
 
-  // Show tagline after logo appears
+  // Text animation sequence
   useEffect(() => {
-    if (logoLoaded) {
-      setTimeout(() => setShowTagline(true), 500);
-    }
-  }, [logoLoaded]);
-
-  // Random glitch effect
-  useEffect(() => {
-    const glitchInterval = setInterval(() => {
-      setGlitchEffect(true);
-      setTimeout(() => setGlitchEffect(false), 150);
-    }, 3000);
-    return () => clearInterval(glitchInterval);
+    const timer1 = setTimeout(() => setShowText(true), 300);
+    const timer2 = setTimeout(() => setShowSubtext(true), 800);
+    const timer3 = setTimeout(() => setAnimationComplete(true), 1500);
+    return () => {
+      clearTimeout(timer1);
+      clearTimeout(timer2);
+      clearTimeout(timer3);
+    };
   }, []);
 
-  // Cinematic quotes
-  const quotes = [
-    "Premium Streaming Experience",
-    "Where Stories Come to Life",
-    "Your Ultimate Entertainment Hub",
-    "Cinema at Your Fingertips",
-    "Experience the Magic of Movies",
-    "Unlimited Entertainment, Unlimited Joy",
-    "Stream the Best, Watch the Rest",
-    "Your Gateway to Cinema Excellence"
-  ];
-
-  const currentQuote = quotes[Math.floor(progress / 12.5) % quotes.length];
-
   return (
-    <div className="fixed inset-0 bg-black z-50 overflow-hidden">
-      {/* Animated Background Gradient - Black & Gold */}
-      <div className="absolute inset-0 bg-gradient-to-br from-black via-black to-yellow-950">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-yellow-900/20 via-transparent to-transparent" />
-      </div>
+    <div className="fixed inset-0 z-50 bg-black overflow-hidden">
+      {/* Background with subtle gradient */}
+      <div className="absolute inset-0 bg-gradient-to-br from-black via-black to-red-950/30" />
 
-      {/* Animated Particle Effect - Gold particles */}
-      <div className="absolute inset-0 overflow-hidden">
-        {[...Array(80)].map((_, i) => (
-          <motion.div
-            key={i}
-            className="absolute w-0.5 h-0.5 bg-yellow-500/40 rounded-full"
-            initial={{
-              x: Math.random() * window.innerWidth,
-              y: Math.random() * window.innerHeight,
-              opacity: 0
-            }}
-            animate={{
-              y: [null, -150, -300],
-              opacity: [0, 0.6, 0],
-              scale: [0, 1.5, 0]
-            }}
-            transition={{
-              duration: 2 + Math.random() * 4,
-              repeat: Infinity,
-              delay: Math.random() * 5,
-              ease: "linear"
-            }}
-          />
-        ))}
-      </div>
-
-      {/* Floating Gold Dust */}
-      <div className="absolute inset-0 overflow-hidden">
-        {[...Array(40)].map((_, i) => (
-          <motion.div
-            key={`dust-${i}`}
-            className="absolute w-1 h-1 bg-yellow-400/20 rounded-full"
-            initial={{
-              x: Math.random() * window.innerWidth,
-              y: Math.random() * window.innerHeight,
-            }}
-            animate={{
-              x: [null, Math.random() * window.innerWidth],
-              y: [null, -100],
-              opacity: [0, 0.5, 0]
-            }}
-            transition={{
-              duration: 5 + Math.random() * 5,
-              repeat: Infinity,
-              delay: Math.random() * 3,
-              ease: "linear"
-            }}
-          />
-        ))}
-      </div>
-
-      {/* Film Strip Pattern - Top with gold animation */}
-      <div className="absolute top-0 left-0 w-full h-24 sm:h-28 opacity-20">
-        <motion.div
-          className="w-full h-full"
-          style={{
-            backgroundImage: 'repeating-linear-gradient(90deg, transparent, transparent 30px, #FFD700 30px, #FFD700 40px, transparent 40px, transparent 70px)',
-            backgroundSize: '70px 100%',
-          }}
-          animate={{
-            backgroundPosition: ['0px', '70px']
-          }}
-          transition={{
-            duration: 12,
-            repeat: Infinity,
-            ease: "linear"
-          }}
-        />
-      </div>
-
-      {/* Film Strip Pattern - Bottom with gold animation */}
-      <div className="absolute bottom-0 left-0 w-full h-24 sm:h-28 opacity-20">
-        <motion.div
-          className="w-full h-full"
-          style={{
-            backgroundImage: 'repeating-linear-gradient(90deg, transparent, transparent 30px, #FFD700 30px, #FFD700 40px, transparent 40px, transparent 70px)',
-            backgroundSize: '70px 100%',
-          }}
-          animate={{
-            backgroundPosition: ['70px', '0px']
-          }}
-          transition={{
-            duration: 12,
-            repeat: Infinity,
-            ease: "linear"
-          }}
-        />
-      </div>
-
-      {/* Animated Grain Texture */}
+      {/* Subtle animated grain texture */}
       <div
-        className="absolute inset-0 opacity-30 mix-blend-overlay pointer-events-none"
+        className="absolute inset-0 opacity-5 mix-blend-overlay pointer-events-none"
         style={{
           backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=\'0 0 200 200\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'noise\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.65\' numOctaves=\'3\' stitchTiles=\'stitch\'/%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23noise)\' opacity=\'0.5\'/%3E%3C/svg%3E")',
           backgroundRepeat: 'repeat',
@@ -237,392 +106,143 @@ const CinematicLoading = () => {
         }}
       />
 
-      {/* Scanlines Effect */}
-      <div
-        className="absolute inset-0 opacity-10 pointer-events-none"
-        style={{
-          background: 'repeating-linear-gradient(0deg, rgba(255,215,0,0.05) 0px, rgba(255,215,0,0.05) 1px, transparent 1px, transparent 2px)',
-          backgroundSize: '100% 2px'
-        }}
-      />
-
       {/* Main Content */}
       <div className="relative z-10 h-full flex flex-col items-center justify-center px-4">
-        {/* Center Container */}
-        <div className="max-w-4xl w-full mx-auto text-center">
-          {/* ACF Logo Container - Premium Design */}
+        {/* Logo Animation Container */}
+        <div className="text-center">
+          {/* Animated Red Bar - Netflix Style */}
           <motion.div
-            initial={{ scale: 0.7, opacity: 0, rotateY: 90 }}
-            animate={{ scale: 1, opacity: 1, rotateY: 0 }}
-            transition={{ duration: 0.8, ease: "easeOut" }}
-            className="relative mb-8 sm:mb-10 md:mb-12"
-          >
-            {/* 3D Glow Effect */}
+            initial={{ width: 0, opacity: 0 }}
+            animate={{ width: "100%", opacity: 1 }}
+            transition={{ duration: 0.8, ease: "easeInOut" }}
+            className="h-1 bg-gradient-to-r from-red-600 via-red-500 to-red-600 mb-8 mx-auto"
+            style={{ maxWidth: "300px" }}
+          />
+
+          {/* Main Text Animation */}
+          <div className="relative">
+            {/* Background Glow */}
             <motion.div
-              className="absolute inset-0 bg-gradient-to-r from-yellow-500 via-yellow-400 to-yellow-500 rounded-3xl blur-2xl"
-              animate={{
-                scale: [1, 1.2, 1],
-                opacity: [0.4, 0.7, 0.4]
-              }}
-              transition={{
-                duration: 2.5,
-                repeat: Infinity,
-                ease: "easeInOut"
-              }}
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 0.3 }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+              className="absolute inset-0 bg-red-600 blur-3xl"
             />
 
-            {/* Main Logo Container */}
-            <div className="relative">
+            {/* CINEVA Text */}
+            <motion.div
+              initial={{ y: 50, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ duration: 0.6, delay: 0.3, type: "spring", stiffness: 100 }}
+              className="overflow-hidden"
+            >
+              <h1 className="text-6xl sm:text-7xl md:text-8xl lg:text-9xl font-black tracking-tight">
+                <span className="bg-gradient-to-r from-red-600 via-red-500 to-red-600 bg-clip-text text-transparent">
+                  CINEVA
+                </span>
+              </h1>
+            </motion.div>
+
+            {/* FILMS Text */}
+            <motion.div
+              initial={{ y: 50, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ duration: 0.6, delay: 0.5, type: "spring", stiffness: 100 }}
+              className="overflow-hidden mt-2"
+            >
+              <h1 className="text-6xl sm:text-7xl md:text-8xl lg:text-9xl font-black tracking-tight">
+                <span className="text-white">
+                  FILMS
+                </span>
+              </h1>
+            </motion.div>
+          </div>
+
+          {/* Animated Red Bar - Bottom */}
+          <motion.div
+            initial={{ width: 0, opacity: 0 }}
+            animate={{ width: "100%", opacity: 1 }}
+            transition={{ duration: 0.8, ease: "easeInOut", delay: 0.2 }}
+            className="h-1 bg-gradient-to-r from-red-600 via-red-500 to-red-600 mt-8 mx-auto"
+            style={{ maxWidth: "300px" }}
+          />
+
+          {/* Subtext with fade in */}
+          <AnimatePresence>
+            {showSubtext && (
               <motion.div
-                className="relative inline-block"
-                initial={{ y: -30, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ duration: 0.6, delay: 0.2 }}
-                onAnimationComplete={() => setLogoLoaded(true)}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.2 }}
+                className="mt-8"
               >
-                {/* Animated Ring */}
-                <div className="absolute inset-0 rounded-full bg-gradient-to-r from-yellow-600 via-yellow-500 to-yellow-600 animate-spin-slow" style={{ padding: '4px' }}>
-                  <div className="absolute inset-[4px] rounded-full bg-black" />
-                </div>
-
-                {/* ACF Letters Container */}
-                <div className="relative w-56 h-56 sm:w-64 sm:h-64 md:w-72 md:h-72 mx-auto flex items-center justify-center">
-                  {/* Background Glow */}
-                  <div className="absolute inset-0 bg-gradient-to-br from-yellow-600/20 to-yellow-500/20 rounded-full blur-xl" />
-
-                  {/* Main ACF Letters */}
-                  <div className="relative flex items-center justify-center gap-3 sm:gap-4 md:gap-5">
-                    {['A', 'C', 'F'].map((letter, index) => (
-                      <motion.div
-                        key={letter}
-                        className="relative"
-                        animate={{
-                          y: [0, -8, 0],
-                          scale: [1, 1.1, 1],
-                        }}
-                        transition={{
-                          duration: 1.5,
-                          repeat: Infinity,
-                          delay: index * 0.2,
-                          ease: "easeInOut"
-                        }}
-                      >
-                        <div className="relative">
-                          <div className="absolute inset-0 bg-gradient-to-r from-yellow-500 to-yellow-600 rounded-2xl blur-md opacity-50" />
-                          <div className={`relative text-7xl sm:text-8xl md:text-9xl font-black bg-gradient-to-r from-yellow-400 via-yellow-500 to-yellow-400 bg-clip-text text-transparent ${glitchEffect ? 'animate-glitch' : ''}`}
-                            style={{
-                              textShadow: '0 0 20px rgba(255,215,0,0.5)',
-                            }}
-                          >
-                            {letter}
-                          </div>
-                        </div>
-                      </motion.div>
-                    ))}
-                  </div>
-
-                  {/* Floating Elements */}
-                  <motion.div
-                    className="absolute -top-6 -right-6 sm:-top-8 sm:-right-8"
-                    animate={{
-                      rotate: [0, 15, 0],
-                      scale: [1, 1.1, 1]
-                    }}
-                    transition={{
-                      duration: 2,
-                      repeat: Infinity,
-                      ease: "easeInOut"
-                    }}
-                  >
-                    <FaPlayCircle className="text-yellow-500 text-3xl sm:text-4xl drop-shadow-lg" />
-                  </motion.div>
-                  <motion.div
-                    className="absolute -bottom-6 -left-6 sm:-bottom-8 sm:-left-8"
-                    animate={{
-                      rotate: [0, -15, 0],
-                      scale: [1, 1.1, 1]
-                    }}
-                    transition={{
-                      duration: 2,
-                      repeat: Infinity,
-                      ease: "easeInOut",
-                      delay: 0.3
-                    }}
-                  >
-                    <FaFilm className="text-yellow-500 text-3xl sm:text-4xl drop-shadow-lg" />
-                  </motion.div>
-                  <motion.div
-                    className="absolute top-1/2 -right-8 sm:-right-10 transform -translate-y-1/2"
-                    animate={{
-                      x: [0, 5, 0],
-                      opacity: [0.5, 1, 0.5]
-                    }}
-                    transition={{
-                      duration: 1.5,
-                      repeat: Infinity
-                    }}
-                  >
-                    <FaStar className="text-yellow-400 text-xl sm:text-2xl" />
-                  </motion.div>
-                  <motion.div
-                    className="absolute top-1/2 -left-8 sm:-left-10 transform -translate-y-1/2"
-                    animate={{
-                      x: [0, -5, 0],
-                      opacity: [0.5, 1, 0.5]
-                    }}
-                    transition={{
-                      duration: 1.5,
-                      repeat: Infinity,
-                      delay: 0.5
-                    }}
-                  >
-                    <FaStar className="text-yellow-400 text-xl sm:text-2xl" />
-                  </motion.div>
+                <p className="text-gray-400 text-sm sm:text-base tracking-wider">
+                  Premium Entertainment Experience
+                </p>
+                <div className="flex items-center justify-center gap-2 mt-3">
+                  <div className="w-1 h-1 bg-red-500 rounded-full" />
+                  <p className="text-gray-500 text-xs tracking-[0.2em] uppercase">
+                    STREAMING NOW
+                  </p>
+                  <div className="w-1 h-1 bg-red-500 rounded-full" />
                 </div>
               </motion.div>
+            )}
+          </AnimatePresence>
 
-              {/* Brand Name */}
-              <motion.h1
-                className={`relative text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black mt-6 ${glitchEffect ? 'animate-glitch' : ''}`}
-                initial={{ y: 50, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ duration: 0.6, delay: 0.5 }}
-              >
-                <span className="bg-gradient-to-r from-yellow-400 via-yellow-500 to-yellow-400 bg-clip-text text-transparent">
-                  AGASOBANUYE CINEVA FILMS
-                </span>
-                <motion.span
-                  className="absolute -top-2 -right-2 text-sm sm:text-base"
-                  animate={{
-                    scale: [1, 1.2, 1],
-                    opacity: [0.5, 1, 0.5]
-                  }}
-                  transition={{
-                    duration: 1,
-                    repeat: Infinity
-                  }}
-                >
-                  ✨
-                </motion.span>
-              </motion.h1>
-
-              {/* Tagline */}
-              <AnimatePresence>
-                {showTagline && (
-                  <motion.p
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.5 }}
-                    className="text-xs sm:text-sm text-yellow-400/80 mt-2 tracking-wider font-light"
-                  >
-                    {currentQuote}
-                  </motion.p>
-                )}
-              </AnimatePresence>
-            </div>
-          </motion.div>
-
-          {/* Film Reel Animation */}
+          {/* Loading Progress */}
           <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.8, duration: 0.5 }}
-            className="flex justify-center items-center gap-2 sm:gap-3 mb-8 sm:mb-10"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 1 }}
+            className="mt-12 max-w-xs mx-auto"
           >
-            {/* Left Reel */}
-            <div className="relative w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16">
+            <div className="relative h-0.5 bg-gray-800 rounded-full overflow-hidden">
               <motion.div
-                className="absolute inset-0 border-2 border-yellow-600/30 rounded-full"
-                animate={{ rotate: 360 }}
-                transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
-              />
-              <motion.div
-                className="absolute inset-2 border-2 border-yellow-600/50 rounded-full"
-                animate={{ rotate: -360 }}
-                transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
-              />
-              <motion.div
-                className="absolute inset-4 border-2 border-yellow-600 rounded-full"
-                animate={{ rotate: 360 }}
-                transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-              />
-              <div className="absolute inset-0 flex items-center justify-center">
-                <motion.div
-                  className="w-2 h-2 sm:w-2.5 sm:h-2.5 bg-yellow-600 rounded-full"
-                  animate={{ scale: [1, 1.5, 1] }}
-                  transition={{ duration: 1, repeat: Infinity }}
-                />
-              </div>
-            </div>
-
-            {/* Center Film Strip */}
-            <div className="flex gap-1 sm:gap-2">
-              {[...Array(5)].map((_, i) => (
-                <motion.div
-                  key={i}
-                  className="relative w-7 h-12 sm:w-8 sm:h-14 md:w-10 md:h-16"
-                  animate={{
-                    y: [0, -6, 0]
-                  }}
-                  transition={{
-                    duration: 1.5,
-                    repeat: Infinity,
-                    delay: i * 0.1,
-                    ease: "easeInOut"
-                  }}
-                >
-                  <div className="absolute inset-0 bg-gradient-to-b from-yellow-600/80 to-yellow-500/80 rounded transform -skew-y-3 shadow-lg">
-                    <div className="absolute top-1 left-1/2 transform -translate-x-1/2 w-3 h-1 bg-white/30 rounded-full" />
-                    <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-3 h-3 bg-white/20 rounded-full" />
-                    <div className="absolute bottom-1 left-1/2 transform -translate-x-1/2 w-3 h-1 bg-white/30 rounded-full" />
-                    <div className="absolute bottom-0 right-1 text-[4px] sm:text-[6px] text-white/40">
-                      {String(i + 1).padStart(2, '0')}
-                    </div>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-
-            {/* Right Reel */}
-            <div className="relative w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16">
-              <motion.div
-                className="absolute inset-0 border-2 border-yellow-600/30 rounded-full"
-                animate={{ rotate: -360 }}
-                transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
-              />
-              <motion.div
-                className="absolute inset-2 border-2 border-yellow-600/50 rounded-full"
-                animate={{ rotate: 360 }}
-                transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
-              />
-              <motion.div
-                className="absolute inset-4 border-2 border-yellow-600 rounded-full"
-                animate={{ rotate: -360 }}
-                transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-              />
-              <div className="absolute inset-0 flex items-center justify-center">
-                <motion.div
-                  className="w-2 h-2 sm:w-2.5 sm:h-2.5 bg-yellow-600 rounded-full"
-                  animate={{ scale: [1, 1.5, 1] }}
-                  transition={{ duration: 1, repeat: Infinity }}
-                />
-              </div>
-            </div>
-          </motion.div>
-
-          {/* Progress Section */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 1, duration: 0.5 }}
-            className="max-w-xs sm:max-w-sm mx-auto"
-          >
-            <div className="relative h-1 bg-gray-800 rounded-full overflow-hidden">
-              <motion.div
-                className="absolute inset-0 bg-gradient-to-r from-yellow-600 via-yellow-500 to-yellow-600 rounded-full"
+                className="absolute inset-0 bg-red-600 rounded-full"
                 style={{ width: `${Math.min(progress, 100)}%` }}
                 transition={{ duration: 0.3 }}
               />
             </div>
-
-            <div className="flex justify-between items-center mt-3">
-              <div className="flex items-center gap-2">
-                <motion.div
-                  className="w-1.5 h-1.5 bg-yellow-600 rounded-full"
-                  animate={{ scale: [1, 1.5, 1] }}
-                  transition={{ duration: 0.8, repeat: Infinity }}
-                />
-                <span className="text-[10px] text-gray-500 tracking-wider">
-                  LOADING EXPERIENCE
-                </span>
-              </div>
+            <div className="flex justify-between items-center mt-2">
+              <span className="text-[10px] text-gray-600">LOADING</span>
               <motion.span
-                className="text-[10px] font-mono text-yellow-500"
+                className="text-[10px] text-red-500 font-mono"
                 animate={{ opacity: [0.5, 1, 0.5] }}
                 transition={{ duration: 1, repeat: Infinity }}
               >
                 {Math.floor(progress)}%
               </motion.span>
             </div>
-
-            <div className="flex justify-center gap-2 mt-4">
-              {[...Array(3)].map((_, i) => (
-                <motion.div
-                  key={i}
-                  className="w-1.5 h-1.5 bg-yellow-600/50 rounded-full"
-                  animate={{
-                    scale: [1, 1.5, 1],
-                    opacity: [0.5, 1, 0.5]
-                  }}
-                  transition={{
-                    duration: 1.2,
-                    repeat: Infinity,
-                    delay: i * 0.2
-                  }}
-                />
-              ))}
-            </div>
-
-            <motion.div
-              className="flex justify-center gap-3 mt-6"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 1.2 }}
-            >
-              {["🎬", "🎥", "🍿", "🎞️", "✨"].map((icon, index) => (
-                <motion.span
-                  key={index}
-                  className="text-base sm:text-lg"
-                  animate={{
-                    y: [0, -10, 0],
-                    rotate: [0, 10, 0]
-                  }}
-                  transition={{
-                    duration: 1.5,
-                    repeat: Infinity,
-                    delay: index * 0.15,
-                    ease: "easeInOut"
-                  }}
-                >
-                  {icon}
-                </motion.span>
-              ))}
-            </motion.div>
           </motion.div>
 
+          {/* Pulsing Dot Animation */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ delay: 1.4 }}
-            className="mt-8"
+            transition={{ delay: 1.2 }}
+            className="flex justify-center gap-1 mt-4"
           >
-            <p className="text-[10px] text-gray-600 max-w-md mx-auto">
-              Experience the ultimate streaming destination with the latest movies, series, and exclusive content
-            </p>
+            {[...Array(3)].map((_, i) => (
+              <motion.div
+                key={i}
+                className="w-1 h-1 bg-red-500/50 rounded-full"
+                animate={{
+                  scale: [1, 1.5, 1],
+                  opacity: [0.5, 1, 0.5]
+                }}
+                transition={{
+                  duration: 1,
+                  repeat: Infinity,
+                  delay: i * 0.2
+                }}
+              />
+            ))}
           </motion.div>
         </div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 1.6, duration: 0.5 }}
-          className="absolute bottom-4 left-0 right-0 text-center"
-        >
-          <p className="text-[8px] text-yellow-700/50 tracking-[0.3em] uppercase">
-            PREMIUM CINEMATIC STREAMING PLATFORM
-          </p>
-          <p className="text-[6px] text-gray-800 mt-1">
-            © 2025 AGASOBANUYE CINEVA FILMS. ALL RIGHTS RESERVED.
-          </p>
-        </motion.div>
       </div>
 
       <style>{`
-        @keyframes spin-slow {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-        
         @keyframes grain {
           0%, 100% { transform: translate(0, 0); }
           10% { transform: translate(-1%, -1%); }
@@ -634,23 +254,6 @@ const CinematicLoading = () => {
           70% { transform: translate(-2%, 1%); }
           80% { transform: translate(2%, -1%); }
           90% { transform: translate(-1%, -2%); }
-        }
-        
-        @keyframes glitch {
-          0% { transform: translate(0); }
-          20% { transform: translate(-2px, 2px); }
-          40% { transform: translate(2px, -2px); }
-          60% { transform: translate(-2px, -2px); }
-          80% { transform: translate(2px, 2px); }
-          100% { transform: translate(0); }
-        }
-        
-        .animate-spin-slow {
-          animation: spin-slow 3s linear infinite;
-        }
-        
-        .animate-glitch {
-          animation: glitch 0.3s ease-in-out;
         }
       `}</style>
     </div>
