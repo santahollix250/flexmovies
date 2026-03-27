@@ -570,7 +570,7 @@ export default function Movies() {
       .slice(0, 12);
   }, [movies]);
 
-  // IMPROVED: Handle movie click with navigation guard
+  // FIXED: Handle movie click with navigation guard
   const handleMovieClick = useCallback((movie) => {
     if (!movie || !movie.id || isNavigating.current) return;
 
@@ -597,7 +597,60 @@ export default function Movies() {
     }, 1000);
   }, [navigate, getMovieParts]);
 
-  // IMPROVED: Handle series click with navigation guard
+  // FIXED: Handle series click (first episode)
+  const handleSeriesClick = useCallback((series) => {
+    if (!series || !series.id || isNavigating.current) return;
+
+    isNavigating.current = true;
+
+    const allSeriesEpisodes = getEpisodesForSeries(series.id);
+    const sortedEpisodes = sortEpisodes(allSeriesEpisodes);
+    const targetEpisode = sortedEpisodes.length > 0 ? sortedEpisodes[0] : null;
+
+    if (targetEpisode) {
+      navigate(`/series-player/${series.id}`, {
+        state: {
+          series: series,
+          episode: targetEpisode,
+          episodes: sortedEpisodes,
+          episodeIndex: 0
+        }
+      });
+    } else {
+      alert('No episodes available for this series yet.');
+      isNavigating.current = false;
+    }
+
+    setTimeout(() => {
+      isNavigating.current = false;
+    }, 1000);
+  }, [navigate, getEpisodesForSeries, sortEpisodes]);
+
+  // FIXED: Handle series click with specific episode
+  const handleSeriesClickWithEpisode = useCallback((series, episode) => {
+    if (!series || !series.id || !episode || isNavigating.current) return;
+
+    isNavigating.current = true;
+
+    const allSeriesEpisodes = getEpisodesForSeries(series.id);
+    const sortedEpisodes = sortEpisodes(allSeriesEpisodes);
+    const episodeIndex = sortedEpisodes.findIndex(ep => ep && ep.id === episode.id);
+
+    navigate(`/series-player/${series.id}`, {
+      state: {
+        series: series,
+        episode: episode,
+        episodes: sortedEpisodes,
+        episodeIndex: episodeIndex >= 0 ? episodeIndex : 0
+      }
+    });
+
+    setTimeout(() => {
+      isNavigating.current = false;
+    }, 1000);
+  }, [navigate, getEpisodesForSeries, sortEpisodes]);
+
+  // FIXED: Handle updated series click
   const handleUpdatedSeriesClick = useCallback((series) => {
     if (!series || !series.id || isNavigating.current) return;
 
@@ -627,62 +680,9 @@ export default function Movies() {
     }, 1000);
   }, [navigate, getEpisodesForSeries, sortEpisodes]);
 
-  // IMPROVED: Handle series click (first episode)
-  const handleSeriesClick = useCallback((series) => {
-    if (!series || !series.id || isNavigating.current) return;
-
-    isNavigating.current = true;
-
-    const allSeriesEpisodes = getEpisodesForSeries(series.id);
-    const sortedEpisodes = sortEpisodes(allSeriesEpisodes);
-    const targetEpisode = sortedEpisodes.length > 0 ? sortedEpisodes[0] : null;
-
-    if (targetEpisode) {
-      navigate(`/series-player/${series.id}`, {
-        state: {
-          series: series,
-          episode: targetEpisode,
-          episodes: sortedEpisodes,
-          episodeIndex: 0
-        }
-      });
-    } else {
-      alert('No episodes available for this series yet.');
-      isNavigating.current = false;
-    }
-
-    setTimeout(() => {
-      isNavigating.current = false;
-    }, 1000);
-  }, [navigate, getEpisodesForSeries, sortEpisodes]);
-
-  // IMPROVED: Handle series click with specific episode
-  const handleSeriesClickWithEpisode = useCallback((series, episode) => {
-    if (!series || !series.id || !episode || isNavigating.current) return;
-
-    isNavigating.current = true;
-
-    const allSeriesEpisodes = getEpisodesForSeries(series.id);
-    const sortedEpisodes = sortEpisodes(allSeriesEpisodes);
-    const episodeIndex = sortedEpisodes.findIndex(ep => ep && ep.id === episode.id);
-
-    navigate(`/series-player/${series.id}`, {
-      state: {
-        series: series,
-        episode: episode,
-        episodes: sortedEpisodes,
-        episodeIndex: episodeIndex >= 0 ? episodeIndex : 0
-      }
-    });
-
-    setTimeout(() => {
-      isNavigating.current = false;
-    }, 1000);
-  }, [navigate, getEpisodesForSeries, sortEpisodes]);
-
   // FIXED: Handle hero play click with proper event handling for mobile
   const handleHeroPlayClick = useCallback((item, event) => {
-    // Prevent event propagation to avoid triggering parent click handlers
+    // CRITICAL: Prevent event propagation to avoid triggering parent click handlers
     if (event) {
       event.stopPropagation();
       event.preventDefault();
@@ -696,7 +696,7 @@ export default function Movies() {
       return;
     }
 
-    console.log('Playing hero item:', item); // Debug log
+    console.log('Playing hero item:', item.title || item.id); // Debug log
 
     // Determine if it's a series with new episode or regular movie/series
     const isSeriesWithNew = item?.latestEpisode ? true : false;
@@ -711,12 +711,17 @@ export default function Movies() {
       } else {
         handleMovieClick(item);
       }
+
+      // Reset navigation flag after navigation attempt
+      setTimeout(() => {
+        isNavigating.current = false;
+      }, 500);
     }, 50);
   }, [handleSeriesClickWithEpisode, handleSeriesClick, handleMovieClick]);
 
   // FIXED: Handle hero info click with proper event handling for mobile
   const handleHeroInfoClick = useCallback((item, event) => {
-    // Prevent event propagation to avoid triggering parent click handlers
+    // CRITICAL: Prevent event propagation to avoid triggering parent click handlers
     if (event) {
       event.stopPropagation();
       event.preventDefault();
@@ -727,7 +732,7 @@ export default function Movies() {
       return;
     }
 
-    console.log('Info for hero item:', item); // Debug log
+    console.log('Info for hero item:', item.title || item.id); // Debug log
 
     setQuickViewMovie(item);
     setShowQuickView(true);
@@ -847,7 +852,6 @@ export default function Movies() {
         />
       )}
 
-      {/* Rest of your component remains the same */}
       {/* Recently Updated Series Section */}
       {recentlyUpdatedSeries.length > 0 && (
         <section className="container mx-auto px-4 py-6 sm:py-8">

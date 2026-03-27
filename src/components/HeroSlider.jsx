@@ -95,7 +95,7 @@ const useSmartHeroImage = (backgroundUrl, posterUrl, isMobile) => {
     return { optimizedUrl, isLoading };
 };
 
-// Individual Slide Component
+// Individual Slide Component - FIXED with proper event handling
 const HeroSlide = ({
     item,
     isActive,
@@ -130,31 +130,37 @@ const HeroSlide = ({
         itemRef.current = item;
     }, [item]);
 
-    // FIXED: Handle play click with event parameter
+    // FIXED: Handle play click with proper event handling
     const handlePlayClick = useCallback((e) => {
-        // Stop event propagation to prevent bubbling
+        // CRITICAL: Stop event propagation to prevent bubbling to parent
         if (e) {
             e.stopPropagation();
             e.preventDefault();
         }
 
-        if (itemRef.current && onPlay) {
-            // Pass both the item and the event to allow parent to stop propagation
-            onPlay(itemRef.current, e);
+        // Get the current item from ref to ensure we have the latest
+        const currentItem = itemRef.current;
+
+        if (currentItem && onPlay) {
+            // Call the parent handler with the item and event
+            onPlay(currentItem, e);
         }
     }, [onPlay]);
 
-    // FIXED: Handle info click with event parameter
+    // FIXED: Handle info click with proper event handling
     const handleInfoClick = useCallback((e) => {
-        // Stop event propagation to prevent bubbling
+        // CRITICAL: Stop event propagation to prevent bubbling to parent
         if (e) {
             e.stopPropagation();
             e.preventDefault();
         }
 
-        if (itemRef.current && onInfo) {
-            // Pass both the item and the event to allow parent to stop propagation
-            onInfo(itemRef.current, e);
+        // Get the current item from ref to ensure we have the latest
+        const currentItem = itemRef.current;
+
+        if (currentItem && onInfo) {
+            // Call the parent handler with the item and event
+            onInfo(currentItem, e);
         }
     }, [onInfo]);
 
@@ -329,7 +335,7 @@ const HeroSlide = ({
     );
 };
 
-// Main HeroSlider Component
+// Main HeroSlider Component - FIXED with better touch handling
 const HeroSlider = ({ items, onPlay, onInfo }) => {
     const [currentIndex, setCurrentIndex] = useState(0);
     const [isAutoPlaying, setIsAutoPlaying] = useState(true);
@@ -339,6 +345,7 @@ const HeroSlider = ({ items, onPlay, onInfo }) => {
     const autoPlayRef = useRef(null);
     const itemsRef = useRef(items);
     const isSwiping = useRef(false);
+    const isTouchDevice = useRef(false);
 
     // Update items ref when items change
     useEffect(() => {
@@ -348,7 +355,9 @@ const HeroSlider = ({ items, onPlay, onInfo }) => {
     // Detect mobile device
     useEffect(() => {
         const checkMobile = () => {
-            setIsMobile(window.innerWidth <= 768);
+            const mobile = window.innerWidth <= 768;
+            setIsMobile(mobile);
+            isTouchDevice.current = 'ontouchstart' in window;
         };
         checkMobile();
         window.addEventListener('resize', checkMobile);
@@ -402,12 +411,16 @@ const HeroSlider = ({ items, onPlay, onInfo }) => {
         }
     }, [pauseAutoPlay]);
 
-    // Touch handlers for mobile
+    // FIXED: Touch handlers for mobile - better detection of button touches
     const handleTouchStart = useCallback((e) => {
-        // Don't start swipe if touching a button
+        // Check if touch started on a button or interactive element
         const target = e.target;
-        const isButton = target.closest('button');
-        if (isButton) return;
+        const isInteractive = target.closest('button') || target.closest('a') || target.closest('[role="button"]');
+
+        if (isInteractive) {
+            // Don't start swipe if touching a button
+            return;
+        }
 
         setTouchStart(e.touches[0].clientX);
         setIsAutoPlaying(false);
@@ -416,8 +429,15 @@ const HeroSlider = ({ items, onPlay, onInfo }) => {
 
     const handleTouchMove = useCallback((e) => {
         if (!isSwiping.current) return;
+
+        // Prevent default only if we're actually swiping
+        const touchDelta = Math.abs(e.touches[0].clientX - touchStart);
+        if (touchDelta > 10) {
+            e.preventDefault();
+        }
+
         setTouchEnd(e.touches[0].clientX);
-    }, []);
+    }, [touchStart]);
 
     const handleTouchEnd = useCallback(() => {
         if (!isSwiping.current) {
@@ -459,6 +479,19 @@ const HeroSlider = ({ items, onPlay, onInfo }) => {
         }
     }, [pauseAutoPlay]);
 
+    // FIXED: Wrapped handlers to ensure proper item passing
+    const handlePlayClick = useCallback((item, event) => {
+        if (onPlay) {
+            onPlay(item, event);
+        }
+    }, [onPlay]);
+
+    const handleInfoClick = useCallback((item, event) => {
+        if (onInfo) {
+            onInfo(item, event);
+        }
+    }, [onInfo]);
+
     if (!items || items.length === 0) return null;
 
     return (
@@ -478,8 +511,8 @@ const HeroSlider = ({ items, onPlay, onInfo }) => {
                         key={item?.id || index}
                         item={item}
                         isActive={index === currentIndex}
-                        onPlay={onPlay}
-                        onInfo={onInfo}
+                        onPlay={handlePlayClick}
+                        onInfo={handleInfoClick}
                         isMobile={isMobile}
                         slideIndex={index}
                         currentIndex={currentIndex}
@@ -549,17 +582,6 @@ const HeroSlider = ({ items, onPlay, onInfo }) => {
                     }`}>
                     <span className="text-purple-400 font-bold">{currentIndex + 1}</span>
                     <span className="text-white">/{items.length}</span>
-                </div>
-            )}
-
-            {/* Swipe Instruction for Mobile */}
-            {isMobile && items.length > 1 && (
-                <div className="absolute bottom-12 left-1/2 transform -translate-x-1/2 z-30 opacity-50 pointer-events-none">
-                    <div className="flex gap-1">
-                        <div className="w-6 h-0.5 bg-white/30 rounded-full" />
-                        <div className="w-6 h-0.5 bg-white/30 rounded-full" />
-                        <div className="w-6 h-0.5 bg-white/30 rounded-full" />
-                    </div>
                 </div>
             )}
         </section>
