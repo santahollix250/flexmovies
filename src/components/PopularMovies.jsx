@@ -275,6 +275,8 @@ export default function Movies() {
 
   // Refs for touch handling and navigation
   const isNavigating = useRef(false);
+  const touchStartTime = useRef(0);
+  const touchStartX = useRef(0);
 
   // Get search query from URL
   const searchParams = new URLSearchParams(location.search);
@@ -379,8 +381,6 @@ export default function Movies() {
   }, []);
 
   // Get hero content with latest episodes for HeroSlider
-  // In Movies.jsx, update the heroContent useMemo to properly pass both images
-
   const heroContent = useMemo(() => {
     const seriesWithEpisodes = movies
       .filter(item => item?.type === "series")
@@ -396,8 +396,8 @@ export default function Movies() {
           id: series.id,
           title: series.title,
           description: series.description,
-          background: series.background || series.poster, // Desktop background
-          poster: series.poster, // Mobile background (will be used on mobile devices)
+          background: series.background || series.poster,
+          poster: series.poster,
           type: 'series',
           rating: series.rating,
           year: series.year,
@@ -425,8 +425,8 @@ export default function Movies() {
         id: movie.id,
         title: movie.title,
         description: movie.description,
-        background: movie.background || movie.poster, // Desktop background
-        poster: movie.poster, // Mobile background (will be used on mobile devices)
+        background: movie.background || movie.poster,
+        poster: movie.poster,
         type: 'movie',
         rating: movie.rating,
         year: movie.year,
@@ -680,17 +680,20 @@ export default function Movies() {
     }, 1000);
   }, [navigate, getEpisodesForSeries, sortEpisodes]);
 
-  // FIXED: Handle hero play click with proper state capture
- // In Movies.jsx, replace the handler functions with these updated versions:
+  // FIXED: Handle hero play click with proper event handling for mobile
+  const handleHeroPlayClick = useCallback((item, event) => {
+    // Prevent event propagation to avoid triggering parent click handlers
+    if (event) {
+      event.stopPropagation();
+      event.preventDefault();
+    }
 
-// FIXED: Handle hero play click with proper state capture
-const handleHeroPlayClick = useCallback((item) => {
     // Prevent multiple clicks
     if (isNavigating.current) return;
 
     if (!item || !item.id) {
-        console.warn('No valid hero item found', item);
-        return;
+      console.warn('No valid hero item found', item);
+      return;
     }
 
     console.log('Playing hero item:', item); // Debug log
@@ -701,30 +704,34 @@ const handleHeroPlayClick = useCallback((item) => {
 
     // Small delay to ensure all state is stable
     setTimeout(() => {
-        if (isSeriesWithNew && item.latestEpisode) {
-            handleSeriesClickWithEpisode(item, item.latestEpisode);
-        } else if (isSeries) {
-            handleSeriesClick(item);
-        } else {
-            handleMovieClick(item);
-        }
+      if (isSeriesWithNew && item.latestEpisode) {
+        handleSeriesClickWithEpisode(item, item.latestEpisode);
+      } else if (isSeries) {
+        handleSeriesClick(item);
+      } else {
+        handleMovieClick(item);
+      }
     }, 50);
-}, [handleSeriesClickWithEpisode, handleSeriesClick, handleMovieClick]);
+  }, [handleSeriesClickWithEpisode, handleSeriesClick, handleMovieClick]);
 
-// FIXED: Handle hero info click with proper state capture
-const handleHeroInfoClick = useCallback((item) => {
+  // FIXED: Handle hero info click with proper event handling for mobile
+  const handleHeroInfoClick = useCallback((item, event) => {
+    // Prevent event propagation to avoid triggering parent click handlers
+    if (event) {
+      event.stopPropagation();
+      event.preventDefault();
+    }
+
     if (!item) {
-        console.warn('No valid hero item found for info');
-        return;
+      console.warn('No valid hero item found for info');
+      return;
     }
 
     console.log('Info for hero item:', item); // Debug log
 
     setQuickViewMovie(item);
     setShowQuickView(true);
-}, []);
-
-// Also ensure your handleMovieClick, handleSeriesClick, and handleSeriesClickWithEpisode are working correctly
+  }, []);
 
   // Get all categories for filter
   const allCategories = useMemo(() => {
@@ -831,7 +838,7 @@ const handleHeroInfoClick = useCallback((item) => {
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-black via-gray-900 to-black pt-20">
-      {/* Hero Slider Section - INTEGRATED HeroSlider Component */}
+      {/* Hero Slider Section - INTEGRATED HeroSlider Component with fixed handlers */}
       {heroContent.length > 0 && (
         <HeroSlider
           items={heroContent}
