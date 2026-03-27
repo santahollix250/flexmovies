@@ -130,15 +130,31 @@ const HeroSlide = ({
         itemRef.current = item;
     }, [item]);
 
-    const handlePlayClick = useCallback(() => {
-        if (itemRef.current) {
-            onPlay(itemRef.current);
+    // FIXED: Handle play click with event parameter
+    const handlePlayClick = useCallback((e) => {
+        // Stop event propagation to prevent bubbling
+        if (e) {
+            e.stopPropagation();
+            e.preventDefault();
+        }
+
+        if (itemRef.current && onPlay) {
+            // Pass both the item and the event to allow parent to stop propagation
+            onPlay(itemRef.current, e);
         }
     }, [onPlay]);
 
-    const handleInfoClick = useCallback(() => {
-        if (itemRef.current) {
-            onInfo(itemRef.current);
+    // FIXED: Handle info click with event parameter
+    const handleInfoClick = useCallback((e) => {
+        // Stop event propagation to prevent bubbling
+        if (e) {
+            e.stopPropagation();
+            e.preventDefault();
+        }
+
+        if (itemRef.current && onInfo) {
+            // Pass both the item and the event to allow parent to stop propagation
+            onInfo(itemRef.current, e);
         }
     }, [onInfo]);
 
@@ -288,6 +304,7 @@ const HeroSlide = ({
                                         ? 'px-3 py-1.5 text-[10px]'
                                         : 'px-4 md:px-6 py-2 md:py-2.5 text-xs md:text-sm lg:text-base'
                                         } hover:from-purple-700 hover:to-pink-700 transform hover:scale-105`}
+                                    aria-label="Watch now"
                                 >
                                     <FaPlay className={isMobile ? 'text-[8px]' : 'text-[10px] md:text-xs lg:text-sm'} />
                                     <span>{hasNewEpisode ? 'Watch Latest' : 'Watch Now'}</span>
@@ -298,6 +315,7 @@ const HeroSlide = ({
                                         ? 'px-3 py-1.5 text-[10px]'
                                         : 'px-4 md:px-6 py-2 md:py-2.5 text-xs md:text-sm lg:text-base'
                                         } hover:bg-black/70 transform hover:scale-105`}
+                                    aria-label="More info"
                                 >
                                     <FaInfoCircle className={isMobile ? 'text-[8px]' : 'text-[10px] md:text-xs lg:text-sm'} />
                                     <span>Info</span>
@@ -320,6 +338,7 @@ const HeroSlider = ({ items, onPlay, onInfo }) => {
     const [isMobile, setIsMobile] = useState(false);
     const autoPlayRef = useRef(null);
     const itemsRef = useRef(items);
+    const isSwiping = useRef(false);
 
     // Update items ref when items change
     useEffect(() => {
@@ -357,27 +376,56 @@ const HeroSlider = ({ items, onPlay, onInfo }) => {
     }, [isMobile]);
 
     // Navigation functions with proper item reference
-    const nextSlide = useCallback(() => {
-        setCurrentIndex((prev) => (prev + 1) % itemsRef.current.length);
-        pauseAutoPlay();
+    const nextSlide = useCallback((e) => {
+        // Prevent event propagation if event exists
+        if (e) {
+            e.stopPropagation();
+            e.preventDefault();
+        }
+
+        if (itemsRef.current && itemsRef.current.length > 0) {
+            setCurrentIndex((prev) => (prev + 1) % itemsRef.current.length);
+            pauseAutoPlay();
+        }
     }, [pauseAutoPlay]);
 
-    const prevSlide = useCallback(() => {
-        setCurrentIndex((prev) => (prev - 1 + itemsRef.current.length) % itemsRef.current.length);
-        pauseAutoPlay();
+    const prevSlide = useCallback((e) => {
+        // Prevent event propagation if event exists
+        if (e) {
+            e.stopPropagation();
+            e.preventDefault();
+        }
+
+        if (itemsRef.current && itemsRef.current.length > 0) {
+            setCurrentIndex((prev) => (prev - 1 + itemsRef.current.length) % itemsRef.current.length);
+            pauseAutoPlay();
+        }
     }, [pauseAutoPlay]);
 
     // Touch handlers for mobile
-    const handleTouchStart = (e) => {
+    const handleTouchStart = useCallback((e) => {
+        // Don't start swipe if touching a button
+        const target = e.target;
+        const isButton = target.closest('button');
+        if (isButton) return;
+
         setTouchStart(e.touches[0].clientX);
         setIsAutoPlaying(false);
-    };
+        isSwiping.current = true;
+    }, []);
 
-    const handleTouchMove = (e) => {
+    const handleTouchMove = useCallback((e) => {
+        if (!isSwiping.current) return;
         setTouchEnd(e.touches[0].clientX);
-    };
+    }, []);
 
-    const handleTouchEnd = () => {
+    const handleTouchEnd = useCallback(() => {
+        if (!isSwiping.current) {
+            setTouchStart(0);
+            setTouchEnd(0);
+            return;
+        }
+
         const swipeDistance = touchStart - touchEnd;
         const minSwipeDistance = 50;
 
@@ -391,23 +439,31 @@ const HeroSlider = ({ items, onPlay, onInfo }) => {
 
         setTouchStart(0);
         setTouchEnd(0);
+        isSwiping.current = false;
 
         setTimeout(() => {
             if (!isMobile) setIsAutoPlaying(true);
         }, 5000);
-    };
+    }, [touchStart, touchEnd, nextSlide, prevSlide, isMobile]);
 
     // Dot indicators click handler
-    const goToSlide = (index) => {
-        setCurrentIndex(index);
-        pauseAutoPlay();
-    };
+    const goToSlide = useCallback((index, e) => {
+        if (e) {
+            e.stopPropagation();
+            e.preventDefault();
+        }
+
+        if (index >= 0 && index < itemsRef.current.length) {
+            setCurrentIndex(index);
+            pauseAutoPlay();
+        }
+    }, [pauseAutoPlay]);
 
     if (!items || items.length === 0) return null;
 
     return (
         <section
-            className={`relative overflow-hidden bg-black ${isMobile ? 'h-[55vh] sm:h-[60vh]' : 'h-[70vh] md:h-[80vh] lg:h-[85vh]'
+            className={`relative overflow-hidden bg-black select-none ${isMobile ? 'h-[55vh] sm:h-[60vh]' : 'h-[70vh] md:h-[80vh] lg:h-[85vh]'
                 }`}
             onMouseEnter={() => !isMobile && setIsAutoPlaying(false)}
             onMouseLeave={() => !isMobile && setIsAutoPlaying(true)}
@@ -438,7 +494,7 @@ const HeroSlider = ({ items, onPlay, onInfo }) => {
                     {items.map((_, index) => (
                         <button
                             key={index}
-                            onClick={() => goToSlide(index)}
+                            onClick={(e) => goToSlide(index, e)}
                             className="group focus:outline-none"
                             aria-label={`Go to slide ${index + 1}`}
                         >
