@@ -250,7 +250,7 @@ const CinematicLoading = () => {
           30% { transform: translate(-2%, 0); }
           40% { transform: translate(2%, 2%); }
           50% { transform: translate(-1%, 2%); }
-          60% { transform: translate(1%, -1%); }
+          60% { transform: translate(2%, -1%); }
           70% { transform: translate(-2%, 1%); }
           80% { transform: translate(2%, -1%); }
           90% { transform: translate(-1%, -2%); }
@@ -272,6 +272,17 @@ export default function Movies() {
   const location = useLocation();
   const navigate = useNavigate();
 
+  // Refs for touch handling and navigation
+  const heroRef = useRef(null);
+  const touchStartX = useRef(0);
+  const touchEndX = useRef(0);
+  const isNavigating = useRef(false);
+  const currentHeroItemRef = useRef(null);
+
+  // Get search query from URL
+  const searchParams = new URLSearchParams(location.search);
+  const urlSearchQuery = searchParams.get('search') || '';
+
   // If there's a global search query, redirect to search page
   useEffect(() => {
     if (globalSearchQuery && location.pathname === '/movies') {
@@ -279,16 +290,7 @@ export default function Movies() {
     }
   }, [globalSearchQuery, location.pathname, navigate]);
 
-  // Refs for touch handling
-  const heroRef = useRef(null);
-  const touchStartX = useRef(0);
-  const touchEndX = useRef(0);
-
-  // Get search query from URL
-  const searchParams = new URLSearchParams(location.search);
-  const urlSearchQuery = searchParams.get('search') || '';
-
-  // Filter State - Moved up before it's used
+  // Filter State
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [sortBy, setSortBy] = useState("popular");
   const [sortOrder, setSortOrder] = useState("desc");
@@ -308,7 +310,7 @@ export default function Movies() {
   const [isHoveringHero, setIsHoveringHero] = useState(false);
   const [imagesPreloaded, setImagesPreloaded] = useState(false);
 
-  // Helper functions - Define these first
+  // Helper functions
   const getEpisodesForSeries = useCallback((seriesId) => {
     return episodes.filter(ep => ep.seriesId === seriesId);
   }, [episodes]);
@@ -430,7 +432,12 @@ export default function Movies() {
   const currentHeroItem = filteredHeroContent[currentHeroSlide] || {};
   const isSeriesWithNewEpisode = currentHeroItem?.latestEpisode ? true : false;
 
-  // Preload hero images for smoother experience - Now after filteredHeroContent is defined
+  // Update ref when currentHeroItem changes
+  useEffect(() => {
+    currentHeroItemRef.current = currentHeroItem;
+  }, [currentHeroItem]);
+
+  // Preload hero images for smoother experience
   useEffect(() => {
     if (filteredHeroContent.length > 0) {
       const preloadImages = async () => {
@@ -451,15 +458,18 @@ export default function Movies() {
 
   // Touch handlers for mobile hero slider
   const handleTouchStart = (e) => {
+    if (isNavigating.current) return;
     touchStartX.current = e.touches[0].clientX;
     setIsAutoPlaying(false);
   };
 
   const handleTouchMove = (e) => {
+    if (isNavigating.current) return;
     touchEndX.current = e.touches[0].clientX;
   };
 
   const handleTouchEnd = () => {
+    if (isNavigating.current) return;
     const swipeThreshold = 50;
     const diffX = touchStartX.current - touchEndX.current;
 
@@ -599,9 +609,12 @@ export default function Movies() {
       .slice(0, 12);
   }, [movies]);
 
-  // Handle movie click
+  // IMPROVED: Handle movie click with navigation guard
   const handleMovieClick = useCallback((movie) => {
-    if (!movie || !movie.id) return;
+    if (!movie || !movie.id || isNavigating.current) return;
+
+    isNavigating.current = true;
+
     const parts = getMovieParts(movie);
     const movieToPlay = {
       ...movie,
@@ -612,17 +625,27 @@ export default function Movies() {
       download_link: movie.download_link || movie.download,
       download: movie.download
     };
+
     navigate(`/player/${movie.id}`, {
       state: { movie: movieToPlay }
     });
+
+    // Reset navigation flag after a delay
+    setTimeout(() => {
+      isNavigating.current = false;
+    }, 1000);
   }, [navigate, getMovieParts]);
 
-  // Handle series click
+  // IMPROVED: Handle series click with navigation guard
   const handleUpdatedSeriesClick = useCallback((series) => {
-    if (!series || !series.id) return;
+    if (!series || !series.id || isNavigating.current) return;
+
+    isNavigating.current = true;
+
     const allSeriesEpisodes = getEpisodesForSeries(series.id);
     const sortedEpisodes = sortEpisodes(allSeriesEpisodes);
     const latestEpisode = sortedEpisodes.length > 0 ? sortedEpisodes[sortedEpisodes.length - 1] : null;
+
     if (latestEpisode) {
       const episodeIndex = sortedEpisodes.findIndex(ep => ep && ep.id === latestEpisode.id);
       navigate(`/series-player/${series.id}`, {
@@ -635,15 +658,24 @@ export default function Movies() {
       });
     } else {
       alert('No episodes available for this series yet.');
+      isNavigating.current = false;
     }
+
+    setTimeout(() => {
+      isNavigating.current = false;
+    }, 1000);
   }, [navigate, getEpisodesForSeries, sortEpisodes]);
 
-  // Handle series click
+  // IMPROVED: Handle series click (first episode)
   const handleSeriesClick = useCallback((series) => {
-    if (!series || !series.id) return;
+    if (!series || !series.id || isNavigating.current) return;
+
+    isNavigating.current = true;
+
     const allSeriesEpisodes = getEpisodesForSeries(series.id);
     const sortedEpisodes = sortEpisodes(allSeriesEpisodes);
     const targetEpisode = sortedEpisodes.length > 0 ? sortedEpisodes[0] : null;
+
     if (targetEpisode) {
       navigate(`/series-player/${series.id}`, {
         state: {
@@ -655,15 +687,24 @@ export default function Movies() {
       });
     } else {
       alert('No episodes available for this series yet.');
+      isNavigating.current = false;
     }
+
+    setTimeout(() => {
+      isNavigating.current = false;
+    }, 1000);
   }, [navigate, getEpisodesForSeries, sortEpisodes]);
 
-  // Handle series click with specific episode
+  // IMPROVED: Handle series click with specific episode
   const handleSeriesClickWithEpisode = useCallback((series, episode) => {
-    if (!series || !series.id || !episode) return;
+    if (!series || !series.id || !episode || isNavigating.current) return;
+
+    isNavigating.current = true;
+
     const allSeriesEpisodes = getEpisodesForSeries(series.id);
     const sortedEpisodes = sortEpisodes(allSeriesEpisodes);
     const episodeIndex = sortedEpisodes.findIndex(ep => ep && ep.id === episode.id);
+
     navigate(`/series-player/${series.id}`, {
       state: {
         series: series,
@@ -672,46 +713,78 @@ export default function Movies() {
         episodeIndex: episodeIndex >= 0 ? episodeIndex : 0
       }
     });
+
+    setTimeout(() => {
+      isNavigating.current = false;
+    }, 1000);
   }, [navigate, getEpisodesForSeries, sortEpisodes]);
 
-  // Handle hero play
+  // FIXED: Handle hero play click with proper state capture
   const handleHeroPlayClick = useCallback(() => {
-    if (!currentHeroItem || !currentHeroItem.id) return;
-    if (isSeriesWithNewEpisode && currentHeroItem.latestEpisode) {
-      handleSeriesClickWithEpisode(currentHeroItem, currentHeroItem.latestEpisode);
-    } else if (currentHeroItem.type === "series") {
-      handleSeriesClick(currentHeroItem);
-    } else {
-      handleMovieClick(currentHeroItem);
+    // Prevent multiple clicks
+    if (isNavigating.current) return;
+
+    // Capture the current item at the moment of click
+    const currentItem = currentHeroItemRef.current;
+
+    if (!currentItem || !currentItem.id) {
+      console.warn('No valid hero item found');
+      return;
     }
-  }, [currentHeroItem, isSeriesWithNewEpisode, handleSeriesClickWithEpisode, handleSeriesClick, handleMovieClick]);
 
-  // Handle hero info
-  const handleHeroInfoClick = useCallback(() => {
-    if (!currentHeroItem) return;
-    setQuickViewMovie(currentHeroItem);
-    setShowQuickView(true);
+    // Determine if it's a series with new episode or regular movie/series
+    const isSeriesWithNew = currentItem?.latestEpisode ? true : false;
+    const isSeries = currentItem?.type === "series";
+
+    // Stop auto-play immediately to prevent state changes
     setIsAutoPlaying(false);
-  }, [currentHeroItem]);
 
-  // Auto slide
+    // Small delay to ensure all state is stable
+    setTimeout(() => {
+      if (isSeriesWithNew && currentItem.latestEpisode) {
+        handleSeriesClickWithEpisode(currentItem, currentItem.latestEpisode);
+      } else if (isSeries) {
+        handleSeriesClick(currentItem);
+      } else {
+        handleMovieClick(currentItem);
+      }
+    }, 50);
+  }, [handleSeriesClickWithEpisode, handleSeriesClick, handleMovieClick]);
+
+  // FIXED: Handle hero info click with proper state capture
+  const handleHeroInfoClick = useCallback(() => {
+    const currentItem = currentHeroItemRef.current;
+    if (!currentItem) return;
+
+    // Stop auto-play to prevent slider from changing during modal open
+    setIsAutoPlaying(false);
+    setQuickViewMovie(currentItem);
+    setShowQuickView(true);
+  }, []);
+
+  // Auto slide with improved timing
   useEffect(() => {
-    if (!isAutoPlaying || filteredHeroContent.length === 0 || isHoveringHero) return;
+    if (!isAutoPlaying || filteredHeroContent.length === 0 || isHoveringHero || isNavigating.current) return;
+
     const interval = setInterval(() => {
       setCurrentHeroSlide((prev) => (prev + 1) % filteredHeroContent.length);
     }, 6000);
+
     return () => clearInterval(interval);
   }, [isAutoPlaying, filteredHeroContent.length, isHoveringHero]);
 
+  // FIXED: Next/Prev slide functions with better state management
   const nextHeroSlide = useCallback(() => {
-    setCurrentHeroSlide((prev) => (prev + 1) % filteredHeroContent.length);
+    if (isNavigating.current) return;
     setIsAutoPlaying(false);
+    setCurrentHeroSlide((prev) => (prev + 1) % filteredHeroContent.length);
     setTimeout(() => setIsAutoPlaying(true), 10000);
   }, [filteredHeroContent.length]);
 
   const prevHeroSlide = useCallback(() => {
-    setCurrentHeroSlide((prev) => (prev - 1 + filteredHeroContent.length) % filteredHeroContent.length);
+    if (isNavigating.current) return;
     setIsAutoPlaying(false);
+    setCurrentHeroSlide((prev) => (prev - 1 + filteredHeroContent.length) % filteredHeroContent.length);
     setTimeout(() => setIsAutoPlaying(true), 10000);
   }, [filteredHeroContent.length]);
 
@@ -801,6 +874,13 @@ export default function Movies() {
     }
   }, []);
 
+  // Cleanup navigation flag on unmount
+  useEffect(() => {
+    return () => {
+      isNavigating.current = false;
+    };
+  }, []);
+
   // Loading state
   if (loading) {
     return <CinematicLoading />;
@@ -813,7 +893,7 @@ export default function Movies() {
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-black via-gray-900 to-black pt-20">
-      {/* Hero Slider Section - No loading spinner */}
+      {/* Hero Slider Section */}
       {filteredHeroContent.length > 0 && (
         <section
           ref={heroRef}
@@ -830,7 +910,7 @@ export default function Movies() {
               className={`absolute inset-0 transition-opacity duration-1000 ${index === currentHeroSlide ? 'opacity-100 z-10' : 'opacity-0 z-0'}`}
             >
               <div className="relative w-full h-full">
-                {/* Image with immediate display - no loading overlay */}
+                {/* Image with immediate display */}
                 <div className="absolute inset-0">
                   <img
                     src={getOptimizedImageUrl(item?.background || item?.poster, true)}
@@ -848,7 +928,7 @@ export default function Movies() {
                   />
                 </div>
 
-                {/* Enhanced gradient overlay for better text visibility */}
+                {/* Enhanced gradient overlay */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent z-[2]" />
                 <div className="absolute inset-0 bg-gradient-to-r from-black/40 via-transparent to-transparent hidden md:block z-[2]" />
               </div>
@@ -913,14 +993,14 @@ export default function Movies() {
                 <div className="flex gap-2 md:gap-3 lg:gap-4">
                   <button
                     onClick={handleHeroPlayClick}
-                    className="px-4 md:px-6 lg:px-8 py-2 md:py-2.5 lg:py-3 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg text-white text-xs md:text-sm lg:text-base font-semibold flex items-center gap-1 md:gap-2 shadow-xl hover:from-purple-700 hover:to-pink-700 transition-all duration-300 transform hover:scale-105"
+                    className="px-4 md:px-6 lg:px-8 py-2 md:py-2.5 lg:py-3 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg text-white text-xs md:text-sm lg:text-base font-semibold flex items-center gap-1 md:gap-2 shadow-xl hover:from-purple-700 hover:to-pink-700 transition-all duration-300 transform hover:scale-105 active:scale-95"
                   >
                     <FaPlay className="text-[10px] md:text-xs lg:text-sm" />
                     <span>{isSeriesWithNewEpisode ? 'Watch Latest' : 'Watch Now'}</span>
                   </button>
                   <button
                     onClick={handleHeroInfoClick}
-                    className="px-4 md:px-6 lg:px-8 py-2 md:py-2.5 lg:py-3 bg-gray-800/90 backdrop-blur-sm rounded-lg text-white text-xs md:text-sm lg:text-base font-semibold flex items-center gap-1 md:gap-2 border border-gray-700 hover:bg-gray-700/90 transition-all duration-300 transform hover:scale-105"
+                    className="px-4 md:px-6 lg:px-8 py-2 md:py-2.5 lg:py-3 bg-gray-800/90 backdrop-blur-sm rounded-lg text-white text-xs md:text-sm lg:text-base font-semibold flex items-center gap-1 md:gap-2 border border-gray-700 hover:bg-gray-700/90 transition-all duration-300 transform hover:scale-105 active:scale-95"
                   >
                     <FaInfoCircle className="text-[10px] md:text-xs lg:text-sm" />
                     <span>Info</span>
@@ -1493,7 +1573,7 @@ export default function Movies() {
                     }
                     setShowQuickView(false);
                   }}
-                  className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 py-2 rounded-lg text-white text-sm font-semibold flex items-center justify-center gap-1 hover:from-purple-700 hover:to-pink-700 transition-all duration-300"
+                  className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 py-2 rounded-lg text-white text-sm font-semibold flex items-center justify-center gap-1 hover:from-purple-700 hover:to-pink-700 transition-all duration-300 active:scale-95"
                 >
                   <FaPlay className="text-xs" /> {quickViewMovie.latestEpisode ? 'Watch Latest' : 'Watch'}
                 </button>
