@@ -124,6 +124,24 @@ const HeroSlide = ({
         return 'center 20%';
     };
 
+    // Store item reference to avoid closure issues
+    const itemRef = useRef(item);
+    useEffect(() => {
+        itemRef.current = item;
+    }, [item]);
+
+    const handlePlayClick = useCallback(() => {
+        if (itemRef.current) {
+            onPlay(itemRef.current);
+        }
+    }, [onPlay]);
+
+    const handleInfoClick = useCallback(() => {
+        if (itemRef.current) {
+            onInfo(itemRef.current);
+        }
+    }, [onInfo]);
+
     return (
         <motion.div
             initial={{ opacity: 0 }}
@@ -265,7 +283,7 @@ const HeroSlide = ({
                                 className="flex gap-2 md:gap-3"
                             >
                                 <button
-                                    onClick={() => onPlay(item)}
+                                    onClick={handlePlayClick}
                                     className={`bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg text-white font-semibold flex items-center gap-1.5 shadow-xl transition-all duration-300 active:scale-95 ${isMobile
                                         ? 'px-3 py-1.5 text-[10px]'
                                         : 'px-4 md:px-6 py-2 md:py-2.5 text-xs md:text-sm lg:text-base'
@@ -275,7 +293,7 @@ const HeroSlide = ({
                                     <span>{hasNewEpisode ? 'Watch Latest' : 'Watch Now'}</span>
                                 </button>
                                 <button
-                                    onClick={() => onInfo(item)}
+                                    onClick={handleInfoClick}
                                     className={`bg-black/50 backdrop-blur-sm rounded-lg text-white font-semibold flex items-center gap-1.5 border border-white/20 transition-all duration-300 active:scale-95 ${isMobile
                                         ? 'px-3 py-1.5 text-[10px]'
                                         : 'px-4 md:px-6 py-2 md:py-2.5 text-xs md:text-sm lg:text-base'
@@ -301,6 +319,12 @@ const HeroSlider = ({ items, onPlay, onInfo }) => {
     const [touchEnd, setTouchEnd] = useState(0);
     const [isMobile, setIsMobile] = useState(false);
     const autoPlayRef = useRef(null);
+    const itemsRef = useRef(items);
+
+    // Update items ref when items change
+    useEffect(() => {
+        itemsRef.current = items;
+    }, [items]);
 
     // Detect mobile device
     useEffect(() => {
@@ -332,16 +356,16 @@ const HeroSlider = ({ items, onPlay, onInfo }) => {
         }, 10000);
     }, [isMobile]);
 
-    // Navigation functions
+    // Navigation functions with proper item reference
     const nextSlide = useCallback(() => {
-        setCurrentIndex((prev) => (prev + 1) % items.length);
+        setCurrentIndex((prev) => (prev + 1) % itemsRef.current.length);
         pauseAutoPlay();
-    }, [items.length, pauseAutoPlay]);
+    }, [pauseAutoPlay]);
 
     const prevSlide = useCallback(() => {
-        setCurrentIndex((prev) => (prev - 1 + items.length) % items.length);
+        setCurrentIndex((prev) => (prev - 1 + itemsRef.current.length) % itemsRef.current.length);
         pauseAutoPlay();
-    }, [items.length, pauseAutoPlay]);
+    }, [pauseAutoPlay]);
 
     // Touch handlers for mobile
     const handleTouchStart = (e) => {
@@ -420,12 +444,12 @@ const HeroSlider = ({ items, onPlay, onInfo }) => {
                         >
                             <span
                                 className={`block transition-all duration-300 rounded-full ${index === currentIndex
-                                        ? isMobile
-                                            ? 'w-4 h-1 bg-gradient-to-r from-purple-600 to-pink-600'
-                                            : 'w-6 md:w-8 h-1 bg-gradient-to-r from-purple-600 to-pink-600'
-                                        : isMobile
-                                            ? 'w-1.5 h-1 bg-gray-500 group-hover:bg-gray-400'
-                                            : 'w-2 md:w-3 h-1 bg-gray-500 group-hover:bg-gray-400'
+                                    ? isMobile
+                                        ? 'w-4 h-1 bg-gradient-to-r from-purple-600 to-pink-600'
+                                        : 'w-6 md:w-8 h-1 bg-gradient-to-r from-purple-600 to-pink-600'
+                                    : isMobile
+                                        ? 'w-1.5 h-1 bg-gray-500 group-hover:bg-gray-400'
+                                        : 'w-2 md:w-3 h-1 bg-gray-500 group-hover:bg-gray-400'
                                     }`}
                             />
                         </button>
@@ -464,8 +488,8 @@ const HeroSlider = ({ items, onPlay, onInfo }) => {
             {/* Slide Counter */}
             {items.length > 1 && (
                 <div className={`absolute z-30 bg-black/50 backdrop-blur-sm rounded-full border border-white/20 ${isMobile
-                        ? 'top-2 right-2 px-1.5 py-0.5 text-[8px]'
-                        : 'top-4 md:top-6 right-4 md:right-6 px-2 py-1 text-[10px] md:text-xs'
+                    ? 'top-2 right-2 px-1.5 py-0.5 text-[8px]'
+                    : 'top-4 md:top-6 right-4 md:right-6 px-2 py-1 text-[10px] md:text-xs'
                     }`}>
                     <span className="text-purple-400 font-bold">{currentIndex + 1}</span>
                     <span className="text-white">/{items.length}</span>

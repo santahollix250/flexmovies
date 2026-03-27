@@ -681,14 +681,19 @@ export default function Movies() {
   }, [navigate, getEpisodesForSeries, sortEpisodes]);
 
   // FIXED: Handle hero play click with proper state capture
-  const handleHeroPlayClick = useCallback((item) => {
+ // In Movies.jsx, replace the handler functions with these updated versions:
+
+// FIXED: Handle hero play click with proper state capture
+const handleHeroPlayClick = useCallback((item) => {
     // Prevent multiple clicks
     if (isNavigating.current) return;
 
     if (!item || !item.id) {
-      console.warn('No valid hero item found');
-      return;
+        console.warn('No valid hero item found', item);
+        return;
     }
+
+    console.log('Playing hero item:', item); // Debug log
 
     // Determine if it's a series with new episode or regular movie/series
     const isSeriesWithNew = item?.latestEpisode ? true : false;
@@ -696,23 +701,30 @@ export default function Movies() {
 
     // Small delay to ensure all state is stable
     setTimeout(() => {
-      if (isSeriesWithNew && item.latestEpisode) {
-        handleSeriesClickWithEpisode(item, item.latestEpisode);
-      } else if (isSeries) {
-        handleSeriesClick(item);
-      } else {
-        handleMovieClick(item);
-      }
+        if (isSeriesWithNew && item.latestEpisode) {
+            handleSeriesClickWithEpisode(item, item.latestEpisode);
+        } else if (isSeries) {
+            handleSeriesClick(item);
+        } else {
+            handleMovieClick(item);
+        }
     }, 50);
-  }, [handleSeriesClickWithEpisode, handleSeriesClick, handleMovieClick]);
+}, [handleSeriesClickWithEpisode, handleSeriesClick, handleMovieClick]);
 
-  // FIXED: Handle hero info click with proper state capture
-  const handleHeroInfoClick = useCallback((item) => {
-    if (!item) return;
+// FIXED: Handle hero info click with proper state capture
+const handleHeroInfoClick = useCallback((item) => {
+    if (!item) {
+        console.warn('No valid hero item found for info');
+        return;
+    }
+
+    console.log('Info for hero item:', item); // Debug log
 
     setQuickViewMovie(item);
     setShowQuickView(true);
-  }, []);
+}, []);
+
+// Also ensure your handleMovieClick, handleSeriesClick, and handleSeriesClickWithEpisode are working correctly
 
   // Get all categories for filter
   const allCategories = useMemo(() => {
