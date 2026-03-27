@@ -10,10 +10,11 @@ import {
   FaMountain, FaYoutube, FaPlayCircle,
   FaServer, FaCopy, FaFileVideo, FaCalendar, FaStar,
   FaClosedCaptioning, FaMicrophone, FaUser, FaTag,
-  FaArrowLeft, FaLayerGroup, FaPlusCircle, FaCloudUploadAlt
+  FaArrowLeft, FaLayerGroup, FaPlusCircle, FaCloudUploadAlt,
+  FaMobileAlt, FaDesktop
 } from "react-icons/fa";
 
-// Country data with flags
+// Country data with flags (same as before)
 const countries = [
   { code: "US", name: "United States", flag: "🇺🇸" },
   { code: "GB", name: "United Kingdom", flag: "🇬🇧" },
@@ -108,13 +109,12 @@ function Admin({ onLogout }) {
     isOnline
   } = context;
 
-  // Supported video platforms - REMOVED VIMEO
+  // Supported video platforms
   const VIDEO_PLATFORMS = {
     YOUTUBE: 'youtube',
     DIRECT: 'direct'
   };
 
-  // Platform configurations - ONLY YouTube and Direct
   const platformConfig = {
     [VIDEO_PLATFORMS.YOUTUBE]: {
       name: 'YouTube',
@@ -134,7 +134,7 @@ function Admin({ onLogout }) {
     }
   };
 
-  // Empty movie/series form
+  // Empty movie/series form with both poster and background
   const emptyMovie = {
     title: "",
     description: "",
@@ -164,7 +164,7 @@ function Admin({ onLogout }) {
     parts: []
   };
 
-  // Empty part form - SIMPLIFIED (no duration)
+  // Empty part form
   const emptyPart = {
     partNumber: 1,
     title: "",
@@ -172,7 +172,7 @@ function Admin({ onLogout }) {
     useMainVideo: true
   };
 
-  // Empty episode form - SIMPLIFIED (no duration)
+  // Empty episode form
   const emptyEpisode = {
     id: null,
     seasonNumber: "1",
@@ -239,12 +239,11 @@ function Admin({ onLogout }) {
   // Extract YouTube video ID
   const extractYoutubeId = (url) => {
     if (!url || typeof url !== 'string') return '';
-    
-    // Check if it's just the ID
+
     if (/^[a-zA-Z0-9_-]{11}$/.test(url.trim())) {
       return url.trim();
     }
-    
+
     const match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/);
     if (match) return match[1];
     return '';
@@ -447,7 +446,6 @@ function Admin({ onLogout }) {
       const sortedEpisodes = sortEpisodes(loadedEpisodes);
       setSeriesEpisodes(sortedEpisodes);
 
-      // Set main video URL from the selected series
       if (selectedSeries.videoUrl) {
         setMainVideoUrl(selectedSeries.videoUrl);
       }
@@ -493,7 +491,6 @@ function Admin({ onLogout }) {
         }
         setMovieParts(parts.sort((a, b) => a.partNumber - b.partNumber));
 
-        // Set main video URL from the selected movie
         if (selectedMovieForParts.videoUrl) {
           setMainVideoUrl(selectedMovieForParts.videoUrl);
         }
@@ -785,7 +782,7 @@ function Admin({ onLogout }) {
 
     let videoId = '';
     let streamLink = '';
-    
+
     if (form.videoType === VIDEO_PLATFORMS.YOUTUBE && form.videoUrl) {
       videoId = extractYoutubeId(form.videoUrl);
       streamLink = generateEmbedUrl(videoId);
@@ -798,7 +795,7 @@ function Admin({ onLogout }) {
       title: form.title,
       description: form.description,
       poster: form.poster || "",
-      background: form.background || form.poster || "",
+      background: form.background || form.poster || "", // Fallback to poster if no background
       category: form.category || "",
       type: form.type,
       videoUrl: form.videoUrl || "",
@@ -958,7 +955,7 @@ function Admin({ onLogout }) {
     setShowPartForm(false);
   }
 
-  // Add or update part - SIMPLIFIED
+  // Add or update part
   async function handleAddOrUpdatePart() {
     if (!selectedMovieForParts) {
       addNotification("error", "No movie selected");
@@ -970,9 +967,8 @@ function Admin({ onLogout }) {
       return;
     }
 
-    // Use main video URL if useMainVideo is true
     let finalVideoUrl = "";
-    
+
     if (partForm.useMainVideo) {
       finalVideoUrl = mainVideoUrl;
       if (!finalVideoUrl) {
@@ -987,7 +983,7 @@ function Admin({ onLogout }) {
         partNumber: parseInt(partForm.partNumber) || (movieParts.length + 1),
         title: partForm.title,
         download_link: partForm.download_link || "",
-        videoUrl: finalVideoUrl // Store the main video URL
+        videoUrl: finalVideoUrl
       };
 
       let updatedParts;
@@ -1061,7 +1057,7 @@ function Admin({ onLogout }) {
     }
   }
 
-  // Add or update episode - SIMPLIFIED
+  // Add or update episode
   async function handleAddOrUpdateEpisode() {
     if (!selectedSeries) {
       addNotification("error", "No series selected");
@@ -1074,7 +1070,7 @@ function Admin({ onLogout }) {
     }
 
     let finalVideoUrl = "";
-    
+
     if (episodeForm.useMainVideo) {
       finalVideoUrl = mainVideoUrl;
       if (!finalVideoUrl) {
@@ -1244,6 +1240,9 @@ function Admin({ onLogout }) {
             <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold bg-gradient-to-r from-blue-500 via-teal-500 to-purple-500 bg-clip-text text-transparent">
               Video Admin Dashboard
             </h1>
+            <p className="text-xs sm:text-sm text-gray-400 mt-1">
+              Poster images are used for mobile hero backgrounds • Background images for desktop
+            </p>
           </div>
 
           <div className="flex flex-wrap gap-2 w-full sm:w-auto">
@@ -1266,6 +1265,28 @@ function Admin({ onLogout }) {
               <FaSignOutAlt className="text-xs sm:text-sm" />
               <span className="hidden xs:inline">Logout</span>
             </button>
+          </div>
+        </div>
+
+        {/* Info Banner about responsive images */}
+        <div className="mb-4 sm:mb-6 bg-gradient-to-r from-purple-900/30 to-blue-900/30 border border-purple-500/30 rounded-xl p-3 sm:p-4">
+          <div className="flex items-start gap-2 sm:gap-3">
+            <div className="flex-shrink-0">
+              <div className="w-8 h-8 rounded-full bg-purple-500/20 flex items-center justify-center">
+                <FaMobileAlt className="text-purple-400 text-sm" />
+              </div>
+            </div>
+            <div className="flex-1">
+              <p className="text-xs sm:text-sm text-gray-300">
+                <span className="font-bold text-purple-400">Responsive Images:</span> On mobile devices, the hero section will automatically use the <strong className="text-green-400">Poster Image</strong> for better visibility. On desktop, it uses the <strong className="text-blue-400">Background Image</strong> for a cinematic experience.
+              </p>
+              <p className="text-[10px] sm:text-xs text-gray-400 mt-1">
+                Tip: Upload a poster that looks good on mobile (centered subject) and a wide background for desktop.
+              </p>
+            </div>
+            <div className="flex-shrink-0">
+              <FaDesktop className="text-blue-400 text-lg sm:text-xl" />
+            </div>
           </div>
         </div>
 
@@ -1302,7 +1323,7 @@ function Admin({ onLogout }) {
           </div>
         </div>
 
-        {/* CONTENT MANAGEMENT TAB */}
+        {/* CONTENT MANAGEMENT TAB - Only showing the image upload section since rest is the same */}
         {activeTab === "series" && (
           <div className="space-y-4 sm:space-y-6">
             {/* Form */}
@@ -1478,11 +1499,11 @@ function Admin({ onLogout }) {
                   />
                 </div>
 
-                {/* POSTER UPLOAD */}
+                {/* POSTER UPLOAD - Mobile background */}
                 <div>
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-1 sm:mb-2">
-                    <label className="block text-xs sm:text-sm font-medium text-gray-300">
-                      Poster Image
+                    <label className="block text-xs sm:text-sm font-medium text-gray-300 flex items-center gap-1">
+                      <FaMobileAlt className="text-purple-400 text-xs" /> Poster Image <span className="text-purple-400 text-[10px]">(Mobile Hero)</span>
                     </label>
                     <button
                       type="button"
@@ -1500,6 +1521,7 @@ function Admin({ onLogout }) {
                       )}
                     </button>
                   </div>
+                  <p className="text-[8px] sm:text-[10px] text-purple-400/70 mb-1">Used on mobile devices for hero background</p>
 
                   {imageUploadMethod.poster === 'link' ? (
                     <div className="relative">
@@ -1508,7 +1530,7 @@ function Admin({ onLogout }) {
                         name="poster"
                         value={form.poster}
                         onChange={handleChange}
-                        placeholder="Image URL"
+                        placeholder="Poster image URL (used on mobile)"
                         className="w-full pl-7 sm:pl-10 p-2 sm:p-3 bg-gray-800/70 border border-gray-700 rounded-xl text-xs sm:text-sm"
                       />
                     </div>
@@ -1525,7 +1547,7 @@ function Admin({ onLogout }) {
                         />
                         <label htmlFor="posterFile" className="cursor-pointer block">
                           <FaCloudUploadAlt className="text-xl sm:text-2xl text-gray-400 mx-auto mb-1" />
-                          <div className="text-[10px] sm:text-xs text-gray-300 mb-1">Click to upload</div>
+                          <div className="text-[10px] sm:text-xs text-gray-300 mb-1">Click to upload poster</div>
                           <div className="text-[8px] sm:text-[10px] text-gray-400">Max 5MB</div>
 
                           {uploadingPoster && (
@@ -1549,7 +1571,7 @@ function Admin({ onLogout }) {
                             className="w-8 h-10 sm:w-12 sm:h-16 object-cover rounded"
                           />
                           <div className="flex-1 min-w-0">
-                            <p className="text-[10px] sm:text-xs text-gray-400 truncate">Poster ready</p>
+                            <p className="text-[10px] sm:text-xs text-gray-400 truncate">Poster ready (mobile)</p>
                           </div>
                         </div>
                       )}
@@ -1557,11 +1579,11 @@ function Admin({ onLogout }) {
                   )}
                 </div>
 
-                {/* BACKGROUND UPLOAD */}
+                {/* BACKGROUND UPLOAD - Desktop background */}
                 <div>
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-1 sm:mb-2">
-                    <label className="block text-xs sm:text-sm font-medium text-gray-300">
-                      Background
+                    <label className="block text-xs sm:text-sm font-medium text-gray-300 flex items-center gap-1">
+                      <FaDesktop className="text-blue-400 text-xs" /> Background Image <span className="text-blue-400 text-[10px]">(Desktop Hero)</span>
                     </label>
                     <button
                       type="button"
@@ -1579,6 +1601,7 @@ function Admin({ onLogout }) {
                       )}
                     </button>
                   </div>
+                  <p className="text-[8px] sm:text-[10px] text-blue-400/70 mb-1">Used on desktop devices for hero background</p>
 
                   {imageUploadMethod.background === 'link' ? (
                     <div className="relative">
@@ -1587,7 +1610,7 @@ function Admin({ onLogout }) {
                         name="background"
                         value={form.background}
                         onChange={handleChange}
-                        placeholder="Image URL"
+                        placeholder="Background image URL (used on desktop)"
                         className="w-full pl-7 sm:pl-10 p-2 sm:p-3 bg-gray-800/70 border border-gray-700 rounded-xl text-xs sm:text-sm"
                       />
                     </div>
@@ -1604,7 +1627,7 @@ function Admin({ onLogout }) {
                         />
                         <label htmlFor="backgroundFile" className="cursor-pointer block">
                           <FaCloudUploadAlt className="text-xl sm:text-2xl text-gray-400 mx-auto mb-1" />
-                          <div className="text-[10px] sm:text-xs text-gray-300 mb-1">Click to upload</div>
+                          <div className="text-[10px] sm:text-xs text-gray-300 mb-1">Click to upload background</div>
                           <div className="text-[8px] sm:text-[10px] text-gray-400">Max 5MB</div>
 
                           {uploadingBackground && (
@@ -1628,7 +1651,7 @@ function Admin({ onLogout }) {
                             className="w-12 h-8 sm:w-16 sm:h-10 object-cover rounded"
                           />
                           <div className="flex-1 min-w-0">
-                            <p className="text-[10px] sm:text-xs text-gray-400 truncate">Background ready</p>
+                            <p className="text-[10px] sm:text-xs text-gray-400 truncate">Background ready (desktop)</p>
                           </div>
                         </div>
                       )}
@@ -1636,6 +1659,7 @@ function Admin({ onLogout }) {
                   )}
                 </div>
 
+                {/* Rest of the fields remain the same */}
                 <div>
                   <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-1 sm:mb-2 flex items-center gap-1 sm:gap-2">
                     <FaCalendar className="text-xs" /> Year
@@ -1849,7 +1873,7 @@ function Admin({ onLogout }) {
               </div>
             </div>
 
-            {/* Content List */}
+            {/* Content List - Same as before */}
             <div>
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
                 <h2 className="text-lg sm:text-xl font-bold flex items-center gap-2">
@@ -1901,6 +1925,11 @@ function Admin({ onLogout }) {
                               alt={movie.title}
                               className="w-16 h-20 sm:w-20 sm:h-24 object-cover rounded-lg"
                             />
+                            {movie.background && (
+                              <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center">
+                                <FaDesktop className="text-[8px] text-white" />
+                              </div>
+                            )}
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex justify-between items-start gap-1 mb-1 sm:mb-2">
@@ -1992,26 +2021,10 @@ function Admin({ onLogout }) {
           </div>
         )}
 
-        {/* EPISODES TAB */}
+        {/* EPISODES TAB - Same as before */}
         {activeTab === "episodes" && (
           <div className="space-y-4 sm:space-y-6">
             <div className="bg-gradient-to-br from-gray-800/50 to-gray-900/50 backdrop-blur-lg rounded-xl border border-gray-700/50 p-4 sm:p-6">
-              {/* Back button if series selected */}
-              {selectedSeries && (
-                <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <button
-                    onClick={backToSeriesList}
-                    className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg text-white text-xs sm:text-sm w-full sm:w-auto justify-center sm:justify-start"
-                  >
-                    <FaArrowLeft className="text-xs" /> Back to Series
-                  </button>
-                  <div className="text-center sm:text-right">
-                    <h3 className="text-sm sm:text-lg font-bold text-purple-400 truncate max-w-[200px] sm:max-w-none">{selectedSeries.title}</h3>
-                    <p className="text-[10px] sm:text-xs text-gray-400">Managing episodes</p>
-                  </div>
-                </div>
-              )}
-
               {!selectedSeries ? (
                 <div className="text-center py-8 sm:py-12">
                   <h3 className="text-base sm:text-xl font-bold mb-2 sm:mb-3">Select a Series</h3>
@@ -2035,14 +2048,25 @@ function Admin({ onLogout }) {
                 </div>
               ) : (
                 <>
-                  {/* Episode Form - SIMPLIFIED */}
+                  <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <button
+                      onClick={backToSeriesList}
+                      className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg text-white text-xs sm:text-sm w-full sm:w-auto justify-center sm:justify-start"
+                    >
+                      <FaArrowLeft className="text-xs" /> Back to Series
+                    </button>
+                    <div className="text-center sm:text-right">
+                      <h3 className="text-sm sm:text-lg font-bold text-purple-400 truncate max-w-[200px] sm:max-w-none">{selectedSeries.title}</h3>
+                      <p className="text-[10px] sm:text-xs text-gray-400">Managing episodes</p>
+                    </div>
+                  </div>
+
                   {(showEpisodeForm || editingEpisode) && (
                     <div className="mb-4 sm:mb-6 p-4 bg-gray-800/50 rounded-xl">
                       <h3 className="text-sm sm:text-lg font-bold mb-3 sm:mb-4">
                         {editingEpisode ? "Edit Episode" : "Add New Episode"}
                       </h3>
 
-                      {/* Use Main Video Toggle */}
                       <div className="mb-4 p-3 bg-blue-900/20 rounded-lg border border-blue-500/30">
                         <label className="flex items-center gap-3 cursor-pointer">
                           <input
@@ -2164,7 +2188,6 @@ function Admin({ onLogout }) {
                     </div>
                   )}
 
-                  {/* Add Episode Button */}
                   {!editingEpisode && !showEpisodeForm && (
                     <div className="mb-4">
                       <button
@@ -2188,7 +2211,6 @@ function Admin({ onLogout }) {
                     </div>
                   )}
 
-                  {/* Episodes List */}
                   <div>
                     <h3 className="text-sm sm:text-lg font-bold mb-3">Episodes ({seriesEpisodes.length})</h3>
                     {seriesEpisodes.length === 0 ? (
@@ -2228,11 +2250,6 @@ function Admin({ onLogout }) {
                                       {episode.description}
                                     </p>
                                   )}
-                                  {episode.videoUrl && (
-                                    <p className="text-[8px] sm:text-[10px] text-gray-500 truncate max-w-full">
-                                      URL: {episode.videoUrl}
-                                    </p>
-                                  )}
                                 </div>
                                 <div className="flex gap-1 self-end sm:self-center">
                                   <button
@@ -2263,26 +2280,10 @@ function Admin({ onLogout }) {
           </div>
         )}
 
-        {/* PARTS MANAGEMENT TAB */}
+        {/* PARTS MANAGEMENT TAB - Same as before */}
         {activeTab === "parts" && (
           <div className="space-y-4 sm:space-y-6">
             <div className="bg-gradient-to-br from-gray-800/50 to-gray-900/50 backdrop-blur-lg rounded-xl border border-gray-700/50 p-4 sm:p-6">
-              {/* Back button if movie selected */}
-              {selectedMovieForParts && (
-                <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <button
-                    onClick={backToMovieList}
-                    className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg text-white text-xs sm:text-sm w-full sm:w-auto justify-center sm:justify-start"
-                  >
-                    <FaArrowLeft className="text-xs" /> Back to Movies
-                  </button>
-                  <div className="text-center sm:text-right">
-                    <h3 className="text-sm sm:text-lg font-bold text-green-400 truncate max-w-[200px] sm:max-w-none">{selectedMovieForParts.title}</h3>
-                    <p className="text-[10px] sm:text-xs text-gray-400">Managing parts</p>
-                  </div>
-                </div>
-              )}
-
               {!selectedMovieForParts ? (
                 <div className="text-center py-8 sm:py-12">
                   <h3 className="text-base sm:text-xl font-bold mb-2 sm:mb-3">Select a Movie</h3>
@@ -2314,14 +2315,25 @@ function Admin({ onLogout }) {
                 </div>
               ) : (
                 <>
-                  {/* Part Form - SIMPLIFIED */}
+                  <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <button
+                      onClick={backToMovieList}
+                      className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg text-white text-xs sm:text-sm w-full sm:w-auto justify-center sm:justify-start"
+                    >
+                      <FaArrowLeft className="text-xs" /> Back to Movies
+                    </button>
+                    <div className="text-center sm:text-right">
+                      <h3 className="text-sm sm:text-lg font-bold text-green-400 truncate max-w-[200px] sm:max-w-none">{selectedMovieForParts.title}</h3>
+                      <p className="text-[10px] sm:text-xs text-gray-400">Managing parts</p>
+                    </div>
+                  </div>
+
                   {(showPartForm || editingPart) && (
                     <div className="mb-4 sm:mb-6 p-4 bg-gray-800/50 rounded-xl">
                       <h3 className="text-sm sm:text-lg font-bold mb-3 sm:mb-4">
                         {editingPart ? `Edit Part ${editingPart.partNumber}` : "Add New Part"}
                       </h3>
 
-                      {/* Use Main Video Toggle */}
                       <div className="mb-4 p-3 bg-blue-900/20 rounded-lg border border-blue-500/30">
                         <label className="flex items-center gap-3 cursor-pointer">
                           <input
@@ -2396,7 +2408,6 @@ function Admin({ onLogout }) {
                     </div>
                   )}
 
-                  {/* Add Part Button */}
                   {!editingPart && !showPartForm && (
                     <div className="mb-4">
                       <button
@@ -2415,7 +2426,6 @@ function Admin({ onLogout }) {
                     </div>
                   )}
 
-                  {/* Parts List */}
                   <div>
                     <div className="flex items-center justify-between mb-3">
                       <h3 className="text-sm sm:text-lg font-bold">Parts ({movieParts.length})</h3>

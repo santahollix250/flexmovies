@@ -2,6 +2,7 @@ import { useContext, useMemo, useState, useEffect, useCallback, useRef } from "r
 import { useLocation, useNavigate } from "react-router-dom";
 import { MoviesContext } from "../context/MoviesContext";
 import MovieCard from "../components/MovieCard";
+import HeroSlider from "../components/HeroSlider";
 import {
   FaSearch,
   FaFilter,
@@ -273,11 +274,7 @@ export default function Movies() {
   const navigate = useNavigate();
 
   // Refs for touch handling and navigation
-  const heroRef = useRef(null);
-  const touchStartX = useRef(0);
-  const touchEndX = useRef(0);
   const isNavigating = useRef(false);
-  const currentHeroItemRef = useRef(null);
 
   // Get search query from URL
   const searchParams = new URLSearchParams(location.search);
@@ -296,19 +293,10 @@ export default function Movies() {
   const [sortOrder, setSortOrder] = useState("desc");
   const [showFilters, setShowFilters] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const [hoveredMovie, setHoveredMovie] = useState(null);
   const [likedMovies, setLikedMovies] = useState([]);
   const [showQuickView, setShowQuickView] = useState(false);
   const [quickViewMovie, setQuickViewMovie] = useState(null);
-  const [isSearchFocused, setIsSearchFocused] = useState(false);
   const itemsPerPage = 24;
-
-  // Hero Slider State
-  const [currentHeroSlide, setCurrentHeroSlide] = useState(0);
-  const [isAutoPlaying, setIsAutoPlaying] = useState(true);
-  const [heroContentType, setHeroContentType] = useState("all");
-  const [isHoveringHero, setIsHoveringHero] = useState(false);
-  const [imagesPreloaded, setImagesPreloaded] = useState(false);
 
   // Helper functions
   const getEpisodesForSeries = useCallback((seriesId) => {
@@ -349,18 +337,35 @@ export default function Movies() {
     return [];
   }, []);
 
-  const getOptimizedImageUrl = useCallback((url, isBackground = true) => {
+  // IMPROVED: Optimized image URL for better mobile display
+  const getOptimizedImageUrl = useCallback((url, isBackground = true, forMobile = false) => {
     if (!url) return null;
 
-    if (window.innerWidth <= 768) {
+    // For mobile, we want to ensure the image is properly sized
+    if (window.innerWidth <= 768 || forMobile) {
+      // For hero background on mobile, use a size that covers the viewport well
+      if (isBackground) {
+        if (url.includes('tmdb.org') || url.includes('themoviedb')) {
+          // Use original quality but with proper sizing for mobile
+          return url.replace(/w[0-9]+/, 'original');
+        }
+        if (url.includes('cloudinary.com')) {
+          return url.includes('?')
+            ? `${url}&q_auto:best&c_fill&g_auto&w=${window.innerWidth}&h=${window.innerHeight * 0.8}`
+            : `${url}?q_auto:best&c_fill&g_auto&w=${window.innerWidth}&h=${window.innerHeight * 0.8}`;
+        }
+      }
+
+      // For regular images on mobile
       if (url.includes('tmdb.org') || url.includes('themoviedb')) {
-        return url.replace(/w[0-9]+/, 'w500');
+        return url.replace(/w[0-9]+/, 'w780');
       }
       if (url.includes('cloudinary.com')) {
-        return url.includes('?') ? `${url}&q_auto:good&c_fill&w=500` : `${url}?q_auto:good&c_fill&w=500`;
+        return url.includes('?') ? `${url}&q_auto:good&c_fill&w=400` : `${url}?q_auto:good&c_fill&w=400`;
       }
     }
 
+    // Desktop optimization
     if (isBackground && window.innerWidth > 1024) {
       if (url.includes('tmdb.org') || url.includes('themoviedb')) {
         return url.replace(/w[0-9]+/, 'original');
@@ -373,7 +378,9 @@ export default function Movies() {
     return url;
   }, []);
 
-  // Get hero content with latest episodes
+  // Get hero content with latest episodes for HeroSlider
+  // In Movies.jsx, update the heroContent useMemo to properly pass both images
+
   const heroContent = useMemo(() => {
     const seriesWithEpisodes = movies
       .filter(item => item?.type === "series")
@@ -386,7 +393,15 @@ export default function Movies() {
           return new Date(dateB) - new Date(dateA);
         })[0];
         return {
-          ...series,
+          id: series.id,
+          title: series.title,
+          description: series.description,
+          background: series.background || series.poster, // Desktop background
+          poster: series.poster, // Mobile background (will be used on mobile devices)
+          type: 'series',
+          rating: series.rating,
+          year: series.year,
+          translator: series.translator,
           latestEpisode: {
             id: latestEpisode.id,
             title: latestEpisode.title,
@@ -405,10 +420,19 @@ export default function Movies() {
       .filter(series => series !== null);
 
     const moviesWithBackground = movies
-      .filter(item => item?.type === "movie" && item?.background)
+      .filter(item => item?.type === "movie")
       .map(movie => ({
-        ...movie,
-        type: 'movie'
+        id: movie.id,
+        title: movie.title,
+        description: movie.description,
+        background: movie.background || movie.poster, // Desktop background
+        poster: movie.poster, // Mobile background (will be used on mobile devices)
+        type: 'movie',
+        rating: movie.rating,
+        year: movie.year,
+        translator: movie.translator,
+        videoUrl: movie.videoUrl,
+        download: movie.download
       }));
 
     const allContent = [...moviesWithBackground, ...seriesWithEpisodes]
@@ -420,69 +444,6 @@ export default function Movies() {
 
     return allContent.slice(0, 8);
   }, [movies, episodes]);
-
-  // Filter hero content by type
-  const filteredHeroContent = useMemo(() => {
-    if (heroContentType === "all") return heroContent;
-    if (heroContentType === "movies") return heroContent.filter(item => item?.type === "movie");
-    if (heroContentType === "series") return heroContent.filter(item => item?.type === "series" || item?.latestEpisode);
-    return heroContent;
-  }, [heroContent, heroContentType]);
-
-  const currentHeroItem = filteredHeroContent[currentHeroSlide] || {};
-  const isSeriesWithNewEpisode = currentHeroItem?.latestEpisode ? true : false;
-
-  // Update ref when currentHeroItem changes
-  useEffect(() => {
-    currentHeroItemRef.current = currentHeroItem;
-  }, [currentHeroItem]);
-
-  // Preload hero images for smoother experience
-  useEffect(() => {
-    if (filteredHeroContent.length > 0) {
-      const preloadImages = async () => {
-        const imagePromises = filteredHeroContent.map((item) => {
-          return new Promise((resolve) => {
-            const img = new Image();
-            img.src = item?.background || item?.poster;
-            img.onload = resolve;
-            img.onerror = resolve;
-          });
-        });
-        await Promise.all(imagePromises);
-        setImagesPreloaded(true);
-      };
-      preloadImages();
-    }
-  }, [filteredHeroContent]);
-
-  // Touch handlers for mobile hero slider
-  const handleTouchStart = (e) => {
-    if (isNavigating.current) return;
-    touchStartX.current = e.touches[0].clientX;
-    setIsAutoPlaying(false);
-  };
-
-  const handleTouchMove = (e) => {
-    if (isNavigating.current) return;
-    touchEndX.current = e.touches[0].clientX;
-  };
-
-  const handleTouchEnd = () => {
-    if (isNavigating.current) return;
-    const swipeThreshold = 50;
-    const diffX = touchStartX.current - touchEndX.current;
-
-    if (Math.abs(diffX) > swipeThreshold) {
-      if (diffX > 0) {
-        setCurrentHeroSlide((prev) => (prev + 1) % filteredHeroContent.length);
-      } else {
-        setCurrentHeroSlide((prev) => (prev - 1 + filteredHeroContent.length) % filteredHeroContent.length);
-      }
-    }
-
-    setTimeout(() => setIsAutoPlaying(true), 5000);
-  };
 
   // Get recently updated series
   const recentlyUpdatedSeries = useMemo(() => {
@@ -720,73 +681,38 @@ export default function Movies() {
   }, [navigate, getEpisodesForSeries, sortEpisodes]);
 
   // FIXED: Handle hero play click with proper state capture
-  const handleHeroPlayClick = useCallback(() => {
+  const handleHeroPlayClick = useCallback((item) => {
     // Prevent multiple clicks
     if (isNavigating.current) return;
 
-    // Capture the current item at the moment of click
-    const currentItem = currentHeroItemRef.current;
-
-    if (!currentItem || !currentItem.id) {
+    if (!item || !item.id) {
       console.warn('No valid hero item found');
       return;
     }
 
     // Determine if it's a series with new episode or regular movie/series
-    const isSeriesWithNew = currentItem?.latestEpisode ? true : false;
-    const isSeries = currentItem?.type === "series";
-
-    // Stop auto-play immediately to prevent state changes
-    setIsAutoPlaying(false);
+    const isSeriesWithNew = item?.latestEpisode ? true : false;
+    const isSeries = item?.type === "series";
 
     // Small delay to ensure all state is stable
     setTimeout(() => {
-      if (isSeriesWithNew && currentItem.latestEpisode) {
-        handleSeriesClickWithEpisode(currentItem, currentItem.latestEpisode);
+      if (isSeriesWithNew && item.latestEpisode) {
+        handleSeriesClickWithEpisode(item, item.latestEpisode);
       } else if (isSeries) {
-        handleSeriesClick(currentItem);
+        handleSeriesClick(item);
       } else {
-        handleMovieClick(currentItem);
+        handleMovieClick(item);
       }
     }, 50);
   }, [handleSeriesClickWithEpisode, handleSeriesClick, handleMovieClick]);
 
   // FIXED: Handle hero info click with proper state capture
-  const handleHeroInfoClick = useCallback(() => {
-    const currentItem = currentHeroItemRef.current;
-    if (!currentItem) return;
+  const handleHeroInfoClick = useCallback((item) => {
+    if (!item) return;
 
-    // Stop auto-play to prevent slider from changing during modal open
-    setIsAutoPlaying(false);
-    setQuickViewMovie(currentItem);
+    setQuickViewMovie(item);
     setShowQuickView(true);
   }, []);
-
-  // Auto slide with improved timing
-  useEffect(() => {
-    if (!isAutoPlaying || filteredHeroContent.length === 0 || isHoveringHero || isNavigating.current) return;
-
-    const interval = setInterval(() => {
-      setCurrentHeroSlide((prev) => (prev + 1) % filteredHeroContent.length);
-    }, 6000);
-
-    return () => clearInterval(interval);
-  }, [isAutoPlaying, filteredHeroContent.length, isHoveringHero]);
-
-  // FIXED: Next/Prev slide functions with better state management
-  const nextHeroSlide = useCallback(() => {
-    if (isNavigating.current) return;
-    setIsAutoPlaying(false);
-    setCurrentHeroSlide((prev) => (prev + 1) % filteredHeroContent.length);
-    setTimeout(() => setIsAutoPlaying(true), 10000);
-  }, [filteredHeroContent.length]);
-
-  const prevHeroSlide = useCallback(() => {
-    if (isNavigating.current) return;
-    setIsAutoPlaying(false);
-    setCurrentHeroSlide((prev) => (prev - 1 + filteredHeroContent.length) % filteredHeroContent.length);
-    setTimeout(() => setIsAutoPlaying(true), 10000);
-  }, [filteredHeroContent.length]);
 
   // Get all categories for filter
   const allCategories = useMemo(() => {
@@ -893,210 +819,16 @@ export default function Movies() {
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-black via-gray-900 to-black pt-20">
-      {/* Hero Slider Section */}
-      {filteredHeroContent.length > 0 && (
-        <section
-          ref={heroRef}
-          className="relative h-[70vh] md:h-[75vh] lg:h-[80vh] xl:h-[85vh] overflow-hidden group"
-          onMouseEnter={() => setIsHoveringHero(true)}
-          onMouseLeave={() => setIsHoveringHero(false)}
-          onTouchStart={handleTouchStart}
-          onTouchMove={handleTouchMove}
-          onTouchEnd={handleTouchEnd}
-        >
-          {filteredHeroContent.map((item, index) => (
-            <div
-              key={item?.id || index}
-              className={`absolute inset-0 transition-opacity duration-1000 ${index === currentHeroSlide ? 'opacity-100 z-10' : 'opacity-0 z-0'}`}
-            >
-              <div className="relative w-full h-full">
-                {/* Image with immediate display */}
-                <div className="absolute inset-0">
-                  <img
-                    src={getOptimizedImageUrl(item?.background || item?.poster, true)}
-                    alt={item?.title}
-                    className="w-full h-full object-cover"
-                    style={{
-                      objectPosition: 'center 20%',
-                    }}
-                    loading={index === currentHeroSlide ? "eager" : "lazy"}
-                    onError={(e) => {
-                      if (e.target.src !== item?.poster && item?.poster) {
-                        e.target.src = getOptimizedImageUrl(item?.poster, true);
-                      }
-                    }}
-                  />
-                </div>
-
-                {/* Enhanced gradient overlay */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent z-[2]" />
-                <div className="absolute inset-0 bg-gradient-to-r from-black/40 via-transparent to-transparent hidden md:block z-[2]" />
-              </div>
-            </div>
-          ))}
-
-          {/* Content overlay */}
-          <div className="absolute bottom-0 left-0 right-0 p-4 md:p-6 lg:p-8 z-20">
-            <div className="max-w-7xl mx-auto w-full">
-              <div className="md:max-w-2xl lg:max-w-3xl text-left">
-                {/* Badges */}
-                <div className="flex items-center gap-2 md:gap-3 mb-2 md:mb-4 flex-wrap">
-                  <span className="px-2 md:px-3 py-1 md:py-1.5 rounded-full text-[10px] md:text-sm font-semibold bg-gradient-to-r from-purple-600 to-pink-600 shadow-lg">
-                    {isSeriesWithNewEpisode ? <><FaTv className="inline mr-1 md:mr-2 text-[10px] md:text-sm" /> SERIES</> : currentHeroItem?.type === "series" ? <><FaTv className="inline mr-1 md:mr-2 text-[10px] md:text-sm" /> SERIES</> : <><FaPlay className="inline mr-1 md:mr-2 text-[10px] md:text-sm" /> MOVIE</>}
-                  </span>
-                  {isSeriesWithNewEpisode && (
-                    <>
-                      <span className="px-2 md:px-3 py-1 md:py-1.5 rounded-full bg-green-600 text-white text-[10px] md:text-xs font-semibold flex items-center gap-1 md:gap-2 animate-pulse shadow-lg">
-                        <FaPlusCircle className="text-[8px] md:text-sm" />
-                        NEW EPISODE
-                      </span>
-                      <span className="px-2 md:px-3 py-1 md:py-1.5 rounded-full bg-purple-600/90 text-white text-[10px] md:text-xs font-semibold shadow-lg">
-                        S{currentHeroItem.latestEpisode?.seasonNumber}:E{currentHeroItem.latestEpisode?.episodeNumber}
-                      </span>
-                    </>
-                  )}
-                  {currentHeroItem?.translator && (
-                    <div className="px-2 md:px-3 py-1 md:py-1.5 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-[10px] md:text-xs font-semibold flex items-center gap-1 md:gap-2 shadow-lg">
-                      <FaLanguage className="text-[8px] md:text-sm" />
-                      <span className="hidden lg:inline">Translator: {currentHeroItem.translator}</span>
-                      <span className="inline lg:hidden max-w-[60px] truncate">{currentHeroItem.translator}</span>
-                    </div>
-                  )}
-                  {currentHeroItem?.rating && (
-                    <span className="flex items-center gap-1 md:gap-2 text-[10px] md:text-sm text-yellow-400 bg-yellow-900/30 px-2 md:px-3 py-1 md:py-1.5 rounded-lg backdrop-blur-sm">
-                      <FaStar className="text-[8px] md:text-sm" /> {currentHeroItem.rating}
-                    </span>
-                  )}
-                </div>
-
-                <h1 className="text-xl sm:text-2xl md:text-4xl lg:text-5xl xl:text-6xl font-bold text-white mb-2 md:mb-4 leading-tight drop-shadow-lg">
-                  {currentHeroItem?.title}
-                  {isSeriesWithNewEpisode && (
-                    <span className="text-sm md:text-2xl lg:text-3xl ml-2 md:ml-3 text-purple-400">
-                      - New Episode
-                    </span>
-                  )}
-                </h1>
-
-                {isSeriesWithNewEpisode && currentHeroItem.latestEpisode && (
-                  <h2 className="text-xs md:text-lg lg:text-xl text-purple-300 mb-2 md:mb-4 font-medium drop-shadow-md">
-                    Latest: {currentHeroItem.latestEpisode.title}
-                  </h2>
-                )}
-
-                <p className="text-xs md:text-sm lg:text-base text-gray-200 mb-3 md:mb-6 line-clamp-2 md:line-clamp-3 max-w-2xl lg:max-w-3xl drop-shadow-md">
-                  {isSeriesWithNewEpisode && currentHeroItem.latestEpisode?.description
-                    ? currentHeroItem.latestEpisode.description
-                    : currentHeroItem?.description || 'Experience this amazing content.'}
-                </p>
-
-                <div className="flex gap-2 md:gap-3 lg:gap-4">
-                  <button
-                    onClick={handleHeroPlayClick}
-                    className="px-4 md:px-6 lg:px-8 py-2 md:py-2.5 lg:py-3 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg text-white text-xs md:text-sm lg:text-base font-semibold flex items-center gap-1 md:gap-2 shadow-xl hover:from-purple-700 hover:to-pink-700 transition-all duration-300 transform hover:scale-105 active:scale-95"
-                  >
-                    <FaPlay className="text-[10px] md:text-xs lg:text-sm" />
-                    <span>{isSeriesWithNewEpisode ? 'Watch Latest' : 'Watch Now'}</span>
-                  </button>
-                  <button
-                    onClick={handleHeroInfoClick}
-                    className="px-4 md:px-6 lg:px-8 py-2 md:py-2.5 lg:py-3 bg-gray-800/90 backdrop-blur-sm rounded-lg text-white text-xs md:text-sm lg:text-base font-semibold flex items-center gap-1 md:gap-2 border border-gray-700 hover:bg-gray-700/90 transition-all duration-300 transform hover:scale-105 active:scale-95"
-                  >
-                    <FaInfoCircle className="text-[10px] md:text-xs lg:text-sm" />
-                    <span>Info</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Filters */}
-          <div className="absolute top-2 md:top-4 lg:top-6 left-2 md:left-4 lg:left-6 z-20 flex gap-1 md:gap-2">
-            <button
-              onClick={() => setHeroContentType("all")}
-              className={`px-2 md:px-3 lg:px-4 py-1 md:py-1.5 rounded-full text-[10px] md:text-xs lg:text-sm font-medium transition-all duration-300 ${heroContentType === "all"
-                ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg'
-                : 'bg-black/60 backdrop-blur-sm text-gray-300 hover:bg-black/80 border border-white/20'}`}
-            >
-              All
-            </button>
-            <button
-              onClick={() => setHeroContentType("movies")}
-              className={`px-2 md:px-3 lg:px-4 py-1 md:py-1.5 rounded-full text-[10px] md:text-xs lg:text-sm font-medium transition-all duration-300 ${heroContentType === "movies"
-                ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg'
-                : 'bg-black/60 backdrop-blur-sm text-gray-300 hover:bg-black/80 border border-white/20'}`}
-            >
-              Movies
-            </button>
-            <button
-              onClick={() => setHeroContentType("series")}
-              className={`px-2 md:px-3 lg:px-4 py-1 md:py-1.5 rounded-full text-[10px] md:text-xs lg:text-sm font-medium transition-all duration-300 ${heroContentType === "series"
-                ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg'
-                : 'bg-black/60 backdrop-blur-sm text-gray-300 hover:bg-black/80 border border-white/20'}`}
-            >
-              Series
-            </button>
-          </div>
-
-          {/* Slide indicators */}
-          <div className="absolute bottom-2 md:bottom-4 left-1/2 transform -translate-x-1/2 flex gap-1 md:gap-2 z-20">
-            {filteredHeroContent.map((_, index) => (
-              <button
-                key={index}
-                onClick={() => {
-                  setCurrentHeroSlide(index);
-                  setIsAutoPlaying(false);
-                  setTimeout(() => setIsAutoPlaying(true), 10000);
-                }}
-                className="group/dot"
-              >
-                <span className={`block transition-all duration-300 rounded-full ${index === currentHeroSlide
-                  ? 'w-4 md:w-6 lg:w-8 h-0.5 md:h-1 bg-gradient-to-r from-purple-600 to-pink-600'
-                  : 'w-1 md:w-1.5 h-0.5 md:h-1 bg-gray-500 group-hover/dot:bg-gray-300'}`} />
-              </button>
-            ))}
-          </div>
-
-          {/* Navigation arrows */}
-          <button
-            onClick={prevHeroSlide}
-            className="hidden md:flex absolute left-2 lg:left-4 top-1/2 transform -translate-y-1/2 z-30 group/arrow opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-          >
-            <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-pink-600 rounded-full blur-md opacity-0 group-hover/arrow:opacity-50 transition-opacity duration-300" />
-              <div className="relative w-8 h-8 lg:w-10 lg:h-10 bg-black/60 backdrop-blur-md rounded-full flex items-center justify-center border border-white/20 group-hover/arrow:border-purple-500/50 transition-all duration-300 group-hover/arrow:scale-110">
-                <FaChevronLeft className="text-white text-xs lg:text-sm group-hover/arrow:text-purple-400 transition-colors duration-300" />
-              </div>
-            </div>
-          </button>
-
-          <button
-            onClick={nextHeroSlide}
-            className="hidden md:flex absolute right-2 lg:right-4 top-1/2 transform -translate-y-1/2 z-30 group/arrow opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-          >
-            <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-l from-purple-600 to-pink-600 rounded-full blur-md opacity-0 group-hover/arrow:opacity-50 transition-opacity duration-300" />
-              <div className="relative w-8 h-8 lg:w-10 lg:h-10 bg-black/60 backdrop-blur-md rounded-full flex items-center justify-center border border-white/20 group-hover/arrow:border-purple-500/50 transition-all duration-300 group-hover/arrow:scale-110">
-                <FaChevronRight className="text-white text-xs lg:text-sm group-hover/arrow:text-purple-400 transition-colors duration-300" />
-              </div>
-            </div>
-          </button>
-
-          {/* Slide counter */}
-          <div className="absolute top-2 md:top-4 lg:top-6 right-2 md:right-4 lg:right-6 z-20 bg-black/60 backdrop-blur-sm px-1.5 md:px-2 py-0.5 md:py-1 rounded-full text-[10px] md:text-xs text-white border border-white/20">
-            <span className="text-purple-400 font-bold">{currentHeroSlide + 1}</span>/{filteredHeroContent.length}
-          </div>
-
-          {/* Progress bar */}
-          <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gray-800/30 z-20">
-            <div
-              className="h-full bg-gradient-to-r from-purple-600 to-pink-400 transition-all duration-300"
-              style={{ width: `${((currentHeroSlide + 1) / filteredHeroContent.length) * 100}%` }}
-            />
-          </div>
-        </section>
+      {/* Hero Slider Section - INTEGRATED HeroSlider Component */}
+      {heroContent.length > 0 && (
+        <HeroSlider
+          items={heroContent}
+          onPlay={handleHeroPlayClick}
+          onInfo={handleHeroInfoClick}
+        />
       )}
 
+      {/* Rest of your component remains the same */}
       {/* Recently Updated Series Section */}
       {recentlyUpdatedSeries.length > 0 && (
         <section className="container mx-auto px-4 py-6 sm:py-8">
@@ -1497,9 +1229,9 @@ export default function Movies() {
           >
             <div className="relative h-32 md:h-56">
               <img
-                src={getOptimizedImageUrl(quickViewMovie?.background || quickViewMovie?.poster, true)}
+                src={getOptimizedImageUrl(quickViewMovie?.background || quickViewMovie?.poster, true, window.innerWidth <= 768)}
                 alt={quickViewMovie?.title}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover object-center"
                 onError={(e) => {
                   if (e.target.src !== quickViewMovie?.poster && quickViewMovie?.poster) {
                     e.target.src = quickViewMovie.poster;
