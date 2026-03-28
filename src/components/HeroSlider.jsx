@@ -24,37 +24,28 @@ const useSmartHeroImage = (backgroundUrl, posterUrl, isMobile) => {
             return;
         }
 
-        // CRITICAL: On mobile, prioritize poster image for better display
-        // On desktop, use background image as primary
         let primaryImage;
         let fallbackImage;
 
         if (isMobile) {
-            // Mobile: Use poster first (it's usually better framed for mobile)
             primaryImage = posterUrl || backgroundUrl;
             fallbackImage = backgroundUrl || posterUrl;
         } else {
-            // Desktop: Use background first (wider, more cinematic)
             primaryImage = backgroundUrl || posterUrl;
             fallbackImage = posterUrl || backgroundUrl;
         }
 
         let url = primaryImage || fallbackImage;
 
-        // Optimize based on device
         if (url) {
-            // TMDB Optimization
             if (url.includes('tmdb.org') || url.includes('themoviedb')) {
                 if (isMobile) {
-                    // Mobile: Smaller size for faster loading
                     url = url.replace(/w[0-9]+/, 'w780');
                 } else {
-                    // Desktop: Original quality
                     url = url.replace(/w[0-9]+/, 'original');
                 }
             }
 
-            // Cloudinary Optimization
             if (url.includes('cloudinary.com')) {
                 if (isMobile) {
                     url = url.includes('?')
@@ -68,14 +59,12 @@ const useSmartHeroImage = (backgroundUrl, posterUrl, isMobile) => {
             }
         }
 
-        // Preload and test image
         const img = new Image();
         img.onload = () => {
             setOptimizedUrl(url);
             setIsLoading(false);
         };
         img.onerror = () => {
-            // If primary fails, try fallback
             if (primaryImage !== fallbackImage && fallbackImage && !useFallback) {
                 setUseFallback(true);
             } else {
@@ -85,7 +74,6 @@ const useSmartHeroImage = (backgroundUrl, posterUrl, isMobile) => {
         };
         img.src = url;
 
-        // Cleanup
         return () => {
             img.onload = null;
             img.onerror = null;
@@ -95,7 +83,7 @@ const useSmartHeroImage = (backgroundUrl, posterUrl, isMobile) => {
     return { optimizedUrl, isLoading };
 };
 
-// Individual Slide Component - FIXED with proper event handling
+// Individual Slide Component - Enhanced with balanced typography
 const HeroSlide = ({
     item,
     isActive,
@@ -113,54 +101,38 @@ const HeroSlide = ({
 
     const isSeries = item?.type === 'series' || item?.latestEpisode;
     const hasNewEpisode = !!item?.latestEpisode;
-    const hasTranslator = !!item?.translator;
+    const hasTranslator = !!item?.translator && item.translator.trim() !== '';
 
-    // Different background position for mobile vs desktop
     const getBackgroundPosition = () => {
         if (isMobile) {
-            // For mobile, center the image but focus on the main subject
             return 'center 30%';
         }
-        // For desktop, standard positioning
         return 'center 20%';
     };
 
-    // Store item reference to avoid closure issues
     const itemRef = useRef(item);
     useEffect(() => {
         itemRef.current = item;
     }, [item]);
 
-    // FIXED: Handle play click with proper event handling
     const handlePlayClick = useCallback((e) => {
-        // CRITICAL: Stop event propagation to prevent bubbling to parent
         if (e) {
             e.stopPropagation();
             e.preventDefault();
         }
-
-        // Get the current item from ref to ensure we have the latest
         const currentItem = itemRef.current;
-
         if (currentItem && onPlay) {
-            // Call the parent handler with the item and event
             onPlay(currentItem, e);
         }
     }, [onPlay]);
 
-    // FIXED: Handle info click with proper event handling
     const handleInfoClick = useCallback((e) => {
-        // CRITICAL: Stop event propagation to prevent bubbling to parent
         if (e) {
             e.stopPropagation();
             e.preventDefault();
         }
-
-        // Get the current item from ref to ensure we have the latest
         const currentItem = itemRef.current;
-
         if (currentItem && onInfo) {
-            // Call the parent handler with the item and event
             onInfo(currentItem, e);
         }
     }, [onInfo]);
@@ -193,31 +165,31 @@ const HeroSlide = ({
                     </div>
                 )}
 
-                {/* Gradient Overlays - Enhanced for Mobile */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent" />
-                <div className="absolute inset-0 bg-gradient-to-r from-black/40 via-transparent to-transparent hidden md:block" />
+                {/* Enhanced Gradient Overlays */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black via-black/70 to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-r from-black/50 via-transparent to-transparent hidden md:block" />
 
-                {/* Mobile-specific Gradient for Better Text Contrast */}
+                {/* Mobile-specific Gradients */}
                 {isMobile && (
                     <>
-                        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/80" />
+                        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/85" />
                         <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black to-transparent" />
                     </>
                 )}
 
                 {/* Content Container */}
-                <div className={`absolute bottom-0 left-0 right-0 z-20 ${isMobile ? 'p-4 pb-6' : 'p-6 md:p-8 lg:p-12'
-                    }`}>
+                <div className={`absolute bottom-0 left-0 right-0 z-20 ${isMobile ? 'p-4 pb-6' : 'p-6 md:p-8 lg:p-10'}`}>
                     <div className="max-w-7xl mx-auto">
                         <div className={isMobile ? 'w-full' : 'max-w-2xl lg:max-w-3xl'}>
-                            {/* Badges Section - ADDED TRANSLATOR BADGE */}
+                            {/* Badges Section */}
                             <motion.div
                                 initial={{ y: 20, opacity: 0 }}
                                 animate={{ y: 0, opacity: 1 }}
                                 transition={{ delay: 0.2, duration: 0.5 }}
                                 className="flex flex-wrap gap-1.5 md:gap-3 mb-2 md:mb-4"
                             >
-                                <span className={`px-2 md:px-3 py-1 rounded-full font-semibold shadow-lg ${isMobile ? 'text-[9px]' : 'text-[10px] md:text-sm'
+                                {/* Type Badge */}
+                                <span className={`px-2 md:px-4 py-1 md:py-1.5 rounded-full font-semibold shadow-lg ${isMobile ? 'text-[10px]' : 'text-xs md:text-sm'
                                     } bg-gradient-to-r from-purple-600 to-pink-600 text-white`}>
                                     {isSeries ? (
                                         <><FaTv className="inline mr-1 text-[8px] md:text-xs" /> SERIES</>
@@ -226,35 +198,36 @@ const HeroSlide = ({
                                     )}
                                 </span>
 
-                                {/* TRANSLATOR BADGE - NEW */}
+                                {/* Translator Badge */}
                                 {hasTranslator && (
-                                    <span className={`px-2 md:px-3 py-1 rounded-full bg-blue-600 text-white font-semibold flex items-center gap-1 ${isMobile ? 'text-[9px]' : 'text-[10px] md:text-xs'
+                                    <span className={`px-2 md:px-4 py-1 md:py-1.5 rounded-full bg-blue-600 text-white font-semibold flex items-center gap-1 shadow-lg ${isMobile ? 'text-[10px]' : 'text-xs md:text-sm'
                                         }`}>
-                                        <FaLanguage className="text-[7px] md:text-xs" />
-                                        {!isMobile && 'Translator: '}
+                                        <FaLanguage className="text-[8px] md:text-xs" />
                                         {item.translator}
-                                        {isMobile && item.translator.length > 12 ? item.translator.substring(0, 12) + '...' : item.translator}
                                     </span>
                                 )}
 
+                                {/* New Episode Badge */}
                                 {hasNewEpisode && (
-                                    <span className={`px-2 md:px-3 py-1 rounded-full bg-green-600 text-white font-semibold flex items-center gap-1 animate-pulse ${isMobile ? 'text-[9px]' : 'text-[10px] md:text-xs'
+                                    <span className={`px-2 md:px-4 py-1 md:py-1.5 rounded-full bg-green-600 text-white font-semibold flex items-center gap-1 animate-pulse shadow-lg ${isMobile ? 'text-[10px]' : 'text-xs md:text-sm'
                                         }`}>
-                                        <FaPlusCircle className="text-[7px] md:text-xs" />
+                                        <FaPlusCircle className="text-[8px] md:text-xs" />
                                         {!isMobile && 'NEW EPISODE'}
                                         {isMobile && 'NEW'}
                                     </span>
                                 )}
 
+                                {/* Episode Number Badge */}
                                 {hasNewEpisode && item.latestEpisode && (
-                                    <span className={`px-2 md:px-3 py-1 rounded-full bg-purple-600/90 text-white font-semibold ${isMobile ? 'text-[9px]' : 'text-[10px] md:text-xs'
+                                    <span className={`px-2 md:px-4 py-1 md:py-1.5 rounded-full bg-purple-600/90 text-white font-semibold shadow-lg ${isMobile ? 'text-[10px]' : 'text-xs md:text-sm'
                                         }`}>
                                         S{item.latestEpisode.seasonNumber}:E{item.latestEpisode.episodeNumber}
                                     </span>
                                 )}
 
+                                {/* Rating Badge */}
                                 {item?.rating && (
-                                    <span className={`flex items-center gap-1 text-yellow-400 bg-black/50 px-2 py-1 rounded-lg backdrop-blur-sm ${isMobile ? 'text-[9px]' : 'text-[10px] md:text-xs'
+                                    <span className={`flex items-center gap-1 text-yellow-400 bg-black/50 px-2 md:px-3 py-1 md:py-1.5 rounded-full backdrop-blur-sm shadow-lg ${isMobile ? 'text-[10px]' : 'text-xs md:text-sm'
                                         }`}>
                                         <FaStar className="text-[8px] md:text-xs" />
                                         {item.rating}
@@ -262,19 +235,22 @@ const HeroSlide = ({
                                 )}
                             </motion.div>
 
-                            {/* Title */}
+                            {/* Title - Moderately larger */}
                             <motion.h1
                                 initial={{ y: 20, opacity: 0 }}
                                 animate={{ y: 0, opacity: 1 }}
                                 transition={{ delay: 0.3, duration: 0.5 }}
                                 className={`font-bold text-white leading-tight drop-shadow-lg ${isMobile
-                                    ? 'text-xl mb-1'
-                                    : 'text-2xl sm:text-3xl md:text-4xl lg:text-5xl mb-2 md:mb-4'
+                                    ? 'text-2xl mb-1'
+                                    : 'text-3xl sm:text-4xl md:text-5xl lg:text-6xl mb-2 md:mb-3'
                                     }`}
+                                style={{
+                                    textShadow: '0 2px 8px rgba(0,0,0,0.5)'
+                                }}
                             >
                                 {item?.title}
                                 {hasNewEpisode && !isMobile && (
-                                    <span className="text-sm md:text-2xl ml-2 text-purple-400">- New Episode</span>
+                                    <span className="text-base md:text-xl ml-2 text-purple-400">- New Episode</span>
                                 )}
                                 {hasNewEpisode && isMobile && (
                                     <span className="text-xs ml-1 text-purple-400">- New</span>
@@ -287,21 +263,21 @@ const HeroSlide = ({
                                     initial={{ y: 20, opacity: 0 }}
                                     animate={{ y: 0, opacity: 1 }}
                                     transition={{ delay: 0.4, duration: 0.5 }}
-                                    className={`text-purple-300 font-medium drop-shadow-md ${isMobile ? 'text-[10px] mb-1' : 'text-xs md:text-lg mb-2 md:mb-4'
+                                    className={`text-purple-300 font-medium drop-shadow-md ${isMobile ? 'text-[11px] mb-1' : 'text-sm md:text-base lg:text-lg mb-2 md:mb-3'
                                         }`}
                                 >
                                     Latest: {item.latestEpisode.title}
                                 </motion.h2>
                             )}
 
-                            {/* Description */}
+                            {/* Description - Slightly larger */}
                             <motion.p
                                 initial={{ y: 20, opacity: 0 }}
                                 animate={{ y: 0, opacity: 1 }}
                                 transition={{ delay: 0.5, duration: 0.5 }}
-                                className={`text-gray-200 drop-shadow-md ${isMobile
-                                    ? 'text-[10px] mb-3 line-clamp-2'
-                                    : 'text-xs md:text-sm mb-3 md:mb-6 line-clamp-2 md:line-clamp-3'
+                                className={`text-gray-200 drop-shadow-md leading-relaxed ${isMobile
+                                    ? 'text-[11px] mb-3 line-clamp-2'
+                                    : 'text-sm md:text-base lg:text-lg mb-3 md:mb-5 line-clamp-2 md:line-clamp-3'
                                     }`}
                             >
                                 {hasNewEpisode && item.latestEpisode?.description
@@ -309,7 +285,7 @@ const HeroSlide = ({
                                     : item?.description || 'Experience this amazing content.'}
                             </motion.p>
 
-                            {/* Action Buttons */}
+                            {/* Action Buttons - Slightly larger */}
                             <motion.div
                                 initial={{ y: 20, opacity: 0 }}
                                 animate={{ y: 0, opacity: 1 }}
@@ -318,24 +294,24 @@ const HeroSlide = ({
                             >
                                 <button
                                     onClick={handlePlayClick}
-                                    className={`bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg text-white font-semibold flex items-center gap-1.5 shadow-xl transition-all duration-300 active:scale-95 ${isMobile
-                                        ? 'px-3 py-1.5 text-[10px]'
-                                        : 'px-4 md:px-6 py-2 md:py-2.5 text-xs md:text-sm lg:text-base'
+                                    className={`bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg text-white font-semibold flex items-center gap-1.5 shadow-xl transition-all duration-300 active:scale-95 hover:shadow-lg ${isMobile
+                                        ? 'px-4 py-2 text-xs'
+                                        : 'px-6 md:px-8 py-2.5 md:py-3 text-sm md:text-base'
                                         } hover:from-purple-700 hover:to-pink-700 transform hover:scale-105`}
                                     aria-label="Watch now"
                                 >
-                                    <FaPlay className={isMobile ? 'text-[8px]' : 'text-[10px] md:text-xs lg:text-sm'} />
+                                    <FaPlay className={isMobile ? 'text-[10px]' : 'text-xs md:text-sm'} />
                                     <span>{hasNewEpisode ? 'Watch Latest' : 'Watch Now'}</span>
                                 </button>
                                 <button
                                     onClick={handleInfoClick}
-                                    className={`bg-black/50 backdrop-blur-sm rounded-lg text-white font-semibold flex items-center gap-1.5 border border-white/20 transition-all duration-300 active:scale-95 ${isMobile
-                                        ? 'px-3 py-1.5 text-[10px]'
-                                        : 'px-4 md:px-6 py-2 md:py-2.5 text-xs md:text-sm lg:text-base'
-                                        } hover:bg-black/70 transform hover:scale-105`}
+                                    className={`bg-black/50 backdrop-blur-sm rounded-lg text-white font-semibold flex items-center gap-1.5 border border-white/20 transition-all duration-300 active:scale-95 hover:bg-black/70 ${isMobile
+                                        ? 'px-4 py-2 text-xs'
+                                        : 'px-6 md:px-8 py-2.5 md:py-3 text-sm md:text-base'
+                                        } transform hover:scale-105`}
                                     aria-label="More info"
                                 >
-                                    <FaInfoCircle className={isMobile ? 'text-[8px]' : 'text-[10px] md:text-xs lg:text-sm'} />
+                                    <FaInfoCircle className={isMobile ? 'text-[10px]' : 'text-xs md:text-sm'} />
                                     <span>Info</span>
                                 </button>
                             </motion.div>
@@ -347,7 +323,7 @@ const HeroSlide = ({
     );
 };
 
-// Main HeroSlider Component - FIXED with better touch handling
+// Main HeroSlider Component
 const HeroSlider = ({ items, onPlay, onInfo }) => {
     const [currentIndex, setCurrentIndex] = useState(0);
     const [isAutoPlaying, setIsAutoPlaying] = useState(true);
@@ -357,26 +333,20 @@ const HeroSlider = ({ items, onPlay, onInfo }) => {
     const autoPlayRef = useRef(null);
     const itemsRef = useRef(items);
     const isSwiping = useRef(false);
-    const isTouchDevice = useRef(false);
 
-    // Update items ref when items change
     useEffect(() => {
         itemsRef.current = items;
     }, [items]);
 
-    // Detect mobile device
     useEffect(() => {
         const checkMobile = () => {
-            const mobile = window.innerWidth <= 768;
-            setIsMobile(mobile);
-            isTouchDevice.current = 'ontouchstart' in window;
+            setIsMobile(window.innerWidth <= 768);
         };
         checkMobile();
         window.addEventListener('resize', checkMobile);
         return () => window.removeEventListener('resize', checkMobile);
     }, []);
 
-    // Auto-play functionality
     useEffect(() => {
         if (isAutoPlaying && items.length > 1 && !isMobile) {
             autoPlayRef.current = setInterval(() => {
@@ -388,7 +358,6 @@ const HeroSlider = ({ items, onPlay, onInfo }) => {
         };
     }, [isAutoPlaying, items.length, isMobile]);
 
-    // Pause auto-play when user interacts
     const pauseAutoPlay = useCallback(() => {
         setIsAutoPlaying(false);
         setTimeout(() => {
@@ -396,14 +365,11 @@ const HeroSlider = ({ items, onPlay, onInfo }) => {
         }, 10000);
     }, [isMobile]);
 
-    // Navigation functions with proper item reference
     const nextSlide = useCallback((e) => {
-        // Prevent event propagation if event exists
         if (e) {
             e.stopPropagation();
             e.preventDefault();
         }
-
         if (itemsRef.current && itemsRef.current.length > 0) {
             setCurrentIndex((prev) => (prev + 1) % itemsRef.current.length);
             pauseAutoPlay();
@@ -411,29 +377,20 @@ const HeroSlider = ({ items, onPlay, onInfo }) => {
     }, [pauseAutoPlay]);
 
     const prevSlide = useCallback((e) => {
-        // Prevent event propagation if event exists
         if (e) {
             e.stopPropagation();
             e.preventDefault();
         }
-
         if (itemsRef.current && itemsRef.current.length > 0) {
             setCurrentIndex((prev) => (prev - 1 + itemsRef.current.length) % itemsRef.current.length);
             pauseAutoPlay();
         }
     }, [pauseAutoPlay]);
 
-    // FIXED: Touch handlers for mobile - better detection of button touches
     const handleTouchStart = useCallback((e) => {
-        // Check if touch started on a button or interactive element
         const target = e.target;
         const isInteractive = target.closest('button') || target.closest('a') || target.closest('[role="button"]');
-
-        if (isInteractive) {
-            // Don't start swipe if touching a button
-            return;
-        }
-
+        if (isInteractive) return;
         setTouchStart(e.touches[0].clientX);
         setIsAutoPlaying(false);
         isSwiping.current = true;
@@ -441,13 +398,8 @@ const HeroSlider = ({ items, onPlay, onInfo }) => {
 
     const handleTouchMove = useCallback((e) => {
         if (!isSwiping.current) return;
-
-        // Prevent default only if we're actually swiping
         const touchDelta = Math.abs(e.touches[0].clientX - touchStart);
-        if (touchDelta > 10) {
-            e.preventDefault();
-        }
-
+        if (touchDelta > 10) e.preventDefault();
         setTouchEnd(e.touches[0].clientX);
     }, [touchStart]);
 
@@ -457,58 +409,44 @@ const HeroSlider = ({ items, onPlay, onInfo }) => {
             setTouchEnd(0);
             return;
         }
-
         const swipeDistance = touchStart - touchEnd;
         const minSwipeDistance = 50;
-
         if (Math.abs(swipeDistance) > minSwipeDistance) {
-            if (swipeDistance > 0) {
-                nextSlide();
-            } else {
-                prevSlide();
-            }
+            if (swipeDistance > 0) nextSlide();
+            else prevSlide();
         }
-
         setTouchStart(0);
         setTouchEnd(0);
         isSwiping.current = false;
-
         setTimeout(() => {
             if (!isMobile) setIsAutoPlaying(true);
         }, 5000);
     }, [touchStart, touchEnd, nextSlide, prevSlide, isMobile]);
 
-    // Dot indicators click handler
     const goToSlide = useCallback((index, e) => {
         if (e) {
             e.stopPropagation();
             e.preventDefault();
         }
-
         if (index >= 0 && index < itemsRef.current.length) {
             setCurrentIndex(index);
             pauseAutoPlay();
         }
     }, [pauseAutoPlay]);
 
-    // FIXED: Wrapped handlers to ensure proper item passing
     const handlePlayClick = useCallback((item, event) => {
-        if (onPlay) {
-            onPlay(item, event);
-        }
+        if (onPlay) onPlay(item, event);
     }, [onPlay]);
 
     const handleInfoClick = useCallback((item, event) => {
-        if (onInfo) {
-            onInfo(item, event);
-        }
+        if (onInfo) onInfo(item, event);
     }, [onInfo]);
 
     if (!items || items.length === 0) return null;
 
     return (
         <section
-            className={`relative overflow-hidden bg-black select-none ${isMobile ? 'h-[55vh] sm:h-[60vh]' : 'h-[70vh] md:h-[80vh] lg:h-[85vh]'
+            className={`relative overflow-hidden bg-black select-none ${isMobile ? 'h-[55vh] sm:h-[60vh]' : 'h-[70vh] md:h-[75vh] lg:h-[80vh]'
                 }`}
             onMouseEnter={() => !isMobile && setIsAutoPlaying(false)}
             onMouseLeave={() => !isMobile && setIsAutoPlaying(true)}

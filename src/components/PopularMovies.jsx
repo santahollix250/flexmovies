@@ -380,17 +380,58 @@ export default function Movies() {
     return url;
   }, []);
 
-  // Get hero content with latest episodes for HeroSlider
+  // FIXED: Get hero content with latest movies AND series
   const heroContent = useMemo(() => {
+    // Get all movies (type = movie)
+    const latestMovies = movies
+      .filter(item => item?.type === "movie")
+      .map(movie => ({
+        id: movie.id,
+        title: movie.title,
+        description: movie.description,
+        background: movie.background || movie.poster,
+        poster: movie.poster,
+        type: 'movie',
+        rating: movie.rating,
+        year: movie.year,
+        translator: movie.translator || '',
+        videoUrl: movie.videoUrl,
+        download: movie.download,
+        category: movie.category,
+        nation: movie.nation,
+        created_at: movie.created_at || new Date().toISOString()
+      }))
+      .sort((a, b) => {
+        const dateA = a?.created_at ? new Date(a.created_at) : new Date(0);
+        const dateB = b?.created_at ? new Date(b.created_at) : new Date(0);
+        return dateB - dateA;
+      });
+
+    // Get all series with their latest episodes
     const seriesWithEpisodes = movies
       .filter(item => item?.type === "series")
       .map(series => {
         const seriesEpisodes = episodes.filter(ep => ep.seriesId === series.id);
-        if (seriesEpisodes.length === 0) return null;
+        if (seriesEpisodes.length === 0) {
+          return {
+            id: series.id,
+            title: series.title,
+            description: series.description,
+            background: series.background || series.poster,
+            poster: series.poster,
+            type: 'series',
+            rating: series.rating,
+            year: series.year,
+            translator: series.translator || '',
+            category: series.category,
+            nation: series.nation,
+            created_at: series.created_at || new Date().toISOString()
+          };
+        }
         const latestEpisode = seriesEpisodes.sort((a, b) => {
-          const dateA = a?.created_at || a?.id || 0;
-          const dateB = b?.created_at || b?.id || 0;
-          return new Date(dateB) - new Date(dateA);
+          const dateA = a?.created_at ? new Date(a.created_at) : new Date(0);
+          const dateB = b?.created_at ? new Date(b.created_at) : new Date(0);
+          return dateB - dateA;
         })[0];
         return {
           id: series.id,
@@ -401,7 +442,9 @@ export default function Movies() {
           type: 'series',
           rating: series.rating,
           year: series.year,
-          translator: series.translator,
+          translator: series.translator || '',
+          category: series.category,
+          nation: series.nation,
           latestEpisode: {
             id: latestEpisode.id,
             title: latestEpisode.title,
@@ -414,35 +457,20 @@ export default function Movies() {
           },
           hasNewEpisode: true,
           episodeCount: seriesEpisodes.length,
-          lastUpdated: latestEpisode.created_at
+          lastUpdated: latestEpisode.created_at,
+          created_at: latestEpisode.created_at || series.created_at || new Date().toISOString()
         };
-      })
-      .filter(series => series !== null);
-
-    const moviesWithBackground = movies
-      .filter(item => item?.type === "movie")
-      .map(movie => ({
-        id: movie.id,
-        title: movie.title,
-        description: movie.description,
-        background: movie.background || movie.poster,
-        poster: movie.poster,
-        type: 'movie',
-        rating: movie.rating,
-        year: movie.year,
-        translator: movie.translator,
-        videoUrl: movie.videoUrl,
-        download: movie.download
-      }));
-
-    const allContent = [...moviesWithBackground, ...seriesWithEpisodes]
-      .sort((a, b) => {
-        const dateA = a?.lastUpdated || a?.created_at || a?.id || 0;
-        const dateB = b?.lastUpdated || b?.created_at || b?.id || 0;
-        return new Date(dateB) - new Date(dateA);
       });
 
-    return allContent.slice(0, 8);
+    // Combine both movies and series
+    const allContent = [...latestMovies, ...seriesWithEpisodes]
+      .sort((a, b) => {
+        const dateA = a?.created_at ? new Date(a.created_at) : new Date(0);
+        const dateB = b?.created_at ? new Date(b.created_at) : new Date(0);
+        return dateB - dateA;
+      });
+
+    return allContent.slice(0, 10);
   }, [movies, episodes]);
 
   // Get recently updated series
@@ -453,9 +481,9 @@ export default function Movies() {
         const seriesEpisodes = episodes.filter(ep => ep.seriesId === series.id);
         if (seriesEpisodes.length === 0) return null;
         const latestEpisode = seriesEpisodes.sort((a, b) => {
-          const dateA = a?.created_at || a?.id || 0;
-          const dateB = b?.created_at || b?.id || 0;
-          return new Date(dateB) - new Date(dateA);
+          const dateA = a?.created_at ? new Date(a.created_at) : new Date(0);
+          const dateB = b?.created_at ? new Date(b.created_at) : new Date(0);
+          return dateB - dateA;
         })[0];
         return {
           ...series,
@@ -476,27 +504,30 @@ export default function Movies() {
       .map(movie => ({
         ...movie,
         uploadType: 'movie',
-        displayDate: movie?.created_at || movie?.id
+        displayDate: movie?.created_at || new Date().toISOString()
       }));
 
     const seriesList = movies
       .filter(item => item?.type === "series")
       .map(series => {
         const seriesEpisodes = episodes.filter(ep => ep.seriesId === series.id);
-        if (seriesEpisodes.length === 0) return null;
+        if (seriesEpisodes.length === 0) return {
+          ...series,
+          uploadType: 'series',
+          displayDate: series.created_at || new Date().toISOString()
+        };
         const latestEpisode = seriesEpisodes.sort((a, b) => {
-          const dateA = a?.created_at || a?.id || 0;
-          const dateB = b?.created_at || b?.id || 0;
-          return new Date(dateB) - new Date(dateA);
+          const dateA = a?.created_at ? new Date(a.created_at) : new Date(0);
+          const dateB = b?.created_at ? new Date(b.created_at) : new Date(0);
+          return dateB - dateA;
         })[0];
         return {
           ...series,
           uploadType: 'series',
           latestEpisode,
-          displayDate: latestEpisode.created_at || series.created_at || series.id
+          displayDate: latestEpisode.created_at || series.created_at || new Date().toISOString()
         };
-      })
-      .filter(series => series !== null);
+      });
 
     return [...moviesList, ...seriesList]
       .sort((a, b) => new Date(b.displayDate) - new Date(a.displayDate))
@@ -570,7 +601,7 @@ export default function Movies() {
       .slice(0, 12);
   }, [movies]);
 
-  // FIXED: Handle movie click with navigation guard
+  // Handle movie click with navigation guard
   const handleMovieClick = useCallback((movie) => {
     if (!movie || !movie.id || isNavigating.current) return;
 
@@ -591,13 +622,12 @@ export default function Movies() {
       state: { movie: movieToPlay }
     });
 
-    // Reset navigation flag after a delay
     setTimeout(() => {
       isNavigating.current = false;
     }, 1000);
   }, [navigate, getMovieParts]);
 
-  // FIXED: Handle series click (first episode)
+  // Handle series click (first episode)
   const handleSeriesClick = useCallback((series) => {
     if (!series || !series.id || isNavigating.current) return;
 
@@ -626,7 +656,7 @@ export default function Movies() {
     }, 1000);
   }, [navigate, getEpisodesForSeries, sortEpisodes]);
 
-  // FIXED: Handle series click with specific episode
+  // Handle series click with specific episode
   const handleSeriesClickWithEpisode = useCallback((series, episode) => {
     if (!series || !series.id || !episode || isNavigating.current) return;
 
@@ -650,7 +680,7 @@ export default function Movies() {
     }, 1000);
   }, [navigate, getEpisodesForSeries, sortEpisodes]);
 
-  // FIXED: Handle updated series click
+  // Handle updated series click
   const handleUpdatedSeriesClick = useCallback((series) => {
     if (!series || !series.id || isNavigating.current) return;
 
@@ -680,15 +710,13 @@ export default function Movies() {
     }, 1000);
   }, [navigate, getEpisodesForSeries, sortEpisodes]);
 
-  // FIXED: Handle hero play click with proper event handling for mobile
+  // Handle hero play click
   const handleHeroPlayClick = useCallback((item, event) => {
-    // CRITICAL: Prevent event propagation to avoid triggering parent click handlers
     if (event) {
       event.stopPropagation();
       event.preventDefault();
     }
 
-    // Prevent multiple clicks
     if (isNavigating.current) return;
 
     if (!item || !item.id) {
@@ -696,13 +724,9 @@ export default function Movies() {
       return;
     }
 
-    console.log('Playing hero item:', item.title || item.id); // Debug log
-
-    // Determine if it's a series with new episode or regular movie/series
     const isSeriesWithNew = item?.latestEpisode ? true : false;
     const isSeries = item?.type === "series";
 
-    // Small delay to ensure all state is stable
     setTimeout(() => {
       if (isSeriesWithNew && item.latestEpisode) {
         handleSeriesClickWithEpisode(item, item.latestEpisode);
@@ -712,16 +736,14 @@ export default function Movies() {
         handleMovieClick(item);
       }
 
-      // Reset navigation flag after navigation attempt
       setTimeout(() => {
         isNavigating.current = false;
       }, 500);
     }, 50);
   }, [handleSeriesClickWithEpisode, handleSeriesClick, handleMovieClick]);
 
-  // FIXED: Handle hero info click with proper event handling for mobile
+  // Handle hero info click
   const handleHeroInfoClick = useCallback((item, event) => {
-    // CRITICAL: Prevent event propagation to avoid triggering parent click handlers
     if (event) {
       event.stopPropagation();
       event.preventDefault();
@@ -732,27 +754,9 @@ export default function Movies() {
       return;
     }
 
-    console.log('Info for hero item:', item.title || item.id); // Debug log
-
     setQuickViewMovie(item);
     setShowQuickView(true);
   }, []);
-
-  // Get all categories for filter
-  const allCategories = useMemo(() => {
-    const categories = new Set(['all', 'featured']);
-    movies.forEach(movie => {
-      if (movie?.category) {
-        movie.category.split(',').map(cat => cat.trim()).forEach(cat => categories.add(cat));
-      }
-    });
-    return Array.from(categories);
-  }, [movies]);
-
-  const getCategoryIcon = (category) => {
-    const style = getCategoryIconAndColor(category);
-    return style.icon;
-  };
 
   // Filter and sort movies
   const filteredMovies = useMemo(() => {
@@ -843,7 +847,7 @@ export default function Movies() {
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-black via-gray-900 to-black pt-20">
-      {/* Hero Slider Section - INTEGRATED HeroSlider Component with fixed handlers */}
+      {/* Hero Slider Section - Shows latest movies AND series */}
       {heroContent.length > 0 && (
         <HeroSlider
           items={heroContent}
@@ -1240,7 +1244,7 @@ export default function Movies() {
         )}
       </section>
 
-      {/* Quick View Modal */}
+      {/* Quick View Modal - NO Translator here */}
       {showQuickView && quickViewMovie && (
         <div
           className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/80 backdrop-blur-sm"
@@ -1283,12 +1287,7 @@ export default function Movies() {
             <div className="p-4 sm:p-5">
               <h2 className="text-base sm:text-xl font-bold text-white mb-1">{quickViewMovie?.title}</h2>
 
-              {quickViewMovie?.translator && (
-                <div className="flex items-center gap-1 text-xs text-blue-400 bg-blue-900/20 px-2 py-1 rounded-lg mb-2 inline-block">
-                  <FaLanguage className="text-xs" />
-                  <span>Translator: {quickViewMovie.translator}</span>
-                </div>
-              )}
+              {/* TRANSLATOR REMOVED - Only appears in HeroSlider */}
 
               {quickViewMovie.latestEpisode && (
                 <h3 className="text-sm text-purple-400 mb-1 line-clamp-1">
