@@ -113,6 +113,7 @@ const HeroSlide = ({
 
     const isSeries = item?.type === 'series' || item?.latestEpisode;
     const hasNewEpisode = !!item?.latestEpisode;
+    const hasTranslator = !!item?.translator;
 
     // Different background position for mobile vs desktop
     const getBackgroundPosition = () => {
@@ -209,7 +210,7 @@ const HeroSlide = ({
                     }`}>
                     <div className="max-w-7xl mx-auto">
                         <div className={isMobile ? 'w-full' : 'max-w-2xl lg:max-w-3xl'}>
-                            {/* Badges Section */}
+                            {/* Badges Section - ADDED TRANSLATOR BADGE */}
                             <motion.div
                                 initial={{ y: 20, opacity: 0 }}
                                 animate={{ y: 0, opacity: 1 }}
@@ -224,6 +225,17 @@ const HeroSlide = ({
                                         <><FaFilm className="inline mr-1 text-[8px] md:text-xs" /> MOVIE</>
                                     )}
                                 </span>
+
+                                {/* TRANSLATOR BADGE - NEW */}
+                                {hasTranslator && (
+                                    <span className={`px-2 md:px-3 py-1 rounded-full bg-blue-600 text-white font-semibold flex items-center gap-1 ${isMobile ? 'text-[9px]' : 'text-[10px] md:text-xs'
+                                        }`}>
+                                        <FaLanguage className="text-[7px] md:text-xs" />
+                                        {!isMobile && 'Translator: '}
+                                        {item.translator}
+                                        {isMobile && item.translator.length > 12 ? item.translator.substring(0, 12) + '...' : item.translator}
+                                    </span>
+                                )}
 
                                 {hasNewEpisode && (
                                     <span className={`px-2 md:px-3 py-1 rounded-full bg-green-600 text-white font-semibold flex items-center gap-1 animate-pulse ${isMobile ? 'text-[9px]' : 'text-[10px] md:text-xs'
