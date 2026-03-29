@@ -83,7 +83,7 @@ const useSmartHeroImage = (backgroundUrl, posterUrl, isMobile) => {
     return { optimizedUrl, isLoading };
 };
 
-// Individual Slide Component - Enhanced with balanced typography
+// Individual Slide Component - Professional balanced typography
 const HeroSlide = ({
     item,
     isActive,
@@ -177,41 +177,41 @@ const HeroSlide = ({
                     </>
                 )}
 
-                {/* Content Container */}
-                <div className={`absolute bottom-0 left-0 right-0 z-20 ${isMobile ? 'p-4 pb-6' : 'p-6 md:p-8 lg:p-10'}`}>
+                {/* Content Container - Professional spacing */}
+                <div className={`absolute bottom-0 left-0 right-0 z-20 ${isMobile ? 'p-4 pb-6' : 'p-6 md:p-8'}`}>
                     <div className="max-w-7xl mx-auto">
                         <div className={isMobile ? 'w-full' : 'max-w-2xl lg:max-w-3xl'}>
-                            {/* Badges Section */}
+                            {/* Badges Section - Professional size */}
                             <motion.div
                                 initial={{ y: 20, opacity: 0 }}
                                 animate={{ y: 0, opacity: 1 }}
                                 transition={{ delay: 0.2, duration: 0.5 }}
-                                className="flex flex-wrap gap-1.5 md:gap-3 mb-2 md:mb-4"
+                                className="flex flex-wrap gap-1.5 md:gap-2 mb-2 md:mb-3"
                             >
                                 {/* Type Badge */}
-                                <span className={`px-2 md:px-4 py-1 md:py-1.5 rounded-full font-semibold shadow-lg ${isMobile ? 'text-[10px]' : 'text-xs md:text-sm'
+                                <span className={`px-2 md:px-3.5 py-0.5 md:py-1 rounded-full font-semibold shadow-lg ${isMobile ? 'text-[9px]' : 'text-[11px] md:text-xs'
                                     } bg-gradient-to-r from-purple-600 to-pink-600 text-white`}>
                                     {isSeries ? (
-                                        <><FaTv className="inline mr-1 text-[8px] md:text-xs" /> SERIES</>
+                                        <><FaTv className="inline mr-1 text-[7px] md:text-[9px]" /> SERIES</>
                                     ) : (
-                                        <><FaFilm className="inline mr-1 text-[8px] md:text-xs" /> MOVIE</>
+                                        <><FaFilm className="inline mr-1 text-[7px] md:text-[9px]" /> MOVIE</>
                                     )}
                                 </span>
 
                                 {/* Translator Badge */}
                                 {hasTranslator && (
-                                    <span className={`px-2 md:px-4 py-1 md:py-1.5 rounded-full bg-blue-600 text-white font-semibold flex items-center gap-1 shadow-lg ${isMobile ? 'text-[10px]' : 'text-xs md:text-sm'
+                                    <span className={`px-2 md:px-3.5 py-0.5 md:py-1 rounded-full bg-blue-600 text-white font-semibold flex items-center gap-1 shadow-lg ${isMobile ? 'text-[9px]' : 'text-[11px] md:text-xs'
                                         }`}>
-                                        <FaLanguage className="text-[8px] md:text-xs" />
+                                        <FaLanguage className="text-[7px] md:text-[9px]" />
                                         {item.translator}
                                     </span>
                                 )}
 
                                 {/* New Episode Badge */}
                                 {hasNewEpisode && (
-                                    <span className={`px-2 md:px-4 py-1 md:py-1.5 rounded-full bg-green-600 text-white font-semibold flex items-center gap-1 animate-pulse shadow-lg ${isMobile ? 'text-[10px]' : 'text-xs md:text-sm'
+                                    <span className={`px-2 md:px-3.5 py-0.5 md:py-1 rounded-full bg-green-600 text-white font-semibold flex items-center gap-1 animate-pulse shadow-lg ${isMobile ? 'text-[9px]' : 'text-[11px] md:text-xs'
                                         }`}>
-                                        <FaPlusCircle className="text-[8px] md:text-xs" />
+                                        <FaPlusCircle className="text-[7px] md:text-[9px]" />
                                         {!isMobile && 'NEW EPISODE'}
                                         {isMobile && 'NEW'}
                                     </span>
@@ -219,7 +219,7 @@ const HeroSlide = ({
 
                                 {/* Episode Number Badge */}
                                 {hasNewEpisode && item.latestEpisode && (
-                                    <span className={`px-2 md:px-4 py-1 md:py-1.5 rounded-full bg-purple-600/90 text-white font-semibold shadow-lg ${isMobile ? 'text-[10px]' : 'text-xs md:text-sm'
+                                    <span className={`px-2 md:px-3.5 py-0.5 md:py-1 rounded-full bg-purple-600/90 text-white font-semibold shadow-lg ${isMobile ? 'text-[9px]' : 'text-[11px] md:text-xs'
                                         }`}>
                                         S{item.latestEpisode.seasonNumber}:E{item.latestEpisode.episodeNumber}
                                     </span>
@@ -227,22 +227,22 @@ const HeroSlide = ({
 
                                 {/* Rating Badge */}
                                 {item?.rating && (
-                                    <span className={`flex items-center gap-1 text-yellow-400 bg-black/50 px-2 md:px-3 py-1 md:py-1.5 rounded-full backdrop-blur-sm shadow-lg ${isMobile ? 'text-[10px]' : 'text-xs md:text-sm'
+                                    <span className={`flex items-center gap-1 text-yellow-400 bg-black/50 px-2 md:px-3 py-0.5 md:py-1 rounded-full backdrop-blur-sm shadow-lg ${isMobile ? 'text-[9px]' : 'text-[11px] md:text-xs'
                                         }`}>
-                                        <FaStar className="text-[8px] md:text-xs" />
+                                        <FaStar className="text-[7px] md:text-[9px]" />
                                         {item.rating}
                                     </span>
                                 )}
                             </motion.div>
 
-                            {/* Title - Moderately larger */}
+                            {/* Title - Professional size */}
                             <motion.h1
                                 initial={{ y: 20, opacity: 0 }}
                                 animate={{ y: 0, opacity: 1 }}
                                 transition={{ delay: 0.3, duration: 0.5 }}
                                 className={`font-bold text-white leading-tight drop-shadow-lg ${isMobile
                                     ? 'text-2xl mb-1'
-                                    : 'text-3xl sm:text-4xl md:text-5xl lg:text-6xl mb-2 md:mb-3'
+                                    : 'text-3xl sm:text-4xl md:text-5xl mb-2'
                                     }`}
                                 style={{
                                     textShadow: '0 2px 8px rgba(0,0,0,0.5)'
@@ -250,34 +250,34 @@ const HeroSlide = ({
                             >
                                 {item?.title}
                                 {hasNewEpisode && !isMobile && (
-                                    <span className="text-base md:text-xl ml-2 text-purple-400">- New Episode</span>
+                                    <span className="text-base md:text-lg ml-2 text-purple-400">- New Episode</span>
                                 )}
                                 {hasNewEpisode && isMobile && (
-                                    <span className="text-xs ml-1 text-purple-400">- New</span>
+                                    <span className="text-[10px] ml-1 text-purple-400">- New</span>
                                 )}
                             </motion.h1>
 
-                            {/* Episode Title */}
+                            {/* Episode Title - Professional size */}
                             {hasNewEpisode && item.latestEpisode && (
                                 <motion.h2
                                     initial={{ y: 20, opacity: 0 }}
                                     animate={{ y: 0, opacity: 1 }}
                                     transition={{ delay: 0.4, duration: 0.5 }}
-                                    className={`text-purple-300 font-medium drop-shadow-md ${isMobile ? 'text-[11px] mb-1' : 'text-sm md:text-base lg:text-lg mb-2 md:mb-3'
+                                    className={`text-purple-300 font-medium drop-shadow-md ${isMobile ? 'text-[10px] mb-1' : 'text-sm md:text-base mb-2'
                                         }`}
                                 >
                                     Latest: {item.latestEpisode.title}
                                 </motion.h2>
                             )}
 
-                            {/* Description - Slightly larger */}
+                            {/* Description - Professional size */}
                             <motion.p
                                 initial={{ y: 20, opacity: 0 }}
                                 animate={{ y: 0, opacity: 1 }}
                                 transition={{ delay: 0.5, duration: 0.5 }}
                                 className={`text-gray-200 drop-shadow-md leading-relaxed ${isMobile
-                                    ? 'text-[11px] mb-3 line-clamp-2'
-                                    : 'text-sm md:text-base lg:text-lg mb-3 md:mb-5 line-clamp-2 md:line-clamp-3'
+                                    ? 'text-[10px] mb-3 line-clamp-2'
+                                    : 'text-sm md:text-base mb-3 md:mb-4 line-clamp-2 md:line-clamp-3'
                                     }`}
                             >
                                 {hasNewEpisode && item.latestEpisode?.description
@@ -285,7 +285,7 @@ const HeroSlide = ({
                                     : item?.description || 'Experience this amazing content.'}
                             </motion.p>
 
-                            {/* Action Buttons - Slightly larger */}
+                            {/* Action Buttons - Professional size */}
                             <motion.div
                                 initial={{ y: 20, opacity: 0 }}
                                 animate={{ y: 0, opacity: 1 }}
@@ -295,23 +295,23 @@ const HeroSlide = ({
                                 <button
                                     onClick={handlePlayClick}
                                     className={`bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg text-white font-semibold flex items-center gap-1.5 shadow-xl transition-all duration-300 active:scale-95 hover:shadow-lg ${isMobile
-                                        ? 'px-4 py-2 text-xs'
-                                        : 'px-6 md:px-8 py-2.5 md:py-3 text-sm md:text-base'
+                                        ? 'px-4 py-2 text-[11px]'
+                                        : 'px-6 md:px-7 py-2 md:py-2.5 text-sm md:text-base'
                                         } hover:from-purple-700 hover:to-pink-700 transform hover:scale-105`}
                                     aria-label="Watch now"
                                 >
-                                    <FaPlay className={isMobile ? 'text-[10px]' : 'text-xs md:text-sm'} />
+                                    <FaPlay className={isMobile ? 'text-[9px]' : 'text-xs md:text-sm'} />
                                     <span>{hasNewEpisode ? 'Watch Latest' : 'Watch Now'}</span>
                                 </button>
                                 <button
                                     onClick={handleInfoClick}
                                     className={`bg-black/50 backdrop-blur-sm rounded-lg text-white font-semibold flex items-center gap-1.5 border border-white/20 transition-all duration-300 active:scale-95 hover:bg-black/70 ${isMobile
-                                        ? 'px-4 py-2 text-xs'
-                                        : 'px-6 md:px-8 py-2.5 md:py-3 text-sm md:text-base'
+                                        ? 'px-4 py-2 text-[11px]'
+                                        : 'px-6 md:px-7 py-2 md:py-2.5 text-sm md:text-base'
                                         } transform hover:scale-105`}
                                     aria-label="More info"
                                 >
-                                    <FaInfoCircle className={isMobile ? 'text-[10px]' : 'text-xs md:text-sm'} />
+                                    <FaInfoCircle className={isMobile ? 'text-[9px]' : 'text-xs md:text-sm'} />
                                     <span>Info</span>
                                 </button>
                             </motion.div>
@@ -323,7 +323,7 @@ const HeroSlide = ({
     );
 };
 
-// Main HeroSlider Component
+// Main HeroSlider Component - Optimized height
 const HeroSlider = ({ items, onPlay, onInfo }) => {
     const [currentIndex, setCurrentIndex] = useState(0);
     const [isAutoPlaying, setIsAutoPlaying] = useState(true);
@@ -446,7 +446,7 @@ const HeroSlider = ({ items, onPlay, onInfo }) => {
 
     return (
         <section
-            className={`relative overflow-hidden bg-black select-none ${isMobile ? 'h-[55vh] sm:h-[60vh]' : 'h-[70vh] md:h-[75vh] lg:h-[80vh]'
+            className={`relative overflow-hidden bg-black select-none ${isMobile ? 'h-[70vh] sm:h-[75vh]' : 'h-[85vh] md:h-[90vh] lg:h-[95vh]'
                 }`}
             onMouseEnter={() => !isMobile && setIsAutoPlaying(false)}
             onMouseLeave={() => !isMobile && setIsAutoPlaying(true)}
@@ -472,7 +472,7 @@ const HeroSlider = ({ items, onPlay, onInfo }) => {
 
             {/* Navigation Dots */}
             {items.length > 1 && (
-                <div className={`absolute left-1/2 transform -translate-x-1/2 z-30 flex gap-1.5 md:gap-2 ${isMobile ? 'bottom-3' : 'bottom-4 md:bottom-6'
+                <div className={`absolute left-1/2 transform -translate-x-1/2 z-30 flex gap-1.5 md:gap-2 ${isMobile ? 'bottom-4' : 'bottom-5 md:bottom-6'
                     }`}>
                     {items.map((_, index) => (
                         <button
@@ -484,11 +484,11 @@ const HeroSlider = ({ items, onPlay, onInfo }) => {
                             <span
                                 className={`block transition-all duration-300 rounded-full ${index === currentIndex
                                     ? isMobile
-                                        ? 'w-4 h-1 bg-gradient-to-r from-purple-600 to-pink-600'
-                                        : 'w-6 md:w-8 h-1 bg-gradient-to-r from-purple-600 to-pink-600'
+                                        ? 'w-4 h-0.5 bg-gradient-to-r from-purple-600 to-pink-600'
+                                        : 'w-6 md:w-8 h-0.5 bg-gradient-to-r from-purple-600 to-pink-600'
                                     : isMobile
-                                        ? 'w-1.5 h-1 bg-gray-500 group-hover:bg-gray-400'
-                                        : 'w-2 md:w-3 h-1 bg-gray-500 group-hover:bg-gray-400'
+                                        ? 'w-1.5 h-0.5 bg-gray-500 group-hover:bg-gray-400'
+                                        : 'w-2 md:w-3 h-0.5 bg-gray-500 group-hover:bg-gray-400'
                                     }`}
                             />
                         </button>
@@ -527,8 +527,8 @@ const HeroSlider = ({ items, onPlay, onInfo }) => {
             {/* Slide Counter */}
             {items.length > 1 && (
                 <div className={`absolute z-30 bg-black/50 backdrop-blur-sm rounded-full border border-white/20 ${isMobile
-                    ? 'top-2 right-2 px-1.5 py-0.5 text-[8px]'
-                    : 'top-4 md:top-6 right-4 md:right-6 px-2 py-1 text-[10px] md:text-xs'
+                    ? 'top-2 right-2 px-1.5 py-0.5 text-[9px]'
+                    : 'top-4 md:top-6 right-4 md:right-6 px-2 py-1 text-[11px] md:text-xs'
                     }`}>
                     <span className="text-purple-400 font-bold">{currentIndex + 1}</span>
                     <span className="text-white">/{items.length}</span>
