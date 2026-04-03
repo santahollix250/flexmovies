@@ -476,8 +476,8 @@ export default function Movies() {
     return allContent.slice(0, 10);
   }, [movies, episodes]);
 
-  // Get recently updated series (renamed to Latest Series)
-  const latestSeries = useMemo(() => {
+  // LATEST SERIES ONLY (no movies)
+  const latestSeriesOnly = useMemo(() => {
     return movies
       .filter(item => item?.type === "series")
       .map(series => {
@@ -500,42 +500,18 @@ export default function Movies() {
       .slice(0, 12);
   }, [movies, episodes]);
 
-  // Latest movies (renamed from latestUploads)
-  const latestMovies = useMemo(() => {
-    const moviesList = movies
+  // LATEST MOVIES ONLY (no series, just movies)
+  const latestMoviesOnly = useMemo(() => {
+    return movies
       .filter(movie => movie?.type === "movie")
       .map(movie => ({
         ...movie,
         uploadType: 'movie',
         displayDate: movie?.created_at || new Date().toISOString()
-      }));
-
-    const seriesList = movies
-      .filter(item => item?.type === "series")
-      .map(series => {
-        const seriesEpisodes = episodes.filter(ep => ep.seriesId === series.id);
-        if (seriesEpisodes.length === 0) return {
-          ...series,
-          uploadType: 'series',
-          displayDate: series.created_at || new Date().toISOString()
-        };
-        const latestEpisode = seriesEpisodes.sort((a, b) => {
-          const dateA = a?.created_at ? new Date(a.created_at) : new Date(0);
-          const dateB = b?.created_at ? new Date(b.created_at) : new Date(0);
-          return dateB - dateA;
-        })[0];
-        return {
-          ...series,
-          uploadType: 'series',
-          latestEpisode,
-          displayDate: latestEpisode.created_at || series.created_at || new Date().toISOString()
-        };
-      });
-
-    return [...moviesList, ...seriesList]
+      }))
       .sort((a, b) => new Date(b.displayDate) - new Date(a.displayDate))
       .slice(0, 16);
-  }, [movies, episodes]);
+  }, [movies]);
 
   // ===== DYNAMIC CATEGORY EXTRACTION =====
   const dynamicCategories = useMemo(() => {
@@ -879,22 +855,22 @@ export default function Movies() {
         />
       )}
 
-      {/* Latest Series Section (renamed from Recently Updated Series) */}
-      {latestSeries.length > 0 && (
+      {/* LATEST SERIES SECTION - SERIES ONLY */}
+      {latestSeriesOnly.length > 0 && (
         <section className="container mx-auto px-4 py-6 sm:py-8">
           <div className="flex items-center justify-between mb-3 sm:mb-4">
             <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-white flex items-center gap-2">
-              <FaPlayCircle className="text-purple-500 text-sm sm:text-base" />
+              <FaTv className="text-purple-500 text-sm sm:text-base" />
               <span className="hidden xs:inline">Latest Series</span>
               <span className="xs:hidden">Latest Series</span>
             </h2>
             <span className="text-xs text-gray-400 bg-gray-800 px-2 py-1 rounded-full">
-              {latestSeries.length}
+              {latestSeriesOnly.length}
             </span>
           </div>
 
           <div className="hidden md:grid md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-2 md:gap-3 lg:gap-4">
-            {latestSeries.map(series => (
+            {latestSeriesOnly.map(series => (
               <div
                 key={series?.id}
                 className="cursor-pointer group relative transform transition-transform duration-300 hover:scale-105"
@@ -911,7 +887,7 @@ export default function Movies() {
           </div>
 
           <div className="flex md:hidden gap-2 overflow-x-auto pb-4 px-1 scrollbar-hide">
-            {latestSeries.map(series => (
+            {latestSeriesOnly.map(series => (
               <div
                 key={series?.id}
                 className="flex-none w-[130px] sm:w-[150px] relative transform transition-transform duration-300 active:scale-95"
@@ -928,73 +904,51 @@ export default function Movies() {
         </section>
       )}
 
-      {/* Latest Movies Section (renamed from Latest Uploads) */}
-      {latestMovies.length > 0 && (
+      {/* LATEST MOVIES SECTION - MOVIES ONLY */}
+      {latestMoviesOnly.length > 0 && (
         <section className="container mx-auto px-4 py-6 sm:py-8">
           <div className="flex items-center justify-between mb-3 sm:mb-4">
             <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-white flex items-center gap-2">
-              <FaUpload className="text-green-500 text-sm sm:text-base" />
+              <FaFilm className="text-green-500 text-sm sm:text-base" />
               <span className="hidden xs:inline">Latest Movies</span>
               <span className="xs:hidden">Latest Movies</span>
             </h2>
             <span className="text-xs text-gray-400 bg-gray-800 px-2 py-1 rounded-full">
-              {latestMovies.length}
+              {latestMoviesOnly.length}
             </span>
           </div>
 
           <div className="hidden md:grid md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-2 md:gap-3 lg:gap-4">
-            {latestMovies.map(item => (
+            {latestMoviesOnly.map(movie => (
               <div
-                key={item?.id}
+                key={movie?.id}
                 className="cursor-pointer group relative transform transition-transform duration-300 hover:scale-105"
+                onClick={() => handleMovieClick(movie)}
               >
-                <div className="absolute top-2 left-2 z-10 flex gap-1">
-                  {item.uploadType === 'series' && item.latestEpisode ? (
-                    <>
-                      <span className="px-2 py-1 bg-purple-600 text-white text-xs rounded-full flex items-center gap-1 shadow-lg">
-                        <FaTv className="text-[10px]" />
-                        New
-                      </span>
-                      <span className="px-2 py-1 bg-blue-600 text-white text-xs rounded-full">
-                        S{item.latestEpisode.seasonNumber}:E{item.latestEpisode.episodeNumber}
-                      </span>
-                    </>
-                  ) : (
-                    <span className="px-2 py-1 bg-green-600 text-white text-xs rounded-full flex items-center gap-1 shadow-lg">
-                      <FaUpload className="text-[10px]" />
-                      New
-                    </span>
-                  )}
+                <div className="absolute top-2 left-2 z-10">
+                  <span className="px-2 py-1 bg-green-600 text-white text-xs rounded-full flex items-center gap-1 shadow-lg">
+                    <FaUpload className="text-[10px]" />
+                    New
+                  </span>
                 </div>
-                <MovieCard
-                  movie={item}
-                  onSeriesClick={item.uploadType === 'series' ? handleUpdatedSeriesClick : undefined}
-                />
+                <MovieCard movie={movie} />
               </div>
             ))}
           </div>
 
           <div className="flex md:hidden gap-2 overflow-x-auto pb-4 px-1 scrollbar-hide">
-            {latestMovies.map(item => (
+            {latestMoviesOnly.map(movie => (
               <div
-                key={item?.id}
+                key={movie?.id}
                 className="flex-none w-[130px] sm:w-[150px] relative transform transition-transform duration-300 active:scale-95"
+                onClick={() => handleMovieClick(movie)}
               >
                 <div className="absolute top-1 left-1 z-10">
-                  {item.uploadType === 'series' ? (
-                    <span className="px-1.5 py-0.5 bg-purple-600 text-white text-[10px] rounded-full shadow-lg">
-                      NEW
-                    </span>
-                  ) : (
-                    <span className="px-1.5 py-0.5 bg-green-600 text-white text-[10px] rounded-full shadow-lg">
-                      NEW
-                    </span>
-                  )}
+                  <span className="px-1.5 py-0.5 bg-green-600 text-white text-[10px] rounded-full shadow-lg">
+                    NEW
+                  </span>
                 </div>
-                <MovieCard
-                  movie={item}
-                  onSeriesClick={item.uploadType === 'series' ? handleUpdatedSeriesClick : undefined}
-                />
+                <MovieCard movie={movie} />
               </div>
             ))}
           </div>
