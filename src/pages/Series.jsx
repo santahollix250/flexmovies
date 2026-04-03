@@ -11,7 +11,7 @@ import {
   FaBars, FaTh, FaFilter,
   FaEllipsisV, FaShare, FaDownload, FaInfoCircle,
   FaClock, FaLayerGroup, FaPlayCircle, FaCheckCircle, FaCloudDownloadAlt,
-  FaTrashAlt, FaFileDownload
+  FaTrashAlt, FaFileDownload, FaArrowUp
 } from "react-icons/fa";
 
 export default function Series() {
@@ -33,6 +33,8 @@ export default function Series() {
   const [selectedSeason, setSelectedSeason] = useState(1);
   const [showMobileSearch, setShowMobileSearch] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [showScrollTop, setShowScrollTop] = useState(false);
+  const [scrollProgress, setScrollProgress] = useState(0);
 
   // Download and watch tracking states
   const [downloadedEpisodes, setDownloadedEpisodes] = useState({});
@@ -50,6 +52,8 @@ export default function Series() {
   const tabsContainerRef = useRef(null);
   const slideshowRef = useRef(null);
   const searchInputRef = useRef(null);
+  const mainContentRef = useRef(null);
+  const loadMoreTriggerRef = useRef(null);
 
   // Context
   const navigate = useNavigate();
@@ -235,6 +239,70 @@ export default function Series() {
 
     return filtered;
   }, [sortedSeries, category, query, activeTab]);
+
+  // ========== useEffect for infinite scroll ==========
+  useEffect(() => {
+    const handleScroll = () => {
+      // Calculate scroll progress percentage
+      const windowHeight = window.innerHeight;
+      const documentHeight = document.documentElement.scrollHeight;
+      const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+      const scrollPercent = (scrollTop / (documentHeight - windowHeight)) * 100;
+      setScrollProgress(scrollPercent);
+
+      // Show/hide scroll to top button
+      setShowScrollTop(scrollTop > 300);
+
+      // Auto load more content when near bottom
+      if (loadMoreTriggerRef.current && visible < filteredSeries.length) {
+        const triggerElement = loadMoreTriggerRef.current;
+        const triggerPosition = triggerElement.getBoundingClientRect().top;
+        const windowHeight = window.innerHeight;
+
+        // When the trigger element comes into view (with some offset)
+        if (triggerPosition <= windowHeight + 100) {
+          loadMoreContent();
+        }
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [visible, filteredSeries.length]);
+
+  // Auto load more content function with animation
+  const loadMoreContent = () => {
+    if (visible < filteredSeries.length) {
+      // Add loading animation class
+      if (loadMoreTriggerRef.current) {
+        loadMoreTriggerRef.current.classList.add('animate-pulse');
+      }
+
+      // Load more items
+      setTimeout(() => {
+        setVisible(prev => {
+          const increment = viewMode === "grid" ? 6 : 5;
+          const newVisible = Math.min(prev + increment, filteredSeries.length);
+          return newVisible;
+        });
+
+        // Remove animation class
+        setTimeout(() => {
+          if (loadMoreTriggerRef.current) {
+            loadMoreTriggerRef.current.classList.remove('animate-pulse');
+          }
+        }, 500);
+      }, 300);
+    }
+  };
+
+  // Scroll to top function
+  const scrollToTop = () => {
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    });
+  };
 
   // ========== useEffect ==========
   useEffect(() => {
@@ -431,6 +499,23 @@ export default function Series() {
         <div className="absolute -bottom-20 -left-20 w-40 md:w-80 h-40 md:h-80 bg-blue-600/10 rounded-full blur-3xl"></div>
       </div>
 
+      {/* Scroll Progress Bar */}
+      <div className="fixed top-0 left-0 right-0 z-50 h-1 bg-gray-800/30">
+        <div
+          className="h-full bg-gradient-to-r from-purple-600 to-pink-600 transition-all duration-300 ease-out"
+          style={{ width: `${scrollProgress}%` }}
+        ></div>
+      </div>
+
+      {/* Scroll to Top Button with Animation */}
+      <button
+        onClick={scrollToTop}
+        className={`fixed bottom-6 right-6 z-50 p-3 bg-gradient-to-r from-purple-600 to-pink-600 rounded-full text-white shadow-lg hover:scale-110 transition-all duration-300 ${showScrollTop ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10 pointer-events-none'
+          }`}
+      >
+        <FaArrowUp size={20} />
+      </button>
+
       {/* Mobile Header */}
       <div className="sticky top-0 z-40 bg-gradient-to-b from-gray-950 via-gray-950 to-transparent pt-2 pb-2 px-4 md:hidden">
         <div className="flex items-center gap-3">
@@ -448,7 +533,7 @@ export default function Series() {
         </div>
 
         {showMobileSearch && (
-          <div className="mt-3">
+          <div className="mt-3 animate-slideDown">
             <div className="relative">
               <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm" />
               <input
@@ -475,14 +560,14 @@ export default function Series() {
       <div className="hidden md:block relative z-10 max-w-7xl mx-auto px-6 lg:px-8 pt-8">
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent animate-fadeIn">
               Series
             </h1>
-            <p className="text-gray-400 mt-2">Discover and watch your favorite series</p>
+            <p className="text-gray-400 mt-2 animate-slideUp">Discover and watch your favorite series</p>
           </div>
           <button
             onClick={() => setShowDownloadManager(true)}
-            className="px-4 py-2 bg-gray-800/50 hover:bg-gray-800 rounded-xl text-white flex items-center gap-2 transition-all border border-gray-700/50"
+            className="px-4 py-2 bg-gray-800/50 hover:bg-gray-800 rounded-xl text-white flex items-center gap-2 transition-all border border-gray-700/50 hover:scale-105"
           >
             <FaDownload className="text-green-400" />
             Downloads
@@ -497,8 +582,8 @@ export default function Series() {
 
       {/* Download Manager Modal */}
       {showDownloadManager && (
-        <div className="fixed inset-0 bg-black/98 z-50 flex items-start justify-center p-4 overflow-y-auto">
-          <div className="bg-gradient-to-br from-gray-900 via-black to-gray-900 rounded-3xl max-w-2xl w-full border border-gray-800/50 my-8">
+        <div className="fixed inset-0 bg-black/98 z-50 flex items-start justify-center p-4 overflow-y-auto animate-fadeIn">
+          <div className="bg-gradient-to-br from-gray-900 via-black to-gray-900 rounded-3xl max-w-2xl w-full border border-gray-800/50 my-8 animate-slideUp">
             <div className="p-6">
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-xl font-bold text-white flex items-center gap-2">
@@ -508,15 +593,15 @@ export default function Series() {
                 </h3>
                 <button
                   onClick={() => setShowDownloadManager(false)}
-                  className="p-2 bg-gray-800 rounded-full text-gray-400 hover:text-white"
+                  className="p-2 bg-gray-800 rounded-full text-gray-400 hover:text-white transition-all hover:scale-110"
                 >
                   <FaTimes size={16} />
                 </button>
               </div>
 
               {Object.keys(downloadedEpisodes).length === 0 ? (
-                <div className="text-center py-12">
-                  <FaCloudDownloadAlt className="text-5xl text-gray-600 mx-auto mb-3" />
+                <div className="text-center py-12 animate-fadeIn">
+                  <FaCloudDownloadAlt className="text-5xl text-gray-600 mx-auto mb-3 animate-bounce" />
                   <p className="text-gray-400">No downloads yet</p>
                   <p className="text-sm text-gray-600 mt-1">Download episodes to watch offline</p>
                 </div>
@@ -531,7 +616,7 @@ export default function Series() {
                     if (series) seriesTitle = series.title;
 
                     return (
-                      <div key={epId} className="bg-gray-800/30 rounded-xl p-4 flex items-center gap-4">
+                      <div key={epId} className="bg-gray-800/30 rounded-xl p-4 flex items-center gap-4 animate-slideIn">
                         <div className="w-12 h-12 bg-gradient-to-br from-green-600 to-emerald-600 rounded-xl flex items-center justify-center flex-shrink-0">
                           <FaCheckCircle className="text-white text-lg" />
                         </div>
@@ -549,7 +634,7 @@ export default function Series() {
                         </div>
                         <button
                           onClick={() => removeDownload(epId)}
-                          className="p-2 bg-red-600/20 hover:bg-red-600/40 rounded-lg text-red-400 transition-colors"
+                          className="p-2 bg-red-600/20 hover:bg-red-600/40 rounded-lg text-red-400 transition-all hover:scale-110"
                           title="Remove download"
                         >
                           <FaTrashAlt size={12} />
@@ -568,9 +653,9 @@ export default function Series() {
       <div className="relative z-10 max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8">
         {/* Latest Seasons Slideshow - RESPONSIVE FOR ALL DEVICES */}
         {latestSeasons.length > 0 && (
-          <div className="mb-4 sm:mb-6 md:mb-12">
+          <div className="mb-4 sm:mb-6 md:mb-12 animate-fadeIn">
             <h2 className="text-base sm:text-lg md:text-2xl font-bold text-white mb-2 sm:mb-3 md:mb-4 flex items-center gap-1 sm:gap-2">
-              <FaFire className="text-orange-500 text-sm sm:text-base md:text-xl" />
+              <FaFire className="text-orange-500 text-sm sm:text-base md:text-xl animate-pulse" />
               Latest Seasons
             </h2>
 
@@ -584,7 +669,10 @@ export default function Series() {
                 {latestSeasons.map((series, index) => (
                   <div
                     key={`${series.id}-s${series.latestSeason}`}
-                    className={`absolute inset-0 transition-opacity duration-700 ${index === currentSlideIndex ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+                    className={`absolute inset-0 transition-all duration-700 transform ${index === currentSlideIndex
+                        ? 'opacity-100 scale-100'
+                        : 'opacity-0 scale-105 pointer-events-none'
+                      }`}
                   >
                     <img
                       src={series.seasonPoster || series.poster || "https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=400"}
@@ -594,9 +682,9 @@ export default function Series() {
                     <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent"></div>
 
                     {/* Mobile optimized content */}
-                    <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-4 md:p-6 lg:p-8">
+                    <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-4 md:p-6 lg:p-8 animate-slideUp">
                       <div className="flex items-center gap-1 sm:gap-2 mb-1 sm:mb-2">
-                        <span className="px-1.5 sm:px-2 py-0.5 sm:py-1 bg-gradient-to-r from-purple-600 to-pink-600 rounded-full text-[8px] sm:text-xs font-bold">
+                        <span className="px-1.5 sm:px-2 py-0.5 sm:py-1 bg-gradient-to-r from-purple-600 to-pink-600 rounded-full text-[8px] sm:text-xs font-bold animate-pulse">
                           NEW
                         </span>
                         <span className="text-[8px] sm:text-xs md:text-sm text-gray-300">
@@ -614,7 +702,7 @@ export default function Series() {
 
                       <button
                         onClick={() => handlePlayLatestSeason(series)}
-                        className="px-3 sm:px-4 md:px-6 py-1.5 sm:py-2 md:py-3 bg-gradient-to-r from-purple-600 to-pink-600 rounded-md sm:rounded-lg text-[8px] sm:text-xs md:text-sm font-medium text-white flex items-center gap-1 sm:gap-2 hover:from-purple-700 hover:to-pink-700 transition-all"
+                        className="px-3 sm:px-4 md:px-6 py-1.5 sm:py-2 md:py-3 bg-gradient-to-r from-purple-600 to-pink-600 rounded-md sm:rounded-lg text-[8px] sm:text-xs md:text-sm font-medium text-white flex items-center gap-1 sm:gap-2 hover:from-purple-700 hover:to-pink-700 transition-all hover:scale-105"
                       >
                         <FaPlay size={8} className="sm:text-xs md:text-sm" /> Watch Latest Season
                       </button>
@@ -626,14 +714,14 @@ export default function Series() {
               {/* Navigation Arrows - Hidden on mobile, visible on tablet/desktop */}
               <button
                 onClick={prevSlide}
-                className="hidden sm:block absolute left-2 sm:left-3 md:left-4 top-1/2 transform -translate-y-1/2 p-1.5 sm:p-2 md:p-3 bg-black/50 hover:bg-black/70 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                className="hidden sm:block absolute left-2 sm:left-3 md:left-4 top-1/2 transform -translate-y-1/2 p-1.5 sm:p-2 md:p-3 bg-black/50 hover:bg-black/70 rounded-full text-white opacity-0 group-hover:opacity-100 transition-all hover:scale-110"
               >
                 <FaChevronLeft size={12} className="sm:text-sm md:text-base lg:text-xl" />
               </button>
 
               <button
                 onClick={nextSlide}
-                className="hidden sm:block absolute right-2 sm:right-3 md:right-4 top-1/2 transform -translate-y-1/2 p-1.5 sm:p-2 md:p-3 bg-black/50 hover:bg-black/70 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                className="hidden sm:block absolute right-2 sm:right-3 md:right-4 top-1/2 transform -translate-y-1/2 p-1.5 sm:p-2 md:p-3 bg-black/50 hover:bg-black/70 rounded-full text-white opacity-0 group-hover:opacity-100 transition-all hover:scale-110"
               >
                 <FaChevronRight size={12} className="sm:text-sm md:text-base lg:text-xl" />
               </button>
@@ -644,9 +732,9 @@ export default function Series() {
                   <button
                     key={index}
                     onClick={() => goToSlide(index)}
-                    className={`transition-all ${index === currentSlideIndex
+                    className={`transition-all duration-300 ${index === currentSlideIndex
                         ? 'w-4 sm:w-5 md:w-6 h-1 sm:h-1.5 md:h-2 bg-purple-600 rounded-full'
-                        : 'w-1 sm:w-1.5 md:w-2 h-1 sm:h-1.5 md:h-2 bg-gray-400 rounded-full hover:bg-white'
+                        : 'w-1 sm:w-1.5 md:w-2 h-1 sm:h-1.5 md:h-2 bg-gray-400 rounded-full hover:bg-white hover:scale-110'
                       }`}
                   />
                 ))}
@@ -656,12 +744,12 @@ export default function Series() {
         )}
 
         {/* Mobile Search/Filter */}
-        <div className="md:hidden mb-4">
+        <div className="md:hidden mb-4 animate-fadeIn">
           <div className="flex gap-2">
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="flex-1 px-3 py-2 bg-gray-900 border border-gray-800 rounded-lg text-white text-sm"
+              className="flex-1 px-3 py-2 bg-gray-900 border border-gray-800 rounded-lg text-white text-sm transition-all focus:border-purple-500"
             >
               <option value="popular">Popular</option>
               <option value="rating">Top Rated</option>
@@ -671,7 +759,7 @@ export default function Series() {
             <select
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              className="flex-1 px-3 py-2 bg-gray-900 border border-gray-800 rounded-lg text-white text-sm"
+              className="flex-1 px-3 py-2 bg-gray-900 border border-gray-800 rounded-lg text-white text-sm transition-all focus:border-purple-500"
             >
               {categories.map(cat => (
                 <option key={cat} value={cat}>{cat === "all" ? "All" : cat}</option>
@@ -684,7 +772,7 @@ export default function Series() {
         </div>
 
         {/* Desktop Search */}
-        <div className="hidden md:block mb-8">
+        <div className="hidden md:block mb-8 animate-slideUp">
           <div className="flex flex-col lg:flex-row gap-6">
             <div className="flex-1">
               <div className="relative">
@@ -693,7 +781,7 @@ export default function Series() {
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="Search series, genres, or actors..."
-                  className="w-full pl-12 pr-4 py-4 bg-gray-900/50 backdrop-blur-xl border border-gray-800/50 rounded-2xl text-white placeholder-gray-500 focus:outline-none focus:border-purple-500/50 focus:ring-2 focus:ring-purple-500/20"
+                  className="w-full pl-12 pr-4 py-4 bg-gray-900/50 backdrop-blur-xl border border-gray-800/50 rounded-2xl text-white placeholder-gray-500 focus:outline-none focus:border-purple-500/50 focus:ring-2 focus:ring-purple-500/20 transition-all"
                 />
               </div>
             </div>
@@ -701,7 +789,7 @@ export default function Series() {
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
-                className="px-4 py-3 bg-gray-900/50 backdrop-blur-xl border border-gray-800/50 rounded-2xl text-white focus:outline-none focus:border-purple-500/50"
+                className="px-4 py-3 bg-gray-900/50 backdrop-blur-xl border border-gray-800/50 rounded-2xl text-white focus:outline-none focus:border-purple-500/50 transition-all"
               >
                 <option value="all">All Genres</option>
                 {categories.filter(c => c !== "all").map(cat => (
@@ -711,7 +799,7 @@ export default function Series() {
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
-                className="px-4 py-3 bg-gray-900/50 backdrop-blur-xl border border-gray-800/50 rounded-2xl text-white focus:outline-none focus:border-purple-500/50"
+                className="px-4 py-3 bg-gray-900/50 backdrop-blur-xl border border-gray-800/50 rounded-2xl text-white focus:outline-none focus:border-purple-500/50 transition-all"
               >
                 <option value="popular">Most Popular</option>
                 <option value="rating">Top Rated</option>
@@ -732,7 +820,7 @@ export default function Series() {
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
-                className={`px-4 py-2 rounded-full whitespace-nowrap text-sm transition-all flex-shrink-0 ${activeTab === tab
+                className={`px-4 py-2 rounded-full whitespace-nowrap text-sm transition-all flex-shrink-0 transform hover:scale-105 ${activeTab === tab
                     ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white font-medium shadow-lg'
                     : 'bg-gray-900/50 text-gray-400 hover:text-white hover:bg-gray-800/50'
                   }`}
@@ -747,20 +835,22 @@ export default function Series() {
         <div className="mb-0">
           {/* Desktop Title */}
           <div className="hidden md:flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-white">
+            <h2 className="text-2xl font-bold text-white animate-fadeIn">
               {activeTab === "all" ? "All Series" : activeTab.charAt(0).toUpperCase() + activeTab.slice(1) + " Series"}
               <span className="text-gray-500 ml-2">({filteredSeries.length})</span>
             </h2>
             <div className="flex gap-2">
               <button
                 onClick={() => setViewMode("grid")}
-                className={`p-2 rounded-lg ${viewMode === "grid" ? 'bg-purple-600/20 text-purple-400' : 'text-gray-500 hover:text-white'}`}
+                className={`p-2 rounded-lg transition-all hover:scale-110 ${viewMode === "grid" ? 'bg-purple-600/20 text-purple-400' : 'text-gray-500 hover:text-white'
+                  }`}
               >
                 <FaTh size={20} />
               </button>
               <button
                 onClick={() => setViewMode("list")}
-                className={`p-2 rounded-lg ${viewMode === "list" ? 'bg-purple-600/20 text-purple-400' : 'text-gray-500 hover:text-white'}`}
+                className={`p-2 rounded-lg transition-all hover:scale-110 ${viewMode === "list" ? 'bg-purple-600/20 text-purple-400' : 'text-gray-500 hover:text-white'
+                  }`}
               >
                 <FaList size={20} />
               </button>
@@ -770,20 +860,21 @@ export default function Series() {
           {/* Mobile Grid */}
           <div className="md:hidden">
             <div className="grid grid-cols-2 gap-3">
-              {filteredSeries.slice(0, visible).map((series) => {
+              {filteredSeries.slice(0, visible).map((series, index) => {
                 const seriesEpisodes = getEpisodesForSeries(series.id);
 
                 return (
                   <div
                     key={series.id}
-                    className="bg-gradient-to-b from-gray-900 to-black rounded-xl overflow-hidden border border-gray-800"
+                    className="bg-gradient-to-b from-gray-900 to-black rounded-xl overflow-hidden border border-gray-800 cursor-pointer transform transition-all duration-300 hover:scale-105 hover:border-purple-500/50 animate-fadeIn"
+                    style={{ animationDelay: `${index * 0.05}s` }}
                     onClick={() => handlePlayFirstEpisode(series)}
                   >
                     <div className="relative aspect-[2/3]">
                       <img
                         src={series.poster || "https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=400"}
                         alt={series.title}
-                        className="w-full h-full object-cover"
+                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                         loading="lazy"
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent"></div>
@@ -814,7 +905,7 @@ export default function Series() {
           <div className="hidden md:block">
             {viewMode === "grid" ? (
               <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {filteredSeries.slice(0, visible).map((series) => {
+                {filteredSeries.slice(0, visible).map((series, index) => {
                   const seriesEpisodes = getEpisodesForSeries(series.id);
                   const isFavorite = favorites.includes(series.id);
                   const inWatchlist = watchlist.includes(series.id);
@@ -825,7 +916,8 @@ export default function Series() {
                   return (
                     <div
                       key={series.id}
-                      className="group relative bg-gradient-to-b from-gray-900/50 to-black/50 backdrop-blur-xl rounded-2xl overflow-hidden border border-gray-800/50 hover:border-purple-500/50 transition-all duration-500 hover:scale-105 cursor-pointer"
+                      className="group relative bg-gradient-to-b from-gray-900/50 to-black/50 backdrop-blur-xl rounded-2xl overflow-hidden border border-gray-800/50 hover:border-purple-500/50 transition-all duration-500 hover:scale-105 cursor-pointer animate-fadeIn"
+                      style={{ animationDelay: `${index * 0.05}s` }}
                       onClick={() => handlePlayFirstEpisode(series)}
                     >
                       <div className="relative aspect-[2/3] overflow-hidden">
@@ -845,7 +937,7 @@ export default function Series() {
 
                         {downloadedCount > 0 && (
                           <div className="absolute bottom-2 right-2">
-                            <span className="px-2 py-1 bg-green-600/90 backdrop-blur-sm rounded text-xs font-medium text-white flex items-center gap-1">
+                            <span className="px-2 py-1 bg-green-600/90 backdrop-blur-sm rounded text-xs font-medium text-white flex items-center gap-1 animate-pulse">
                               <FaDownload size={10} />
                               {downloadedCount}
                             </span>
@@ -872,7 +964,8 @@ export default function Series() {
                                 e.stopPropagation();
                                 toggleFavorite(series.id);
                               }}
-                              className={`p-2 rounded-lg transition-colors ${isFavorite ? 'text-red-400 bg-red-600/20' : 'text-gray-500 hover:text-red-400 hover:bg-red-600/20'}`}
+                              className={`p-2 rounded-lg transition-all hover:scale-110 ${isFavorite ? 'text-red-400 bg-red-600/20' : 'text-gray-500 hover:text-red-400 hover:bg-red-600/20'
+                                }`}
                             >
                               <FaHeart size={14} />
                             </button>
@@ -881,7 +974,8 @@ export default function Series() {
                                 e.stopPropagation();
                                 toggleWatchlist(series.id);
                               }}
-                              className={`p-2 rounded-lg transition-colors ${inWatchlist ? 'text-blue-400 bg-blue-600/20' : 'text-gray-500 hover:text-blue-400 hover:bg-blue-600/20'}`}
+                              className={`p-2 rounded-lg transition-all hover:scale-110 ${inWatchlist ? 'text-blue-400 bg-blue-600/20' : 'text-gray-500 hover:text-blue-400 hover:bg-blue-600/20'
+                                }`}
                             >
                               <FaBookmark size={14} />
                             </button>
@@ -894,7 +988,7 @@ export default function Series() {
               </div>
             ) : (
               <div className="space-y-3">
-                {filteredSeries.slice(0, visible).map((series) => {
+                {filteredSeries.slice(0, visible).map((series, index) => {
                   const seriesEpisodes = getEpisodesForSeries(series.id);
                   const isFavorite = favorites.includes(series.id);
                   const downloadedCount = Object.keys(downloadedEpisodes).filter(epId =>
@@ -904,7 +998,8 @@ export default function Series() {
                   return (
                     <div
                       key={series.id}
-                      className="group bg-gradient-to-r from-gray-900/50 to-black/50 backdrop-blur-xl rounded-2xl p-4 hover:bg-gray-900/70 transition-all border border-gray-800/50 hover:border-purple-500/30 cursor-pointer"
+                      className="group bg-gradient-to-r from-gray-900/50 to-black/50 backdrop-blur-xl rounded-2xl p-4 hover:bg-gray-900/70 transition-all border border-gray-800/50 hover:border-purple-500/30 cursor-pointer animate-fadeIn"
+                      style={{ animationDelay: `${index * 0.05}s` }}
                       onClick={() => handlePlayFirstEpisode(series)}
                     >
                       <div className="flex items-center gap-4">
@@ -941,7 +1036,8 @@ export default function Series() {
                                   e.stopPropagation();
                                   toggleFavorite(series.id);
                                 }}
-                                className={`p-2 ${isFavorite ? 'text-red-400' : 'text-gray-500 hover:text-red-400'}`}
+                                className={`p-2 transition-all hover:scale-110 ${isFavorite ? 'text-red-400' : 'text-gray-500 hover:text-red-400'
+                                  }`}
                               >
                                 <FaHeart size={16} />
                               </button>
@@ -953,7 +1049,7 @@ export default function Series() {
                               e.stopPropagation();
                               handlePlayFirstEpisode(series);
                             }}
-                            className="px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 rounded-lg text-sm font-medium text-white flex items-center gap-2 w-fit"
+                            className="px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 rounded-lg text-sm font-medium text-white flex items-center gap-2 w-fit transition-all hover:scale-105"
                           >
                             <FaPlay size={10} /> Watch Now
                           </button>
@@ -966,19 +1062,100 @@ export default function Series() {
             )}
           </div>
 
-          {/* Load More Button */}
+          {/* Auto Load More Trigger - This triggers loading when scrolled into view */}
           {visible < filteredSeries.length && (
-            <div className="text-center mt-6 md:mt-8">
-              <button
-                onClick={() => setVisible(v => v + (viewMode === "grid" ? 6 : 5))}
-                className="px-4 sm:px-6 py-2 sm:py-3 bg-gradient-to-r from-gray-800 to-black hover:from-gray-700 hover:to-gray-900 rounded-lg sm:rounded-xl text-xs sm:text-sm font-medium text-white border border-gray-700/50 transition-all hover:scale-105"
-              >
-                Load More
-              </button>
+            <div
+              ref={loadMoreTriggerRef}
+              className="text-center mt-6 md:mt-8 py-4 transition-all duration-300"
+            >
+              <div className="inline-flex items-center gap-3 px-4 sm:px-6 py-2 sm:py-3 bg-gradient-to-r from-gray-800 to-black rounded-lg sm:rounded-xl text-xs sm:text-sm font-medium text-white border border-gray-700/50">
+                <div className="w-4 h-4 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+                Loading more series...
+              </div>
+            </div>
+          )}
+
+          {/* End of content message */}
+          {visible >= filteredSeries.length && filteredSeries.length > 0 && (
+            <div className="text-center mt-8 md:mt-12 py-8 animate-fadeIn">
+              <div className="inline-flex items-center gap-2 px-6 py-3 bg-gray-800/30 rounded-full">
+                <FaCheckCircle className="text-green-400 text-sm" />
+                <span className="text-gray-400 text-sm">You've reached the end! 🎉</span>
+              </div>
             </div>
           )}
         </div>
       </div>
+
+      {/* Add animation styles */}
+      <style jsx>{`
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+          }
+          to {
+            opacity: 1;
+          }
+        }
+        
+        @keyframes slideUp {
+          from {
+            opacity: 0;
+            transform: translateY(20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        
+        @keyframes slideDown {
+          from {
+            opacity: 0;
+            transform: translateY(-20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        
+        @keyframes slideIn {
+          from {
+            opacity: 0;
+            transform: translateX(-20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(0);
+          }
+        }
+        
+        .animate-fadeIn {
+          animation: fadeIn 0.5s ease-out forwards;
+        }
+        
+        .animate-slideUp {
+          animation: slideUp 0.5s ease-out forwards;
+        }
+        
+        .animate-slideDown {
+          animation: slideDown 0.5s ease-out forwards;
+        }
+        
+        .animate-slideIn {
+          animation: slideIn 0.5s ease-out forwards;
+        }
+        
+        .scrollbar-hide::-webkit-scrollbar {
+          display: none;
+        }
+        
+        .scrollbar-hide {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+      `}</style>
     </div>
   );
 }

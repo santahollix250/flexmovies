@@ -8,7 +8,8 @@ import {
     FaFilm, FaTv, FaFire, FaClock,
     FaPlayCircle, FaChevronRight, FaChevronLeft,
     FaYoutube, FaVimeo, FaDailymotion, FaList, FaLayerGroup,
-    FaLanguage, FaCalendarAlt, FaTag, FaInfoCircle
+    FaLanguage, FaCalendarAlt, FaTag, FaInfoCircle, FaEye, FaThumbsUp, FaCalendar,
+    FaBookmark, FaCloudDownloadAlt
 } from 'react-icons/fa';
 import { supabase } from '../lib/supabaseClient';
 import { MoviesContext } from '../context/MoviesContext';
@@ -68,6 +69,10 @@ const Player = () => {
     const [editingComment, setEditingComment] = useState(null);
     const [editText, setEditText] = useState('');
     const [userAvatar, setUserAvatar] = useState('');
+
+    // Favorites/Watchlist
+    const [favorites, setFavorites] = useState([]);
+    const [watchlist, setWatchlist] = useState([]);
 
     // Related movies
     const [relatedMovies, setRelatedMovies] = useState([]);
@@ -183,7 +188,22 @@ const Player = () => {
             localStorage.setItem('videoCommenter', JSON.stringify({ name: random, avatar }));
         }
         if (movie?.id) fetchComments();
+
+        // Load favorites and watchlist from localStorage
+        const savedFavorites = localStorage.getItem('movieFavorites');
+        if (savedFavorites) setFavorites(JSON.parse(savedFavorites));
+        const savedWatchlist = localStorage.getItem('movieWatchlist');
+        if (savedWatchlist) setWatchlist(JSON.parse(savedWatchlist));
     }, [movie]);
+
+    // Save favorites/watchlist to localStorage
+    useEffect(() => {
+        localStorage.setItem('movieFavorites', JSON.stringify(favorites));
+    }, [favorites]);
+
+    useEffect(() => {
+        localStorage.setItem('movieWatchlist', JSON.stringify(watchlist));
+    }, [watchlist]);
 
     // Utility functions
     const formatTime = (seconds) => {
@@ -242,11 +262,11 @@ const Player = () => {
             const id = extractId(url, 'dailymotion');
             if (id) {
                 setDailyMotionId(id);
-                setVideoUrl(`https://www.dailymotion.com/embed/video/${id}?autoplay=1`);
+                setVideoUrl(`https://www.dailymotion.com/embed/video/${id}?autoplay=1&queue-autoplay-next=0&queue-enable=0&sharing-enable=0&ui-logo=0&ui-start-screen-info=0&controls=true&ui-theme=dark&ui-advance=0&ui-chapters=0&ui-description=0&ui-mute=0&ui-endscreen=0&logo=0&info=0`);
             } else setError('Invalid DailyMotion URL');
         } else if (detectedType === 'vimeo') {
             const id = extractId(url, 'vimeo');
-            if (id) setVideoUrl(`https://player.vimeo.com/video/${id}?autoplay=1`);
+            if (id) setVideoUrl(`https://player.vimeo.com/video/${id}?autoplay=1&title=0&byline=0&portrait=0&controls=true&badge=0&transparent=1&color=ffffff`);
             else setError('Invalid Vimeo URL');
         } else if (detectedType === 'youtube') {
             const id = extractId(url, 'youtube');
@@ -410,6 +430,25 @@ const Player = () => {
         }, 1000);
     };
 
+    // Favorites and Watchlist functions
+    const toggleFavorite = () => {
+        if (!movie?.id) return;
+        setFavorites(prev =>
+            prev.includes(movie.id)
+                ? prev.filter(id => id !== movie.id)
+                : [...prev, movie.id]
+        );
+    };
+
+    const toggleWatchlist = () => {
+        if (!movie?.id) return;
+        setWatchlist(prev =>
+            prev.includes(movie.id)
+                ? prev.filter(id => id !== movie.id)
+                : [...prev, movie.id]
+        );
+    };
+
     // Comments functions
     const fetchComments = async () => {
         try {
@@ -540,6 +579,7 @@ const Player = () => {
         navigate(`/player/${related.id}`, {
             state: { movie: { ...related, download_link: related.download_link || related.download } }
         });
+        window.scrollTo(0, 0);
     };
 
     const scrollRelated = (direction) => {
@@ -558,6 +598,51 @@ const Player = () => {
     const getDownloadLink = (item) => {
         return item?.download_link || item?.download || item?.videoUrl;
     };
+
+    // Get player type info
+    const getPlayerTypeInfo = () => {
+        if (useEmbed) {
+            return {
+                color: 'text-orange-400',
+                bgColor: 'bg-orange-600',
+                label: 'Embed',
+                text: 'text-orange-300'
+            };
+        }
+        if (isDailyMotionVideo) {
+            return {
+                color: 'text-purple-400',
+                bgColor: 'bg-purple-600',
+                label: 'DailyMotion',
+                text: 'text-purple-300'
+            };
+        } else if (isVimeoVideo) {
+            return {
+                color: 'text-blue-400',
+                bgColor: 'bg-blue-600',
+                label: 'Vimeo',
+                text: 'text-blue-300'
+            };
+        } else if (videoType === 'youtube') {
+            return {
+                color: 'text-red-400',
+                bgColor: 'bg-red-600',
+                label: 'YouTube',
+                text: 'text-red-300'
+            };
+        } else {
+            return {
+                color: 'text-green-400',
+                bgColor: 'bg-green-600',
+                label: 'Custom Player',
+                text: 'text-green-300'
+            };
+        }
+    };
+
+    const playerType = getPlayerTypeInfo();
+    const isFavorite = favorites.includes(movie?.id);
+    const inWatchlist = watchlist.includes(movie?.id);
 
     // Render video player
     const renderVideo = () => {
@@ -653,7 +738,7 @@ const Player = () => {
         );
     };
 
-    // Render parts list - With download buttons for each part
+    // Render parts list with download buttons
     const renderPartsList = () => (
         <div className="mb-5 bg-gradient-to-r from-gray-900/80 to-gray-800/80 rounded-xl p-4 border border-purple-500/30">
             <div className="flex items-center gap-2 mb-3">
@@ -713,23 +798,23 @@ const Player = () => {
 
     // Render comments section
     const renderComments = () => (
-        <div className="mt-5 bg-gray-900/50 rounded-xl p-4 border border-gray-800">
+        <div className="mt-5 bg-gradient-to-br from-gray-900/80 to-gray-950/80 rounded-2xl p-5 border border-gray-800">
             <div className="flex items-center justify-between mb-4">
-                <h3 className="text-base font-bold flex items-center gap-2">
+                <h3 className="text-lg font-bold flex items-center gap-2">
                     <FaComment className="text-purple-500" />
                     Comments ({comments.length})
                 </h3>
                 <button
                     onClick={() => setShowComments(!showComments)}
-                    className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 rounded-lg text-sm transition-all"
+                    className="px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-xl text-white font-medium transition-all text-sm"
                 >
-                    {showComments ? 'Hide' : 'Show'}
+                    {showComments ? 'Hide' : 'Show'} Comments
                 </button>
             </div>
 
             {showComments && (
                 <>
-                    <div className="mb-4 p-4 bg-gray-800/50 rounded-xl">
+                    <div className="mb-5 p-4 bg-gray-800/50 rounded-xl border border-gray-700">
                         <div className="flex items-center gap-3 mb-3">
                             <img
                                 src={userAvatar}
@@ -771,7 +856,7 @@ const Player = () => {
                         </form>
                     </div>
 
-                    <div className="space-y-3 max-h-[400px] overflow-y-auto">
+                    <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
                         {comments.length === 0 ? (
                             <div className="text-center py-8 text-gray-500">
                                 <FaComment className="text-4xl mx-auto mb-2 opacity-50" />
@@ -779,7 +864,7 @@ const Player = () => {
                             </div>
                         ) : (
                             comments.map((comment) => (
-                                <div key={comment.id} className="bg-gray-800/30 rounded-xl p-4 hover:bg-gray-800/50 transition-all">
+                                <div key={comment.id} className="bg-gray-800/30 rounded-xl p-4 hover:bg-gray-800/50 transition-all border border-gray-700/50">
                                     <div className="flex items-start gap-3">
                                         <img
                                             src={comment.user_avatar}
@@ -984,10 +1069,10 @@ const Player = () => {
     // Loading state
     if (loading) {
         return (
-            <div className="min-h-screen bg-gradient-to-b from-black to-gray-900 flex items-center justify-center">
+            <div className="min-h-screen bg-gradient-to-br from-gray-950 to-black flex items-center justify-center">
                 <div className="text-center">
-                    <div className="w-12 h-12 border-3 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-                    <p className="text-white text-sm">Loading player...</p>
+                    <div className="w-12 h-12 md:w-16 md:h-16 border-3 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto mb-3 md:mb-4"></div>
+                    <p className="text-white text-base md:text-xl font-light">Loading player...</p>
                 </div>
             </div>
         );
@@ -996,18 +1081,40 @@ const Player = () => {
     // Error state
     if (error || !movie) {
         return (
-            <div className="min-h-screen bg-gradient-to-b from-black to-gray-900 flex items-center justify-center p-4">
-                <div className="text-center p-6 max-w-sm bg-gray-900/50 rounded-2xl border border-gray-800">
-                    <FaExclamationTriangle className="text-purple-500 text-5xl mx-auto mb-3" />
-                    <h1 className="text-xl text-white font-bold mb-2">Playback Error</h1>
-                    <p className="text-sm text-gray-400 mb-4">{error || 'No movie selected'}</p>
-                    <div className="flex gap-3 justify-center">
-                        <button onClick={() => navigate(-1)} className="px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-xl text-white text-sm font-medium transition-all">
+            <div className="min-h-screen bg-gradient-to-br from-gray-950 to-black flex items-center justify-center p-4">
+                <div className="text-center p-6 md:p-10 max-w-lg bg-gradient-to-br from-gray-900 to-gray-950 rounded-2xl border border-gray-800 shadow-2xl">
+                    <FaExclamationTriangle className="text-purple-500 text-5xl md:text-7xl mx-auto mb-3 md:mb-4" />
+                    <h1 className="text-2xl md:text-4xl text-white font-bold mb-2 md:mb-4">Playback Error</h1>
+                    <p className="text-gray-400 text-sm md:text-lg mb-6 md:mb-8">{error || 'No movie selected'}</p>
+                    <div className="flex flex-col sm:flex-row gap-3 md:gap-4 justify-center">
+                        <button
+                            onClick={() => navigate(-1)}
+                            className="px-4 md:px-6 py-2 md:py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 rounded-xl text-white font-medium transition-all duration-200 text-sm md:text-base"
+                        >
                             Go Back
                         </button>
-                        <button onClick={() => navigate('/')} className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-xl text-white text-sm font-medium flex items-center gap-2 transition-all">
-                            <FaHome className="text-sm" /> Home
+                        <button
+                            onClick={() => navigate('/')}
+                            className="px-4 md:px-6 py-2 md:py-3 bg-gradient-to-r from-gray-700 to-gray-800 hover:from-gray-800 hover:to-gray-900 rounded-xl text-white font-medium transition-all duration-200 flex items-center gap-2 justify-center text-sm md:text-base"
+                        >
+                            <FaHome /> Go Home
                         </button>
+                        {error && error.includes('format') && (
+                            <button
+                                onClick={() => setUseEmbed(true)}
+                                className="px-4 md:px-6 py-2 md:py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 rounded-xl text-white font-medium transition-all duration-200 text-sm md:text-base"
+                            >
+                                Try Embed Player
+                            </button>
+                        )}
+                        {error && (
+                            <button
+                                onClick={() => setRetryCount(prev => prev + 1)}
+                                className="px-4 md:px-6 py-2 md:py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 rounded-xl text-white font-medium transition-all duration-200 text-sm md:text-base"
+                            >
+                                Retry
+                            </button>
+                        )}
                     </div>
                 </div>
             </div>
@@ -1015,32 +1122,55 @@ const Player = () => {
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-b from-black to-gray-900 text-white">
+        <div className="min-h-screen bg-gradient-to-br from-gray-950 to-black text-white">
             {/* Header - only show when not fullscreen */}
             {!isFullscreen && (
-                <div className="sticky top-0 left-0 right-0 z-20 bg-gradient-to-b from-black/95 to-transparent backdrop-blur-md">
-                    <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+                <div className="absolute top-0 left-0 right-0 p-4 md:p-6 bg-gradient-to-b from-black/90 via-black/60 to-transparent z-30">
+                    <div className="max-w-7xl mx-auto flex items-center justify-between">
                         <button
                             onClick={() => navigate(-1)}
-                            className="flex items-center gap-2 text-white hover:text-purple-500 transition-all text-sm font-medium"
+                            className="flex items-center gap-2 text-white hover:text-purple-500 transition-colors text-sm md:text-base font-medium group"
                         >
-                            <FaArrowLeft className="text-sm" />
-                            <span>Back</span>
+                            <FaArrowLeft className="group-hover:-translate-x-1 transition-transform" /> Back
                         </button>
-                        <div className="flex-1 text-center px-3">
-                            <h1 className="text-sm md:text-base font-bold truncate max-w-[200px] md:max-w-md mx-auto">
-                                {movie.title}
-                            </h1>
+
+                        <div className="flex-1 text-center px-4 hidden md:block">
+                            <h1 className="text-xl md:text-2xl font-bold truncate max-w-2xl mx-auto">{movie?.title || 'Movie'}</h1>
+                            <div className="flex items-center justify-center gap-2 mt-1">
+                                <FaVideo className={playerType.color} />
+                                <span className={`text-xs md:text-sm ${playerType.text}`}>
+                                    {playerType.label}
+                                </span>
+                            </div>
                             {selectedPart && (
                                 <div className="text-xs text-purple-400 mt-0.5">Part {selectedPart.partNumber}</div>
                             )}
                         </div>
-                        <div className="w-16" />
+
+                        <div className="flex items-center gap-2 md:gap-4">
+                            {/* Favorite Button */}
+                            <button
+                                onClick={toggleFavorite}
+                                className={`p-1.5 md:p-2 rounded-lg transition-colors hidden md:block ${isFavorite ? 'text-purple-500' : 'text-gray-400 hover:text-purple-500'}`}
+                                title={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+                            >
+                                <FaHeart size={20} />
+                            </button>
+
+                            {/* Watchlist Button */}
+                            <button
+                                onClick={toggleWatchlist}
+                                className={`p-1.5 md:p-2 rounded-lg transition-colors hidden md:block ${inWatchlist ? 'text-blue-500' : 'text-gray-400 hover:text-blue-500'}`}
+                                title={inWatchlist ? 'Remove from watchlist' : 'Add to watchlist'}
+                            >
+                                <FaBookmark size={20} />
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
 
-            {/* Video Player Container - Optimized for all devices */}
+            {/* Video Player Container */}
             <div
                 ref={playerContainerRef}
                 className="relative w-full bg-black"
@@ -1183,50 +1313,59 @@ const Player = () => {
                         </div>
                     </div>
                 )}
+
+                {/* Player type indicator for streaming videos */}
+                {!showCustomControls && showControls && (
+                    <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black/80 backdrop-blur-sm rounded-lg px-3 py-1.5 border border-purple-500/30 z-30">
+                        <div className="flex items-center gap-1.5">
+                            <FaVideo className={playerType.color} />
+                            <span className="text-white text-xs">
+                                {playerType.label} Player
+                            </span>
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* Content below video - only show when not fullscreen */}
             {!isFullscreen && (
-                <div className="max-w-7xl mx-auto px-4 py-5 md:py-6">
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="max-w-7xl mx-auto px-4 py-5 md:py-8">
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
+                        {/* Left Column - Main Content */}
                         <div className="lg:col-span-2">
-                            {/* Title and metadata - Optimized sizing */}
-                            <h1 className="text-xl md:text-2xl font-bold mb-3">{movie.title}</h1>
+                            {/* Title and metadata */}
+                            <h1 className="text-2xl md:text-3xl font-bold mb-3">{movie.title}</h1>
 
                             <div className="flex flex-wrap gap-2 mb-4">
                                 {movie.year && (
-                                    <span className="px-3 py-1 bg-purple-600/20 border border-purple-600/30 rounded-full text-xs md:text-sm font-medium flex items-center gap-1.5">
-                                        <FaCalendarAlt className="text-purple-400 text-xs" />
-                                        {movie.year}
+                                    <span className="px-3 md:px-4 py-1.5 md:py-2 bg-gradient-to-r from-purple-600 to-pink-600 rounded-full text-xs md:text-sm font-medium flex items-center gap-1">
+                                        <FaCalendarAlt className="text-xs" /> {movie.year}
                                     </span>
                                 )}
                                 {movie.rating && (
-                                    <span className="px-3 py-1 bg-yellow-600/20 border border-yellow-600/30 rounded-full text-xs md:text-sm font-medium flex items-center gap-1.5">
-                                        <FaStar className="text-yellow-500 text-xs" />
-                                        {movie.rating}
+                                    <span className="px-3 md:px-4 py-1.5 md:py-2 bg-gradient-to-r from-yellow-600 to-yellow-700 rounded-full text-xs md:text-sm font-medium flex items-center gap-1">
+                                        <FaStar className="text-yellow-300" /> {movie.rating}
                                     </span>
                                 )}
                                 {movie.translator && (
-                                    <span className="px-3 py-1 bg-green-600/20 border border-green-600/30 rounded-full text-xs md:text-sm font-medium flex items-center gap-1.5">
-                                        <FaLanguage className="text-green-400 text-xs" />
-                                        {movie.translator}
+                                    <span className="px-3 md:px-4 py-1.5 md:py-2 bg-gradient-to-r from-green-600 to-emerald-600 rounded-full text-xs md:text-sm font-medium flex items-center gap-1">
+                                        <FaLanguage className="text-green-200" /> {movie.translator}
                                     </span>
                                 )}
                                 {movie.category && (
-                                    <span className="px-3 py-1 bg-blue-600/20 border border-blue-600/30 rounded-full text-xs md:text-sm font-medium flex items-center gap-1.5">
-                                        <FaTag className="text-blue-400 text-xs" />
-                                        {movie.category.split(',')[0]}
+                                    <span className="px-3 md:px-4 py-1.5 md:py-2 bg-gradient-to-r from-blue-600 to-blue-700 rounded-full text-xs md:text-sm font-medium flex items-center gap-1">
+                                        <FaTag className="text-blue-300" /> {movie.category.split(',')[0]}
                                     </span>
                                 )}
                                 {movieParts.length > 0 && (
-                                    <span className="px-3 py-1 bg-gradient-to-r from-purple-600/30 to-pink-600/30 border border-purple-600/30 rounded-full text-xs md:text-sm font-medium flex items-center gap-1.5">
-                                        <FaLayerGroup className="text-purple-400 text-xs" />
+                                    <span className="px-3 md:px-4 py-1.5 md:py-2 bg-gradient-to-r from-purple-600/30 to-pink-600/30 border border-purple-600/30 rounded-full text-xs md:text-sm font-medium flex items-center gap-1">
+                                        <FaLayerGroup className="text-purple-400" />
                                         {movieParts.length} Part{movieParts.length > 1 ? 's' : ''}
                                     </span>
                                 )}
                             </div>
 
-                            {/* Description - Better readability */}
+                            {/* Description */}
                             <div className="bg-gray-900/50 rounded-xl p-4 mb-5 border border-gray-800">
                                 <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
                                     <FaInfoCircle className="text-purple-400 text-sm" />
@@ -1237,18 +1376,127 @@ const Player = () => {
                                 </p>
                             </div>
 
-                            {/* Parts list - With download buttons for each part */}
+                            {/* Parts list */}
                             {movieParts.length > 0 && renderPartsList()}
-
-                            {/* Related movies */}
-                            {renderRelated()}
 
                             {/* Comments */}
                             {renderComments()}
                         </div>
+
+                        {/* Right Column - About This Movie Sidebar */}
+                        <div className="lg:col-span-1">
+                            <div className="bg-gradient-to-br from-gray-900 to-gray-950 rounded-2xl p-5 md:p-6 border border-gray-800 sticky top-4">
+                                <h3 className="text-xl md:text-2xl font-bold mb-4 flex items-center gap-2">
+                                    <FaInfoCircle className="text-purple-500" />
+                                    About {movie.title}
+                                </h3>
+
+                                {movie.poster && (
+                                    <img
+                                        src={movie.poster}
+                                        alt={movie.title}
+                                        className="w-full rounded-xl mb-4 border border-gray-700"
+                                    />
+                                )}
+
+                                <p className="text-gray-300 text-sm md:text-base mb-4 leading-relaxed">
+                                    {movie.description || 'No description available for this movie.'}
+                                </p>
+
+                                <div className="space-y-2 text-xs md:text-sm">
+                                    {movie.genre && (
+                                        <p><span className="text-gray-400">Genre:</span> <span className="text-white">{movie.genre}</span></p>
+                                    )}
+                                    {movie.country && (
+                                        <p><span className="text-gray-400">Country:</span> <span className="text-white">{movie.country}</span></p>
+                                    )}
+                                    {movie.language && (
+                                        <p><span className="text-gray-400">Language:</span> <span className="text-white">{movie.language}</span></p>
+                                    )}
+                                    {movie.translator && (
+                                        <p className="flex items-center gap-1"><span className="text-gray-400">Translator:</span> <span className="text-green-400">{movie.translator}</span></p>
+                                    )}
+                                    {movie.year && (
+                                        <p><span className="text-gray-400">Year:</span> <span className="text-white">{movie.year}</span></p>
+                                    )}
+                                    {movie.duration && (
+                                        <p><span className="text-gray-400">Duration:</span> <span className="text-white">{movie.duration}</span></p>
+                                    )}
+                                    {movie.director && (
+                                        <p><span className="text-gray-400">Director:</span> <span className="text-white">{movie.director}</span></p>
+                                    )}
+                                    {movie.cast && (
+                                        <p><span className="text-gray-400">Cast:</span> <span className="text-white">{movie.cast}</span></p>
+                                    )}
+                                </div>
+
+                                {/* Download Button */}
+                                {canDownload(movie) && (
+                                    <div className="mt-6 pt-4 border-t border-gray-800">
+                                        <button
+                                            onClick={() => handleDownload(getDownloadLink(movie))}
+                                            className="w-full px-4 py-2.5 md:py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 rounded-xl text-white font-medium transition-all duration-200 flex items-center justify-center gap-2 text-sm md:text-base shadow-lg shadow-green-600/30"
+                                            disabled={downloading}
+                                        >
+                                            {downloading ? (
+                                                <>
+                                                    <FaSpinner className="animate-spin" />
+                                                    Downloading... {downloadProgress}%
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <FaCloudDownloadAlt />
+                                                    Download Movie
+                                                </>
+                                            )}
+                                        </button>
+                                    </div>
+                                )}
+
+                                {/* Comments Button */}
+                                <div className="mt-4">
+                                    <button
+                                        onClick={() => setShowComments(!showComments)}
+                                        className="w-full px-4 py-2.5 md:py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 rounded-xl text-white font-medium transition-all duration-200 flex items-center justify-center gap-2 text-sm md:text-base"
+                                    >
+                                        <FaComment />
+                                        {showComments ? 'Hide Comments' : 'View Comments'} ({comments.length})
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
+
+                    {/* Related Movies - Full width */}
+                    {renderRelated()}
                 </div>
             )}
+
+            {/* Custom scrollbar styles */}
+            <style jsx>{`
+                .custom-scrollbar::-webkit-scrollbar {
+                    width: 6px;
+                    height: 6px;
+                }
+                
+                .custom-scrollbar::-webkit-scrollbar-track {
+                    background: #1f2937;
+                    border-radius: 3px;
+                }
+                
+                .custom-scrollbar::-webkit-scrollbar-thumb {
+                    background: #8b5cf6;
+                    border-radius: 3px;
+                }
+                
+                .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+                    background: #a78bfa;
+                }
+                
+                .scrollbar-hide::-webkit-scrollbar {
+                    display: none;
+                }
+            `}</style>
         </div>
     );
 };

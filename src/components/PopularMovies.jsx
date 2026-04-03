@@ -277,6 +277,11 @@ export default function Movies() {
   const isNavigating = useRef(false);
   const touchStartTime = useRef(0);
   const touchStartX = useRef(0);
+  
+  // Refs for infinite scroll
+  const loaderRef = useRef(null);
+  const [displayCount, setDisplayCount] = useState(24); // Start with 24 items
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
 
   // Get search query from URL
   const searchParams = new URLSearchParams(location.search);
@@ -294,11 +299,9 @@ export default function Movies() {
   const [sortBy, setSortBy] = useState("popular");
   const [sortOrder, setSortOrder] = useState("desc");
   const [showFilters, setShowFilters] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
   const [likedMovies, setLikedMovies] = useState([]);
   const [showQuickView, setShowQuickView] = useState(false);
   const [quickViewMovie, setQuickViewMovie] = useState(null);
-  const itemsPerPage = 24;
 
   // Helper functions
   const getEpisodesForSeries = useCallback((seriesId) => {
@@ -473,8 +476,8 @@ export default function Movies() {
     return allContent.slice(0, 10);
   }, [movies, episodes]);
 
-  // Get recently updated series
-  const recentlyUpdatedSeries = useMemo(() => {
+  // Get recently updated series (renamed to Latest Series)
+  const latestSeries = useMemo(() => {
     return movies
       .filter(item => item?.type === "series")
       .map(series => {
@@ -497,8 +500,8 @@ export default function Movies() {
       .slice(0, 12);
   }, [movies, episodes]);
 
-  // Latest uploads
-  const latestUploads = useMemo(() => {
+  // Latest movies (renamed from latestUploads)
+  const latestMovies = useMemo(() => {
     const moviesList = movies
       .filter(movie => movie?.type === "movie")
       .map(movie => ({
@@ -790,12 +793,37 @@ export default function Movies() {
     return filtered;
   }, [movies, selectedCategory, sortBy, sortOrder]);
 
-  // Pagination
-  const totalPages = Math.ceil(filteredMovies.length / itemsPerPage);
-  const paginatedMovies = useMemo(() => {
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    return filteredMovies.slice(startIndex, startIndex + itemsPerPage);
-  }, [filteredMovies, currentPage]);
+  // Get displayed movies (for infinite scroll)
+  const displayedMovies = useMemo(() => {
+    return filteredMovies.slice(0, displayCount);
+  }, [filteredMovies, displayCount]);
+
+  // Infinite scroll observer
+  useEffect(() => {
+    if (!loaderRef.current) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && !isLoadingMore && displayCount < filteredMovies.length) {
+          setIsLoadingMore(true);
+          // Load more items
+          setTimeout(() => {
+            setDisplayCount(prev => Math.min(prev + 24, filteredMovies.length));
+            setIsLoadingMore(false);
+          }, 500);
+        }
+      },
+      { threshold: 0.1, rootMargin: "100px" }
+    );
+
+    observer.observe(loaderRef.current);
+    return () => observer.disconnect();
+  }, [displayCount, filteredMovies.length, isLoadingMore]);
+
+  // Reset display count when filters change
+  useEffect(() => {
+    setDisplayCount(24);
+  }, [selectedCategory, sortBy, sortOrder]);
 
   // Featured movies
   const featuredMovies = useMemo(() => {
@@ -804,11 +832,6 @@ export default function Movies() {
       .sort((a, b) => (parseFloat(b?.rating) || 0) - (parseFloat(a?.rating) || 0))
       .slice(0, 12);
   }, [movies]);
-
-  // Reset page on filter change
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [selectedCategory, sortBy, sortOrder]);
 
   // Format date helper
   const formatDate = useCallback((dateString) => {
@@ -856,22 +879,22 @@ export default function Movies() {
         />
       )}
 
-      {/* Recently Updated Series Section */}
-      {recentlyUpdatedSeries.length > 0 && (
+      {/* Latest Series Section (renamed from Recently Updated Series) */}
+      {latestSeries.length > 0 && (
         <section className="container mx-auto px-4 py-6 sm:py-8">
           <div className="flex items-center justify-between mb-3 sm:mb-4">
             <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-white flex items-center gap-2">
               <FaPlayCircle className="text-purple-500 text-sm sm:text-base" />
-              <span className="hidden xs:inline">Recently Updated Series</span>
-              <span className="xs:hidden">Updated Series</span>
+              <span className="hidden xs:inline">Latest Series</span>
+              <span className="xs:hidden">Latest Series</span>
             </h2>
             <span className="text-xs text-gray-400 bg-gray-800 px-2 py-1 rounded-full">
-              {recentlyUpdatedSeries.length}
+              {latestSeries.length}
             </span>
           </div>
 
           <div className="hidden md:grid md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-2 md:gap-3 lg:gap-4">
-            {recentlyUpdatedSeries.map(series => (
+            {latestSeries.map(series => (
               <div
                 key={series?.id}
                 className="cursor-pointer group relative transform transition-transform duration-300 hover:scale-105"
@@ -888,7 +911,7 @@ export default function Movies() {
           </div>
 
           <div className="flex md:hidden gap-2 overflow-x-auto pb-4 px-1 scrollbar-hide">
-            {recentlyUpdatedSeries.map(series => (
+            {latestSeries.map(series => (
               <div
                 key={series?.id}
                 className="flex-none w-[130px] sm:w-[150px] relative transform transition-transform duration-300 active:scale-95"
@@ -905,22 +928,22 @@ export default function Movies() {
         </section>
       )}
 
-      {/* Latest Uploads Section */}
-      {latestUploads.length > 0 && (
+      {/* Latest Movies Section (renamed from Latest Uploads) */}
+      {latestMovies.length > 0 && (
         <section className="container mx-auto px-4 py-6 sm:py-8">
           <div className="flex items-center justify-between mb-3 sm:mb-4">
             <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-white flex items-center gap-2">
               <FaUpload className="text-green-500 text-sm sm:text-base" />
-              <span className="hidden xs:inline">Latest Updates</span>
-              <span className="xs:hidden">Updates</span>
+              <span className="hidden xs:inline">Latest Movies</span>
+              <span className="xs:hidden">Latest Movies</span>
             </h2>
             <span className="text-xs text-gray-400 bg-gray-800 px-2 py-1 rounded-full">
-              {latestUploads.length}
+              {latestMovies.length}
             </span>
           </div>
 
           <div className="hidden md:grid md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-2 md:gap-3 lg:gap-4">
-            {latestUploads.map(item => (
+            {latestMovies.map(item => (
               <div
                 key={item?.id}
                 className="cursor-pointer group relative transform transition-transform duration-300 hover:scale-105"
@@ -952,7 +975,7 @@ export default function Movies() {
           </div>
 
           <div className="flex md:hidden gap-2 overflow-x-auto pb-4 px-1 scrollbar-hide">
-            {latestUploads.map(item => (
+            {latestMovies.map(item => (
               <div
                 key={item?.id}
                 className="flex-none w-[130px] sm:w-[150px] relative transform transition-transform duration-300 active:scale-95"
@@ -1144,7 +1167,7 @@ export default function Movies() {
         </div>
       </div>
 
-      {/* All Movies Section */}
+      {/* All Movies Section with Infinite Scroll */}
       <section className="container mx-auto px-4 pb-8 sm:pb-12">
         <div className="flex items-center justify-between mb-4 sm:mb-5">
           <div className="flex items-center gap-2">
@@ -1208,7 +1231,7 @@ export default function Movies() {
         ) : (
           <>
             <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 sm:gap-3 md:gap-4">
-              {paginatedMovies.map(movie => (
+              {displayedMovies.map(movie => (
                 <div
                   key={movie?.id}
                   className="cursor-pointer transform transition-all duration-300 hover:scale-105 hover:z-10"
@@ -1219,25 +1242,25 @@ export default function Movies() {
               ))}
             </div>
 
-            {totalPages > 1 && (
-              <div className="flex items-center justify-center gap-2 mt-6 sm:mt-8">
-                <button
-                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                  disabled={currentPage === 1}
-                  className="w-8 sm:w-10 h-8 sm:h-10 rounded-lg bg-gray-800 disabled:opacity-50 text-white flex items-center justify-center hover:bg-gray-700 transition-all duration-300"
-                >
-                  <FaChevronLeft className="text-xs sm:text-sm" />
-                </button>
-                <span className="text-xs sm:text-sm text-white bg-gray-800 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg">
-                  {currentPage} / {totalPages}
-                </span>
-                <button
-                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                  disabled={currentPage === totalPages}
-                  className="w-8 sm:w-10 h-8 sm:h-10 rounded-lg bg-gray-800 disabled:opacity-50 text-white flex items-center justify-center hover:bg-gray-700 transition-all duration-300"
-                >
-                  <FaChevronRight className="text-xs sm:text-sm" />
-                </button>
+            {/* Loader for infinite scroll */}
+            {displayCount < filteredMovies.length && (
+              <div ref={loaderRef} className="flex justify-center items-center py-8">
+                {isLoadingMore ? (
+                  <div className="flex flex-col items-center gap-2">
+                    <FaSpinner className="text-purple-500 text-xl animate-spin" />
+                    <span className="text-xs text-gray-400">Loading more movies...</span>
+                  </div>
+                ) : (
+                  <div className="text-xs text-gray-500">Scroll for more</div>
+                )}
+              </div>
+            )}
+
+            {/* Show end message */}
+            {displayCount >= filteredMovies.length && filteredMovies.length > 0 && (
+              <div className="text-center py-8">
+                <p className="text-xs text-gray-500">✨ You've reached the end ✨</p>
+                <p className="text-[10px] text-gray-600 mt-1">{filteredMovies.length} movies loaded</p>
               </div>
             )}
           </>
