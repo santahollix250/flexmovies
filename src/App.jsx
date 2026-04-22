@@ -1,4 +1,4 @@
-// App.jsx - Updated with fixed Admin route protection
+// App.jsx - Updated with Translator, Nation, and Category pages
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { MoviesProvider } from './context/MoviesContext';
@@ -10,6 +10,9 @@ import Admin from './pages/Admin';
 import Player from "./components/Player";
 import WhatsAppFloatingButton from './components/WhatsAppFloatingButton';
 import SeriesPlayer from './components/SeriesPlayer';
+import TranslatorPage from './pages/TranslatorPage';
+import NationPage from './pages/NationPage';
+import CategoryPage from './pages/CategoryPage'; // Import CategoryPage
 // Make sure this import path is correct
 import './index.css';
 
@@ -23,6 +26,9 @@ function App() {
             <Route path="/" element={<Movies />} />
             <Route path="/movies" element={<Movies />} />
             <Route path="/series" element={<Series />} />
+            <Route path="/category" element={<CategoryPage />} />
+            <Route path="/translator" element={<TranslatorPage />} />
+            <Route path="/nation" element={<NationPage />} />
             <Route path="/player/:id" element={<Player />} />
             <Route path="/series-player/:id" element={<SeriesPlayer />} />
 

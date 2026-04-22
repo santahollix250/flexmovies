@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useContext } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { FiSearch, FiX, FiFilm, FiTv } from 'react-icons/fi';
-import { FaShieldAlt } from 'react-icons/fa';
+import { FaShieldAlt, FaLanguage, FaGlobe, FaGem } from 'react-icons/fa';
 import { MoviesContext } from '../context/MoviesContext';
 import logo from '../assets/Newlogo.png';
 
@@ -193,7 +193,7 @@ export default function Navbar() {
       case 'category':
         const params = new URLSearchParams();
         params.set('genre', suggestion.title);
-        navigate(`/movies?${params.toString()}`);
+        navigate(`/category?${params.toString()}`);
         updateGlobalSearch('', {
           genre: suggestion.title,
           type: 'all'
@@ -244,7 +244,7 @@ export default function Navbar() {
 
     if (location.pathname === '/search') {
       clearGlobalSearch();
-      navigate('/movies');
+      navigate('/category');
     }
 
     inputRef.current?.focus();
@@ -349,7 +349,7 @@ export default function Navbar() {
       <div className="mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 md:h-20">
 
-          {/* Logo */}
+          {/* Logo with Infinity Animation */}
           <Link
             to="/"
             onClick={() => {
@@ -361,31 +361,44 @@ export default function Navbar() {
             className="flex items-center gap-2 group"
           >
             <div className="relative">
-              <div className="h-10 w-10 md:h-12 md:w-12 rounded-lg overflow-hidden ring-2 ring-purple-600/30 group-hover:ring-purple-500 transition-all duration-300 group-hover:scale-105">
-                <img
-                  src={logo}
-                  alt="agasobanuyecineva Logo"
-                  className="h-full w-full object-cover"
-                  onError={(e) => {
-                    e.target.style.display = 'none';
-                    e.target.parentElement.innerHTML = `
-                      <div class="h-full w-full bg-gradient-to-br from-purple-600 to-pink-600 flex items-center justify-center">
-                        <span class="text-white font-bold text-xl">A</span>
-                      </div>
-                    `;
-                  }}
-                />
+              {/* Infinity Animation Container */}
+              <div className="relative">
+                {/* Pulsing rings animation */}
+                <div className="absolute inset-0 rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 animate-ping opacity-75" style={{ animationDuration: '1.5s' }}></div>
+                <div className="absolute inset-0 rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 animate-pulse opacity-50"></div>
+                
+                {/* Rotating border animation */}
+                <div className="absolute -inset-1 rounded-lg bg-gradient-to-r from-purple-600 via-pink-600 to-purple-600 animate-spin-slow opacity-75"></div>
+                
+                {/* Logo container */}
+                <div className="relative h-10 w-10 md:h-12 md:w-12 rounded-lg overflow-hidden ring-2 ring-purple-600/30 group-hover:ring-purple-500 transition-all duration-300 group-hover:scale-105 bg-black">
+                  <img
+                    src={logo}
+                    alt="agasobanuyecineva Logo"
+                    className="h-full w-full object-cover"
+                    onError={(e) => {
+                      e.target.style.display = 'none';
+                      e.target.parentElement.innerHTML = `
+                        <div class="h-full w-full bg-gradient-to-br from-purple-600 to-pink-600 flex items-center justify-center">
+                          <span class="text-white font-bold text-xl animate-pulse">A</span>
+                        </div>
+                      `;
+                    }}
+                  />
+                </div>
               </div>
+              
+              {/* Glow effect */}
               <div className="absolute -inset-1 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg opacity-0 group-hover:opacity-30 blur-xl transition-opacity duration-500"></div>
             </div>
 
             <div className="flex flex-col">
               <h1 className="text-sm md:text-lg lg:text-xl font-bold">
-                <span className="bg-gradient-to-r from-purple-400 via-pink-400 to-purple-400 bg-clip-text text-transparent">
+                <span className="bg-gradient-to-r from-purple-400 via-pink-400 to-purple-400 bg-clip-text text-transparent bg-[length:200%_auto] animate-gradient">
                   agasobanuyecineva
                 </span>
               </h1>
-              <span className="text-[8px] md:text-[10px] text-gray-500 -mt-0.5">Premium Streaming</span>
+              <span className="text-[8px] md:text-[10px] text-gray-500 -mt-0.5 animate-pulse-slow">Premium Streaming</span>
             </div>
           </Link>
 
@@ -404,15 +417,15 @@ export default function Navbar() {
               </span>
             </Link>
             <Link
-              to="/movies"
+              to="/category"
               onClick={() => setIsOpen(false)}
-              className={`px-3 py-2 text-xs font-medium rounded-lg transition-all duration-300 ${location.pathname === '/movies'
+              className={`px-3 py-2 text-xs font-medium rounded-lg transition-all duration-300 ${location.pathname === '/category'
                 ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
                 : 'text-gray-300 hover:bg-blue-600/20 hover:text-white'
                 }`}
             >
               <span className="flex items-center gap-1">
-                <span>🎬</span> Movies
+                <span>🎬</span> Category
               </span>
             </Link>
             <Link
@@ -427,9 +440,33 @@ export default function Navbar() {
                 <span>📺</span> Series
               </span>
             </Link>
+            <Link
+              to="/translator"
+              onClick={() => setIsOpen(false)}
+              className={`px-3 py-2 text-xs font-medium rounded-lg transition-all duration-300 ${location.pathname === '/translator'
+                ? 'bg-green-600 text-white shadow-lg shadow-green-600/30'
+                : 'text-gray-300 hover:bg-green-600/20 hover:text-white'
+                }`}
+            >
+              <span className="flex items-center gap-1">
+                <FaLanguage className="text-xs" /> Translator
+              </span>
+            </Link>
+            <Link
+              to="/nation"
+              onClick={() => setIsOpen(false)}
+              className={`px-3 py-2 text-xs font-medium rounded-lg transition-all duration-300 ${location.pathname === '/nation'
+                ? 'bg-cyan-600 text-white shadow-lg shadow-cyan-600/30'
+                : 'text-gray-300 hover:bg-cyan-600/20 hover:text-white'
+                }`}
+            >
+              <span className="flex items-center gap-1">
+                <FaGlobe className="text-xs" /> Nation
+              </span>
+            </Link>
           </div>
 
-          {/* Right Side - Search & Admin */}
+          {/* Right Side - Search & VIP Access */}
           <div className="flex items-center gap-2">
             {/* Desktop Search */}
             <div className="hidden md:block relative" ref={searchRef}>
@@ -462,14 +499,14 @@ export default function Navbar() {
               {showResults && renderSuggestions()}
             </div>
 
-            {/* Admin Button */}
+            {/* VIP Access Button - Updated from Admin */}
             <Link
               to="/admin"
               onClick={() => setIsOpen(false)}
-              className="hidden md:flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 rounded-lg text-white shadow-lg shadow-purple-600/30 transition-all duration-300 hover:scale-105"
+              className="hidden md:flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-gradient-to-r from-yellow-500 via-orange-500 to-red-500 hover:from-yellow-600 hover:via-orange-600 hover:to-red-600 rounded-lg text-white shadow-lg shadow-yellow-600/30 transition-all duration-300 hover:scale-105 animate-pulse-slow"
             >
-              <FaShieldAlt className="text-xs" />
-              Admin
+              <FaGem className="text-xs" />
+              VIP Access
             </Link>
 
             {/* Mobile Menu Button */}
@@ -536,15 +573,15 @@ export default function Navbar() {
               </span>
             </Link>
             <Link
-              to="/movies"
+              to="/category"
               onClick={() => setIsOpen(false)}
-              className={`block px-3 py-2 text-sm rounded-lg transition-colors ${location.pathname === '/movies'
+              className={`block px-3 py-2 text-sm rounded-lg transition-colors ${location.pathname === '/category'
                 ? 'bg-blue-600 text-white'
                 : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
                 }`}
             >
               <span className="flex items-center gap-2">
-                <span>🎬</span> Movies
+                <span>🎬</span> Category
               </span>
             </Link>
             <Link
@@ -560,17 +597,72 @@ export default function Navbar() {
               </span>
             </Link>
             <Link
-              to="/admin"
+              to="/translator"
               onClick={() => setIsOpen(false)}
-              className="block px-3 py-2 text-sm bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg text-white font-medium"
+              className={`block px-3 py-2 text-sm rounded-lg transition-colors ${location.pathname === '/translator'
+                ? 'bg-green-600 text-white'
+                : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                }`}
             >
               <span className="flex items-center gap-2">
-                <FaShieldAlt className="text-sm" /> Admin
+                <FaLanguage className="text-sm" /> Translator
               </span>
+            </Link>
+            <Link
+              to="/nation"
+              onClick={() => setIsOpen(false)}
+              className={`block px-3 py-2 text-sm rounded-lg transition-colors ${location.pathname === '/nation'
+                ? 'bg-cyan-600 text-white'
+                : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                }`}
+            >
+              <span className="flex items-center gap-2">
+                <FaGlobe className="text-sm" /> Nation
+              </span>
+            </Link>
+            
+            {/* VIP Access Button - Mobile */}
+            <Link
+              to="/admin"
+              onClick={() => setIsOpen(false)}
+              className="block px-3 py-2 text-sm bg-gradient-to-r from-yellow-500 via-orange-500 to-red-500 rounded-lg text-white font-medium flex items-center gap-2"
+            >
+              <FaGem className="text-sm" /> VIP Access
             </Link>
           </div>
         </div>
       )}
+
+      {/* Add custom animations to your global CSS or as a style tag */}
+      <style jsx>{`
+        @keyframes spin-slow {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+        
+        @keyframes gradient {
+          0% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
+        }
+        
+        @keyframes pulse-slow {
+          0%, 100% { opacity: 0.7; }
+          50% { opacity: 1; }
+        }
+        
+        .animate-spin-slow {
+          animation: spin-slow 3s linear infinite;
+        }
+        
+        .animate-gradient {
+          animation: gradient 3s ease infinite;
+        }
+        
+        .animate-pulse-slow {
+          animation: pulse-slow 2s ease-in-out infinite;
+        }
+      `}</style>
     </nav>
   );
 }
